@@ -7,10 +7,12 @@ import "../core/Types.sol";
  * SubAccountId =
  *         96             88        80       72        0
  * +---------+--------------+---------+--------+--------+
- * | Account | collateralId | assetId | isLong | unUsed |
+ * | Account | collateralId | assetId | isLong | unused |
  * +---------+--------------+---------+--------+--------+
  */
 library LibSubAccount {
+    bytes32 constant SUB_ACCOUNT_ID_FORBIDDEN_BITS = bytes32(uint256(0xffffffffffffffffff));
+
     function getSubAccountOwner(bytes32 subAccountId) internal pure returns (address account) {
         account = address(uint160(uint256(subAccountId) >> 96));
     }
@@ -45,6 +47,7 @@ library LibSubAccount {
     }
 
     function decodeSubAccountId(bytes32 subAccountId) internal pure returns (DecodedSubAccountId memory decoded) {
+        require((subAccountId & SUB_ACCOUNT_ID_FORBIDDEN_BITS) == 0, "Aid");
         decoded.account = address(uint160(uint256(subAccountId) >> 96));
         decoded.collateralId = uint8(uint256(subAccountId) >> 88);
         decoded.assetId = uint8(uint256(subAccountId) >> 80);

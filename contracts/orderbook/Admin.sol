@@ -11,17 +11,17 @@ contract Admin is SafeOwnable {
     event RemoveBroker(address indexed newBroker);
 
     modifier onlyBroker() {
-        require(brokers[_msgSender()], "OnlyBroker");
+        require(brokers[_msgSender()], "Bkr");
         _;
     }
 
     modifier onlyNotPaused() {
-        require(!isPaused, "SystemPaused");
+        require(!isPaused, "Psd");
         _;
     }
 
     function addBroker(address newBroker) public onlyOwner {
-        require(!brokers[newBroker], "BrokerExists");
+        require(!brokers[newBroker], "Bkr");
         brokers[newBroker] = true;
         emit AddBroker(newBroker);
     }
@@ -35,7 +35,7 @@ contract Admin is SafeOwnable {
     }
 
     function _removeBroker(address broker) internal {
-        require(brokers[broker], "BrokerNotExists");
+        require(brokers[broker], "Bkr");
         brokers[broker] = false;
         emit RemoveBroker(broker);
     }

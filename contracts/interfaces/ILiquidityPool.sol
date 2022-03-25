@@ -4,60 +4,12 @@ pragma solidity 0.8.10;
 import "../core/Types.sol";
 
 interface ILiquidityPool {
+    /////////////////////////////////////////////////////////////////////////////////
+    //                                 getters
+
     function getAssetAddress(uint8 assetId) external view returns (address);
 
-    function addLiquidity(
-        address trader,
-        uint8 tokenId,
-        uint96 tokenPrice,
-        uint96 mlpPrice
-    ) external;
-
-    function removeLiquidity(
-        address trader,
-        uint96 mlpAmount,
-        uint8 tokenId,
-        uint96 tokenPrice,
-        uint96 mlpPrice
-    ) external;
-
-    function openPosition(
-        bytes32 subAccountId,
-        uint96 amount,
-        uint96 collateralPrice,
-        uint96 assetPrice
-    ) external;
-
-    function closePosition(
-        bytes32 subAccountId,
-        uint96 amount,
-        uint96 collateralPrice,
-        uint96 assetPrice,
-        uint8 profitAssetId
-    ) external;
-
-    function depositCollateral(bytes32 subAccountId) external;
-
-    function withdrawCollateral(
-        bytes32 subAccountId,
-        uint256 rawAmount,
-        uint96 collateralPrice,
-        uint96 assetPrice
-    ) external;
-
-    function withdrawAllCollateral(bytes32 subAccountId) external;
-
-    function withdrawProfit(
-        bytes32 subAccountId,
-        uint256 rawAmount,
-        uint96 collateralPrice,
-        uint96 assetPrice,
-        uint8 profitAssetId
-    ) external;
-
     function getAssetInfo(uint8 assetId) external view returns (Asset memory);
-
-    function setParams(AdminParamsType paramType, bytes calldata params) external;
 
     function getSubAccount(bytes32 subAccountId)
         external
@@ -70,5 +22,90 @@ interface ILiquidityPool {
             uint128 entryFunding
         );
 
-    function updateFundingState(uint8[] calldata tokenIds, uint32[] calldata fundingRates) external;
+    /////////////////////////////////////////////////////////////////////////////////
+    //                             for Trader / Broker
+
+    function depositCollateral(bytes32 subAccountId) external;
+
+    function withdrawAllCollateral(bytes32 subAccountId) external;
+
+    /////////////////////////////////////////////////////////////////////////////////
+    //                                 only Broker
+
+    function addLiquidity(
+        address trader,
+        uint8 tokenId,
+        uint96 tokenPrice,
+        uint96 mlpPrice,
+        uint32 mlpFeeRate
+    ) external;
+
+    function removeLiquidity(
+        address trader,
+        uint96 mlpAmount, // NOTE: OrderBook should transfer mlpAmount to me
+        uint8 tokenId,
+        uint96 tokenPrice,
+        uint96 mlpPrice,
+        uint32 mlpFeeRate
+    ) external;
+
+    function openPosition(
+        bytes32 subAccountId,
+        uint96 amount,
+        uint96 collateralPrice,
+        uint96 assetPrice
+    ) external;
+
+    function closePosition(
+        bytes32 subAccountId,
+        uint96 amount,
+        uint8 profitAssetId, // only used when !isLong
+        uint96 collateralPrice,
+        uint96 assetPrice,
+        uint96 profitAssetPrice // only used when !isLong
+    ) external;
+
+    function withdrawCollateral(
+        bytes32 subAccountId,
+        uint256 rawAmount,
+        uint96 collateralPrice,
+        uint96 assetPrice
+    ) external;
+
+    function withdrawProfit(
+        bytes32 subAccountId,
+        uint256 rawAmount,
+        uint8 profitAssetId, // only used when !isLong
+        uint96 collateralPrice,
+        uint96 assetPrice,
+        uint96 profitAssetPrice // only used when !isLong
+    ) external;
+
+    /**
+     * @notice Broker can update funding each [fundingInterval] seconds by specifying utilizations.
+     *
+     * @param  stableUtilization    Stable coin utilization
+     * @param  unstableTokenIds     All unstable Asset id(s) MUST be passed in order. ex: 1, 2, 5, 6, ...
+     * @param  unstableUtilizations Unstable Asset utilizations
+     */
+    function updateFundingState(
+        uint32 stableUtilization, // 1e5
+        uint8[] calldata unstableTokenIds,
+        uint32[] calldata unstableUtilizations // 1e5
+    ) external;
+
+    function liquidate(
+        bytes32 subAccountId,
+        uint8 profitAssetId, // only used when !isLong
+        uint96 collateralPrice,
+        uint96 assetPrice,
+        uint96 profitAssetPrice // only used when !isLong
+    ) external;
+
+    /////////////////////////////////////////////////////////////////////////////////
+    //                            only LiquidityManager
+
+    function withdrawLiquidity(uint8[] memory assetIds, uint256[] memory amounts) external;
+
+    function depositLiquidity(uint8[] memory assetIds) external;
 }

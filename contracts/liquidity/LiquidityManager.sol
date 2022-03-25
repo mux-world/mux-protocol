@@ -9,30 +9,20 @@ import "./Types.sol";
 import "./LmDexProxy.sol";
 import "./LmStorage.sol";
 import "./LmAdmin.sol";
+import "./LmBridge.sol";
+import "./LmTransfer.sol";
 import "./LmGetter.sol";
-import { AdminParamsType } from "../core/Types.sol";
 
-contract LiquidityManager is LmStorage, LmDexProxy, LmAdmin, LmGetter {
+contract LiquidityManager is LmStorage, LmTransfer, LmDexProxy, LmAdmin, LmBridge, LmGetter {
     using SafeERC20Upgradeable for IERC20Upgradeable;
+
+    event AddLiquidity(uint8 indexed dexId, uint256[] addedAmounts, uint256 liquidityAmount);
+    event RemoveLiquidity(uint8 indexed dexId, uint256 shareAmount, uint256[] removedAmounts);
+    event ClaimDexRewards(uint8 indexed dexId, address[] rewardTokens, uint256[] rewardAmounts);
 
     function initialize(address pool) external initializer {
         __SafeOwnable_init();
         _pool = ILiquidityPool(pool);
-    }
-
-    function getDexRewards(uint8 dexId)
-        external
-        returns (address[] memory rewardTokens, uint256[] memory rewardAmounts)
-    {
-        return _getDexRewards(dexId);
-    }
-
-    function getDexFees(uint8 dexId) external returns (address[] memory rewardTokens, uint256[] memory rewardAmounts) {
-        return _getDexFees(dexId);
-    }
-
-    function getDexRedeemableAmounts(uint8 dexId, uint256 shareAmount) external returns (uint256[] memory amounts) {
-        return _getDexRedeemableAmounts(dexId, shareAmount);
     }
 
     function addDexLiquidity(
@@ -40,11 +30,12 @@ contract LiquidityManager is LmStorage, LmDexProxy, LmAdmin, LmGetter {
         uint256[] calldata maxAmounts,
         uint256 deadline
     ) external onlyOwner returns (uint256[] memory addedAmounts, uint256 liquidityAmount) {
-        require(maxAmounts.length > 0, "NoAmounts");
-        require(_hasConnector(dexId), "DexNotExists");
+        require(maxAmounts.length > 0, "Mty"); // argument array is eMpTY
+        require(_hasConnector(dexId), "Lst"); // the asset is not LiSTed
         DexSpotConfiguration storage spotConfig = _dexSpotConfigs[dexId];
         _transferFromLiquidityPool(spotConfig.assetIds, maxAmounts);
-        return _addDexLiquidity(dexId, maxAmounts, deadline);
+        (addedAmounts, liquidityAmount) = _addDexLiquidity(dexId, maxAmounts, deadline);
+        emit AddLiquidity(dexId, addedAmounts, liquidityAmount);
     }
 
     function removeDexLiquidity(
@@ -53,37 +44,42 @@ contract LiquidityManager is LmStorage, LmDexProxy, LmAdmin, LmGetter {
         uint256[] calldata minAmounts,
         uint256 deadline
     ) external onlyOwner returns (uint256[] memory removedAmounts) {
-        require(shareAmount > 0, "ZeroShareAmount");
-        require(minAmounts.length > 0, "NoAmounts");
-        require(_hasConnector(dexId), "DexNotExists");
-
+        require(shareAmount > 0, "A=0");
+        require(minAmounts.length > 0, "Mty"); // argument array is eMpTY
+        require(_hasConnector(dexId), "Lst"); // the asset is not LiSTed
         DexSpotConfiguration storage spotConfig = _dexSpotConfigs[dexId];
         removedAmounts = _removeDexLiquidity(dexId, shareAmount, minAmounts, deadline);
-        require(spotConfig.assetIds.length == removedAmounts.length, "ParamsLengthMismatch");
+        require(spotConfig.assetIds.length == removedAmounts.length, "Len"); // LENgth of 2 arguments does not match
         _transferToLiquidityPool(spotConfig.assetIds, removedAmounts);
+        emit RemoveLiquidity(dexId, shareAmount, removedAmounts);
+    }
+
+    function claimDexReward(uint8 dexId)
+        external
+        onlyOwner
+        returns (address[] memory rewardTokens, uint256[] memory rewardAmounts)
+    {
+        require(_hasConnector(dexId), "Lst"); // the asset is not LiSTed
+        (rewardTokens, rewardAmounts) = _claimDexRewards(dexId);
+        emit ClaimDexRewards(dexId, rewardTokens, rewardAmounts);
     }
 
     function returnMuxLiquidity(uint8[] calldata assetIds, uint256[] calldata amounts) external onlyOwner {
-        require(assetIds.length > 0, "NoAssets");
-        require(assetIds.length == amounts.length, "ParamsLengthMismatch");
+        require(assetIds.length > 0, "Mty"); // argument array is eMpTY
+        require(assetIds.length == amounts.length, "Len"); // Length of 2 arguments does not match
         _transferToLiquidityPool(assetIds, amounts);
     }
 
-    function _transferFromLiquidityPool(uint8[] memory assetIds, uint256[] memory amounts) internal {
-        require(assetIds.length == amounts.length, "ParamsLengthMismatch");
-        _pool.setParams(AdminParamsType.WithdrawLiquidity, abi.encode(assetIds, amounts));
-    }
-
-    function _transferToLiquidityPool(uint8[] memory assetIds, uint256[] memory amounts) internal {
-        uint256 length = assetIds.length;
-        for (uint256 i = 0; i < length; i++) {
-            IERC20Upgradeable asset = IERC20Upgradeable(_getAssetAddress(assetIds[i]));
-            asset.safeTransfer(address(_pool), amounts[i]);
+    function transferToChain(
+        uint256 chainId,
+        uint8[] memory assetIds,
+        uint256[] memory amounts
+    ) external onlyOwner {
+        require(_hasBridge(chainId), "!CB");
+        BridgeConfiguration storage bridgeConfig = _bridgeConfigs[chainId];
+        _transferFromLiquidityPool(assetIds, amounts);
+        for (uint256 i = 0; i < assetIds.length; i++) {
+            _bridgeTransfer(bridgeConfig, _getAssetAddress(assetIds[i]), amounts[i]);
         }
-        _pool.setParams(AdminParamsType.DepositLiquidity, abi.encode(assetIds));
-    }
-
-    function transferToChain(uint256 chainId) external onlyOwner {
-        // TODO: bridge token to another chain
     }
 }

@@ -41,13 +41,18 @@ library LibMath {
         }
     }
 
+    function safeUint32(uint256 n) internal pure returns (uint32) {
+        require(n <= type(uint32).max, "O32");
+        return uint32(n);
+    }
+
     function safeUint96(uint256 n) internal pure returns (uint96) {
-        require(n <= type(uint96).max, "OverflowUint96");
+        require(n <= type(uint96).max, "O96");
         return uint96(n);
     }
 
     function safeUint128(uint256 n) internal pure returns (uint128) {
-        require(n <= type(uint128).max, "OverflowUint128");
+        require(n <= type(uint128).max, "O12");
         return uint128(n);
     }
 }

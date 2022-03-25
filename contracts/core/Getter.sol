@@ -7,36 +7,44 @@ import "./Storage.sol";
 contract Getter is Storage {
     using LibSubAccount for bytes32;
 
-    function getAssetInfo(uint8 assetId) public view returns (Asset memory) {
+    function getAssetInfo(uint8 assetId) external view returns (Asset memory) {
+        require(assetId < _storage.assets.length, "Lst"); // the asset is not LiSTed
         return _storage.assets[assetId];
     }
 
-    function getAllAssetInfo() public view returns (Asset[] memory) {
+    function getAllAssetInfo() external view returns (Asset[] memory) {
         return _storage.assets;
     }
 
-    function getAssetAddress(uint8 assetId) public view returns (address) {
+    function getAssetAddress(uint8 assetId) external view returns (address) {
+        require(assetId < _storage.assets.length, "Lst"); // the asset is not LiSTed
         return _storage.assets[assetId].tokenAddress;
     }
 
-    function getShortFundingInfo()
-        public
+    function getLiquidityPoolStorage()
+        external
         view
         returns (
-            uint32 baseRate8H,
-            uint32 limitRate8H,
-            uint128 cumulativeFunding,
-            uint32 lastFundingTime
+            // [0] shortCumulativeFunding
+            uint128[1] memory u128s,
+            // [0] shortFundingBaseRate8H
+            // [1] shortFundingLimitRate8H
+            // [2] lastFundingTime
+            // [3] fundingInterval
+            // [4] liquidityLockPeriod
+            uint32[5] memory u32s
         )
     {
-        baseRate8H = _storage.shortFundingConfiguration.baseRate8H;
-        limitRate8H = _storage.shortFundingConfiguration.limitRate8H;
-        cumulativeFunding = _storage.shortFunding.cumulativeFunding;
-        lastFundingTime = _storage.shortFunding.lastFundingTime;
+        u32s[0] = _storage.shortFundingBaseRate8H;
+        u32s[1] = _storage.shortFundingLimitRate8H;
+        u128s[0] = _storage.shortCumulativeFunding;
+        u32s[2] = _storage.lastFundingTime;
+        u32s[3] = _storage.fundingInterval;
+        u32s[4] = _storage.liquidityLockPeriod;
     }
 
     function getSubAccount(bytes32 subAccountId)
-        public
+        external
         view
         returns (
             uint96 collateral,
@@ -54,8 +62,18 @@ contract Getter is Storage {
         entryFunding = subAccount.entryFunding;
     }
 
-    function getLiquidityLockInfo(address lp) public view returns (uint32 liquidityLockPeriod, uint32 liquidityLock) {
+    function getLiquidityLockInfo(address lp)
+        external
+        view
+        returns (
+            uint32 liquidityLockPeriod,
+            uint32 lastAddedTime,
+            uint96 pendingMLP
+        )
+    {
         liquidityLockPeriod = _storage.liquidityLockPeriod;
-        liquidityLock = _storage.liquidityLocks[lp];
+        LiquidityLock storage lock = _storage.liquidityLocks[lp];
+        lastAddedTime = lock.lastAddedTime;
+        pendingMLP = lock.pendingMLP;
     }
 }

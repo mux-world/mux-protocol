@@ -19,9 +19,29 @@ contract LmGetter is LmStorage, LmDexProxy {
     }
 
     function getDexLiquidity(uint8 dexId) public returns (uint256[] memory liquidities, uint256 lpBalance) {
-        if (_hasConnector(dexId)) {
-            lpBalance = _getLpBalance(dexId);
-            liquidities = _getDexRedeemableAmounts(dexId, lpBalance);
+        if (_dexSpotConfigs.length >= dexId) {
+            if (_hasConnector(dexId)) {
+                lpBalance = _getLpBalance(dexId);
+                liquidities = _getDexRedeemableAmounts(dexId, lpBalance);
+            } else {
+                lpBalance = 0;
+                liquidities = new uint256[](_dexSpotConfigs[dexId].assetIds.length);
+            }
         }
+    }
+
+    function getDexRewards(uint8 dexId)
+        external
+        returns (address[] memory rewardTokens, uint256[] memory rewardAmounts)
+    {
+        return _getDexRewards(dexId);
+    }
+
+    function getDexFees(uint8 dexId) external returns (uint256[] memory rewardAmounts) {
+        return _getDexFees(dexId);
+    }
+
+    function getDexRedeemableAmounts(uint8 dexId, uint256 shareAmount) external returns (uint256[] memory amounts) {
+        return _getDexRedeemableAmounts(dexId, shareAmount);
     }
 }

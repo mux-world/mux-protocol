@@ -18,42 +18,6 @@ export enum PositionOrderFlags {
   WithdrawAllIfEmpty = 0x20, // auto withdraw all collateral if position.size == 0
 }
 
-export enum AdminParamsType {
-  AddAsset,
-  SetAssetParams,
-  SetAssetFlags,
-  SetFundingParams,
-  SetFundingInterval,
-  SetAddresses,
-  SetLiquidityLockPeriod,
-  WithdrawLiquidity,
-  DepositLiquidity,
-}
-
-export const AdminParamsAbi = {
-  AddAsset: ["uint8", "bytes32", "uint8", "bool", "address", "address"],
-  SetAssetParams: [
-    "uint8",
-    "uint32",
-    "uint32",
-    "uint32",
-    "uint32",
-    "uint32",
-    "uint96",
-    "uint96",
-    "uint32",
-    "address",
-    "uint8",
-  ],
-  SetAssetFlags: ["uint8", "bool", "bool", "bool", "bool"],
-  SetFundingParams: ["uint8", "uint32", "uint32"],
-  SetFundingInterval: ["uint32"],
-  SetAddresses: ["address", "address"],
-  SetLiquidityLockPeriod: ["uint32"],
-  WithdrawLiquidity: ["uint8[]", "uint256[]"],
-  DepositLiquidity: ["uint8[]", "uint256[]"],
-}
-
 // do not forget toWei(PreMinedTokenTotalSupply)
 export const PreMinedTokenTotalSupply = "1000000000000000000"
 
@@ -101,11 +65,7 @@ export async function createFactory(path: any, libraries: { [name: string]: { ad
   return await ethers.getContractFactory(path, { libraries: parsed })
 }
 
-export async function createContract(
-  path: any,
-  args: any = [],
-  libraries: { [name: string]: { address: string } } = {}
-): Promise<Contract> {
+export async function createContract(path: any, args: any = [], libraries: { [name: string]: { address: string } } = {}): Promise<Contract> {
   const factory = await createFactory(path, libraries)
   return await factory.deploy(...args)
 }
@@ -114,9 +74,7 @@ export function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-export async function ensureFinished(
-  transaction: Promise<Contract> | Promise<ContractTransaction>
-): Promise<TransactionReceipt | ContractReceipt> {
+export async function ensureFinished(transaction: Promise<Contract> | Promise<ContractTransaction>): Promise<TransactionReceipt | ContractReceipt> {
   const result: Contract | ContractTransaction = await transaction
   if ((result as Contract).deployTransaction) {
     return await (result as Contract).deployTransaction.wait()

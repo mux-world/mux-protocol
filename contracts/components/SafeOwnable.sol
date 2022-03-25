@@ -4,23 +4,23 @@ pragma solidity 0.8.10;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract SafeOwnable is OwnableUpgradeable {
-    address private _pendingOwner;
+    address internal _pendingOwner;
 
-    event OwnershipTransferring(address indexed pendingOwner);
+    event PrepareToTransferOwnership(address indexed pendingOwner);
 
-    function __SafeOwnable_init() internal initializer {
+    function __SafeOwnable_init() internal onlyInitializing {
         __Ownable_init();
     }
 
     function transferOwnership(address newOwner) public virtual override onlyOwner {
-        require(newOwner != address(0), "ZeroNewOwner");
-        require(newOwner != owner(), "SelfTransfer");
+        require(newOwner != address(0), "O=0");
+        require(newOwner != owner(), "O=O");
         _pendingOwner = newOwner;
-        emit OwnershipTransferring(_pendingOwner);
+        emit PrepareToTransferOwnership(_pendingOwner);
     }
 
     function takeOwnership() public virtual {
-        require(_msgSender() == _pendingOwner, "NowPendingOwner");
+        require(_msgSender() == _pendingOwner, "Own");
         _transferOwnership(_pendingOwner);
         _pendingOwner = address(0);
     }

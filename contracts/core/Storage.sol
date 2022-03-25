@@ -8,14 +8,20 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../components/SafeOwnable.sol";
 import "../libraries/LibSubAccount.sol";
 import "./Types.sol";
+import "./Events.sol";
 
-contract Storage is Initializable, ReentrancyGuardUpgradeable, SafeOwnable {
+contract Storage is Initializable, ReentrancyGuardUpgradeable, SafeOwnable, Events {
     uint32 internal constant FUNDING_PERIOD = 3600 * 8;
 
     LiquidityPoolStorage internal _storage;
 
     modifier onlyOrderBook() {
-        require(msg.sender == _storage.orderBook, "SenderMustBeOrderBook");
+        require(_msgSender() == _storage.orderBook, "Bok");
+        _;
+    }
+
+    modifier onlyLiquidityManager() {
+        require(_msgSender() == _storage.liquidityManager, "LqM");
         _;
     }
 

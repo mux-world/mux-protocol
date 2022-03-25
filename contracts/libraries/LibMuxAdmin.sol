@@ -7,7 +7,6 @@ import "../libraries/LibAsset.sol";
 import "../libraries/LibMath.sol";
 
 import "../core/Types.sol";
-import "hardhat/console.sol";
 
 library LibMuxAdmin {
     using LibAsset for Asset;
