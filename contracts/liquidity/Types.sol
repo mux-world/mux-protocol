@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.10;
 
-enum BridgeProvider {
-    None,
-    Celer
-}
-
 struct DexSpotConfiguration {
     string name;
     uint8 dexId;
@@ -14,16 +9,21 @@ struct DexSpotConfiguration {
     uint32[] assetWeightInDex;
 }
 
-struct DexConnectorConfiguration {
-    address connector;
-    uint32 liquiditySlippage;
+struct ModuleInfo {
+    bytes32 id;
+    address path;
+    bool isDexModule;
+    uint8 dexId;
+    bytes32[] methodIds;
 }
 
-struct BridgeConfiguration {
-    uint256 chainId;
-    address bridge;
-    address recipient;
-    uint128 nonce;
-    BridgeProvider provider;
-    bytes extraData;
+struct CallRegistration {
+    address callee;
+    bytes4 selector;
+}
+
+struct CallContext {
+    bytes32 methodId;
+    bytes params;
+    uint8 dexId;
 }

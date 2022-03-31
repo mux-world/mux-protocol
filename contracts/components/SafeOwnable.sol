@@ -13,14 +13,14 @@ contract SafeOwnable is OwnableUpgradeable {
     }
 
     function transferOwnership(address newOwner) public virtual override onlyOwner {
-        require(newOwner != address(0), "O=0");
-        require(newOwner != owner(), "O=O");
+        require(newOwner != address(0), "O=0"); // Owner Is Zero
+        require(newOwner != owner(), "O=O"); // Owner is the same as the old Owner
         _pendingOwner = newOwner;
         emit PrepareToTransferOwnership(_pendingOwner);
     }
 
     function takeOwnership() public virtual {
-        require(_msgSender() == _pendingOwner, "Own");
+        require(_msgSender() == _pendingOwner, "Snd"); // SeNDer is not authorized
         _transferOwnership(_pendingOwner);
         _pendingOwner = address(0);
     }

@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.10;
 
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import "../components/SafeOwnable.sol";
@@ -10,18 +8,18 @@ import "../libraries/LibSubAccount.sol";
 import "./Types.sol";
 import "./Events.sol";
 
-contract Storage is Initializable, ReentrancyGuardUpgradeable, SafeOwnable, Events {
+contract Storage is Initializable, SafeOwnable, Events {
     uint32 internal constant FUNDING_PERIOD = 3600 * 8;
 
     LiquidityPoolStorage internal _storage;
 
     modifier onlyOrderBook() {
-        require(_msgSender() == _storage.orderBook, "Bok");
+        require(_msgSender() == _storage.orderBook, "Bok"); // can only be called by order BOoK
         _;
     }
 
     modifier onlyLiquidityManager() {
-        require(_msgSender() == _storage.liquidityManager, "LqM");
+        require(_msgSender() == _storage.liquidityManager, "LqM"); // can only be called by LiQuidity Manager
         _;
     }
 

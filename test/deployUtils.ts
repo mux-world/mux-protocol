@@ -18,6 +18,11 @@ export enum PositionOrderFlags {
   WithdrawAllIfEmpty = 0x20, // auto withdraw all collateral if position.size == 0
 }
 
+export enum ReferenceOracleType {
+  None,
+  Chainlink,
+}
+
 // do not forget toWei(PreMinedTokenTotalSupply)
 export const PreMinedTokenTotalSupply = "1000000000000000000"
 
@@ -55,6 +60,10 @@ export function fromBytes32(s: BytesLike): string {
 
 export function rate(n: string): BigNumber {
   return toUnit(n, 5)
+}
+
+export function toChainlink(n: string): BigNumber {
+  return toUnit(n, 8)
 }
 
 export async function createFactory(path: any, libraries: { [name: string]: { address: string } } = {}): Promise<any> {

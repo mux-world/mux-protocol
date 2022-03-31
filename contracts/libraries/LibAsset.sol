@@ -45,24 +45,10 @@ library LibAsset {
     function issueMuxToken(
         Asset storage token,
         address recipient,
-        uint256 rawAmount
+        uint256 muxTokenAmount
     ) internal {
-        IERC20Upgradeable(token.muxTokenAddress).safeTransfer(recipient, rawAmount);
+        IERC20Upgradeable(token.muxTokenAddress).safeTransfer(recipient, muxTokenAmount);
     }
-
-    // TODO redeem
-    // def repay_debt(self, collateral_id: Uint32, debt_raw_amount: Uint256):
-    //     self._validate_collateral(collateral_id)
-    //     debt_token = IERC20(self.assets[collateral_id].debt_token_address)
-    //     debt_token.transfer(self.msg.sender, self.this, debt_raw_amount)
-    //     debt_wad_amount = FixedU256(debt_raw_amount)
-
-    //     require(self.assets[collateral_id].liquidity_balance >=
-    //             debt_wad_amount, 'insufficient liquidity')
-    //     raw_amount = self._from_wad(collateral_id, debt_wad_amount)
-    //     self._push_collateral(self.msg.sender, collateral_id, raw_amount)
-
-    //     # TODO: emit
 
     function toWad(Asset storage token, uint256 rawAmount) internal view returns (uint96) {
         return (rawAmount * (10**(18 - token.decimals))).safeUint96();

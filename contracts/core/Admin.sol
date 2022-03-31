@@ -5,9 +5,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "./Storage.sol";
 import "../libraries/LibAsset.sol";
 import "../libraries/LibMath.sol";
+import "../libraries/LibReferenceOracle.sol";
 import "../core/Types.sol";
-
-import "hardhat/console.sol";
 
 contract Admin is Storage {
     using LibAsset for Asset;
@@ -21,10 +20,10 @@ contract Admin is Storage {
         address tokenAddress,
         address muxTokenAddress
     ) external onlyOwner {
-        require(decimals <= 18, "Dcm"); // invalid DeCiMals
-        require(assetId == _storage.assets.length, "AId"); // invalid AssetID
-        require(assetId < 0xFF, "Fll"); // assets list is FuLL
-        require(symbol != "", "Sym"); // invalid SYMbol
+        require(decimals <= 18, "DCM"); // invalid DeCiMals
+        require(assetId == _storage.assets.length, "AID"); // invalid AssetID
+        require(assetId < 0xFF, "FLL"); // assets list is FuLL
+        require(symbol != "", "SYM"); // invalid SYMbol
 
         _storage.assets.push();
         Asset storage asset = _storage.assets[assetId];
@@ -46,11 +45,9 @@ contract Admin is Storage {
         uint32 newMinProfitTime,
         uint96 newMaxLongPositionSize,
         uint96 newMaxShortPositionSize,
-        uint32 newSpotWeight,
-        address newBackupOracle,
-        uint8 newBackupOracleType
+        uint32 newSpotWeight
     ) external onlyOwner {
-        require(_hasAsset(assetId), "Lst"); // the asset is not LiSTed
+        require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
 
         Asset storage asset = _storage.assets[assetId];
         asset.initialMarginRate = newInitialMarginRate;
@@ -61,8 +58,6 @@ contract Admin is Storage {
         asset.maxLongPositionSize = newMaxLongPositionSize;
         asset.maxShortPositionSize = newMaxShortPositionSize;
         asset.spotWeight = newSpotWeight;
-        asset.backupOracle = newBackupOracle;
-        asset.backupOracleType = newBackupOracleType;
 
         emit SetAssetParams(
             assetId,
@@ -73,9 +68,7 @@ contract Admin is Storage {
             newMinProfitTime,
             newMaxLongPositionSize,
             newMaxShortPositionSize,
-            newSpotWeight,
-            newBackupOracle,
-            newBackupOracleType
+            newSpotWeight
         );
     }
 
@@ -86,13 +79,13 @@ contract Admin is Storage {
         bool isShortable,
         bool useStableTokenForProfit
     ) external onlyOwner {
-        require(_hasAsset(assetId), "Lst"); // the asset is not LiSTed
+        require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         Asset storage asset = _storage.assets[assetId];
         asset.isTradable = isTradable;
         asset.isOpenable = isOpenable;
         asset.isShortable = isShortable;
         asset.useStableTokenForProfit = useStableTokenForProfit;
-        emit SetAssetFlags(isTradable, isOpenable, isShortable, useStableTokenForProfit);
+        emit SetAssetFlags(assetId, isTradable, isOpenable, isShortable, useStableTokenForProfit);
     }
 
     function setFundingParams(
@@ -100,8 +93,7 @@ contract Admin is Storage {
         uint32 newBaseRate8H,
         uint32 newLimitRate8H
     ) external onlyOwner {
-        require(_hasAsset(assetId), "Lst"); // the asset is not LiSTed
-
+        require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         if (_storage.assets[assetId].isStable) {
             _storage.shortFundingBaseRate8H = newBaseRate8H;
             _storage.shortFundingLimitRate8H = newLimitRate8H;
@@ -113,43 +105,64 @@ contract Admin is Storage {
         emit SetFundingParams(assetId, newBaseRate8H, newLimitRate8H);
     }
 
-    function setNumbers(uint32 newFundingInterval, uint32 newLiquidityLockPeriod) external onlyOwner {
-        require(newLiquidityLockPeriod <= 86400 * 30, "Prd");
+    function setReferenceOracle(
+        uint8 assetId,
+        ReferenceOracleType referenceOracleType,
+        address referenceOracle,
+        uint32 referenceDeviation // 1e5
+    ) external onlyOwner {
+        LibReferenceOracle.checkParameters(referenceOracleType, referenceOracle, referenceDeviation);
+        require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
+        Asset storage asset = _storage.assets[assetId];
+        asset.referenceOracleType = uint8(referenceOracleType);
+        asset.referenceOracle = referenceOracle;
+        asset.referenceDeviation = referenceDeviation;
+        emit SetReferenceOracle(assetId, uint8(referenceOracleType), referenceOracle, referenceDeviation);
+    }
+
+    function setNumbers(
+        uint32 newFundingInterval,
+        uint96 newMlpPriceLowerBound,
+        uint96 newMlpPriceUpperBound
+    ) external onlyOwner {
         require(
-            _storage.fundingInterval != newFundingInterval || _storage.liquidityLockPeriod != newLiquidityLockPeriod,
-            "Chg"
-        );
+            _storage.fundingInterval != newFundingInterval ||
+                _storage.mlpPriceLowerBound != newMlpPriceLowerBound ||
+                _storage.mlpPriceUpperBound != newMlpPriceUpperBound,
+            "CHG"
+        ); // setting is not CHanGed
         if (_storage.fundingInterval != newFundingInterval) {
             emit SetFundingInterval(_storage.fundingInterval, newFundingInterval);
             _storage.fundingInterval = newFundingInterval;
         }
-        if (_storage.liquidityLockPeriod != newLiquidityLockPeriod) {
-            emit SetLiquidityLockPeriod(_storage.liquidityLockPeriod, newLiquidityLockPeriod);
-            _storage.liquidityLockPeriod = newLiquidityLockPeriod;
+        if (
+            _storage.mlpPriceLowerBound != newMlpPriceLowerBound || _storage.mlpPriceUpperBound != newMlpPriceUpperBound
+        ) {
+            _storage.mlpPriceLowerBound = newMlpPriceLowerBound;
+            _storage.mlpPriceUpperBound = newMlpPriceUpperBound;
+            emit SetMlpPriceRange(newMlpPriceLowerBound, newMlpPriceUpperBound);
         }
     }
 
-    function withdrawLiquidity(uint8[] memory assetIds, uint256[] memory amounts) external onlyLiquidityManager {
-        require(assetIds.length == amounts.length, "Len"); // LENgth of 2 arguments does not match
+    function transferLiquidityOut(uint8[] memory assetIds, uint256[] memory amounts) external onlyLiquidityManager {
         uint256 length = assetIds.length;
+        require(length > 0, "MTY"); // argument array is eMpTY
+        require(assetIds.length == amounts.length, "LEN"); // LENgth of 2 arguments does not match
         for (uint256 i = 0; i < length; i++) {
             Asset storage asset = _storage.assets[assetIds[i]];
             IERC20Upgradeable(asset.tokenAddress).transfer(msg.sender, amounts[i]);
             asset.spotLiquidity -= amounts[i].safeUint96();
-            uint256 newBalance = IERC20Upgradeable(asset.tokenAddress).balanceOf(address(this));
-            asset.tokenBalance = newBalance.safeUint128();
             emit TransferLiquidity(address(this), msg.sender, assetIds[i], amounts[i]);
         }
     }
 
-    function depositLiquidity(uint8[] memory assetIds) external onlyLiquidityManager {
-        require(assetIds.length > 0, "Mty"); // argument array is eMpTY
+    function transferLiquidityIn(uint8[] memory assetIds, uint256[] memory amounts) external onlyLiquidityManager {
         uint256 length = assetIds.length;
+        require(length > 0, "MTY"); // argument array is eMpTY
+        require(assetIds.length == amounts.length, "LEN"); // LENgth of 2 arguments does not match
         for (uint256 i = 0; i < length; i++) {
-            Asset storage asset = _storage.assets[assetIds[i]];
-            uint96 amount = asset.calcTransferredBalance().safeUint96();
-            asset.spotLiquidity += amount;
-            emit TransferLiquidity(msg.sender, address(this), assetIds[i], amount);
+            _storage.assets[assetIds[i]].spotLiquidity += amounts[i].safeUint96();
+            emit TransferLiquidity(msg.sender, address(this), assetIds[i], amounts[i]);
         }
     }
 }

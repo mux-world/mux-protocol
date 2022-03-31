@@ -24,10 +24,15 @@ struct LiquidityPoolStorage {
     uint32 fundingInterval; // 1e0
     uint32 lastFundingTime; // 1e0
     // slot
-    uint32 liquidityLockPeriod; // 1e0
+    uint32 reserved1; // TODO: remove me
     Asset[] assets;
     mapping(bytes32 => SubAccount) accounts;
-    mapping(address => LiquidityLock) liquidityLocks;
+    mapping(address => LiquidityLockRemoveMe) reserved2; // TODO: remove me
+    address mlpTimeLock; // TODO: move me
+    uint96 reserved3; // TODO: remove me
+    // slot
+    uint96 mlpPriceLowerBound; // safeguard against mlp price attacks
+    uint96 mlpPriceUpperBound; // safeguard against mlp price attacks
     bytes32[50] _gap;
 }
 
@@ -52,9 +57,10 @@ struct Asset {
     uint32 positionFeeRate; // 1e5
     // note: 24 bits remaining
     // slot
-    address backupOracle; // TODO
-    uint8 backupOracleType;
-    // note: 88 bits remaining
+    address referenceOracle;
+    uint32 referenceDeviation; // 1e5
+    uint8 referenceOracleType;
+    // note: 56 bits remaining
     // slot
     uint128 tokenBalance; // erc20.balanceOf
     uint128 _tokenBalancePadding; // note: not used
@@ -90,7 +96,13 @@ struct SubAccount {
     uint128 entryFunding;
 }
 
-struct LiquidityLock {
+// TODO: remove me
+struct LiquidityLockRemoveMe {
     uint32 lastAddedTime; // 1e0
     uint96 pendingMLP;
+}
+
+enum ReferenceOracleType {
+    None,
+    Chainlink
 }

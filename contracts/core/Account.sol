@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "../libraries/LibSubAccount.sol";
 import "../libraries/LibMath.sol";
 import "../libraries/LibAsset.sol";
+import "../libraries/LibReferenceOracle.sol";
 
 import "./Storage.sol";
 
@@ -32,18 +33,17 @@ contract Account is Storage {
         uint256 rawAmount,
         uint96 wadAmount
     );
-    event ClaimMLP(address indexed lp, uint96 mlpAmount);
 
     function depositCollateral(bytes32 subAccountId) external {
         LibSubAccount.DecodedSubAccountId memory decoded = subAccountId.decodeSubAccountId();
-        require(decoded.account != address(0), "T=0");
-        require(_hasAsset(decoded.collateralId), "Lst"); // the asset is not LiSTed
-        require(_hasAsset(decoded.assetId), "Lst"); // the asset is not LiSTed
+        require(decoded.account != address(0), "T=0"); // Trader address is zero
+        require(_hasAsset(decoded.collateralId), "LST"); // the asset is not LiSTed
+        require(_hasAsset(decoded.assetId), "LST"); // the asset is not LiSTed
 
         SubAccount storage subAccount = _storage.accounts[subAccountId];
         Asset storage collateral = _storage.assets[decoded.collateralId];
         uint256 rawAmount = collateral.calcTransferredBalance();
-        require(rawAmount != 0, "A=0");
+        require(rawAmount != 0, "A=0"); // Amount Is Zero
         uint96 wadAmount = collateral.toWad(rawAmount);
 
         subAccount.collateral += wadAmount;
@@ -57,29 +57,32 @@ contract Account is Storage {
         uint96 collateralPrice,
         uint96 assetPrice
     ) external onlyOrderBook {
-        require(rawAmount != 0, "A=0");
+        require(rawAmount != 0, "A=0"); // Amount Is Zero
         LibSubAccount.DecodedSubAccountId memory decoded = subAccountId.decodeSubAccountId();
-        require(decoded.account != address(0), "T=0");
-        require(_hasAsset(decoded.collateralId), "Lst"); // the asset is not LiSTed
-        require(_hasAsset(decoded.assetId), "Lst"); // the asset is not LiSTed
-        require(collateralPrice != 0, "P=0");
-        require(assetPrice != 0, "P=0");
+        require(decoded.account != address(0), "T=0"); // Trader address is zero
+        require(_hasAsset(decoded.collateralId), "LST"); // the asset is not LiSTed
+        require(_hasAsset(decoded.assetId), "LST"); // the asset is not LiSTed
+        require(collateralPrice != 0, "P=0"); // Price Is Zero
+        require(assetPrice != 0, "P=0"); // Price Is Zero
 
         Asset storage asset = _storage.assets[decoded.assetId];
+        Asset storage collateral = _storage.assets[decoded.collateralId];
         SubAccount storage subAccount = _storage.accounts[subAccountId];
+        assetPrice = LibReferenceOracle.checkPrice(asset, assetPrice);
+        collateralPrice = LibReferenceOracle.checkPrice(collateral, collateralPrice);
+
         // fee & funding
         uint96 feeUsd = _getFundingFeeUsd(subAccount, asset, decoded.isLong);
         {
             subAccount.entryFunding = _getCumulativeFunding(asset, decoded.isLong);
             uint96 feeCollateral = uint256(feeUsd).wdiv(collateralPrice).safeUint96();
-            require(subAccount.collateral >= feeCollateral, "Fee");
+            require(subAccount.collateral >= feeCollateral, "Fee"); // remaining collateral can not pay FEE
             subAccount.collateral -= feeCollateral;
-            _storage.assets[decoded.collateralId].collectedFee += feeCollateral;
+            collateral.collectedFee += feeCollateral;
         }
         // withdraw
-        Asset storage collateral = _storage.assets[decoded.collateralId];
         uint96 wadAmount = collateral.toWad(rawAmount);
-        require(subAccount.collateral >= wadAmount, "C<W");
+        require(subAccount.collateral >= wadAmount, "C<W"); // Collateral can not pay fee or is less than the amount requested for Withdrawal
         subAccount.collateral = subAccount.collateral - wadAmount;
         collateral.transferOut(decoded.account, rawAmount, _storage.weth);
         require(_isAccountImSafe(subAccount, decoded.assetId, decoded.isLong, collateralPrice, assetPrice), "!IM");
@@ -90,10 +93,10 @@ contract Account is Storage {
     // Trader can withdraw all collateral only when position = 0
     function withdrawAllCollateral(bytes32 subAccountId) external {
         LibSubAccount.DecodedSubAccountId memory decoded = subAccountId.decodeSubAccountId();
-        require(msg.sender == decoded.account || msg.sender == _storage.orderBook, "Bok");
+        require(msg.sender == decoded.account || msg.sender == _storage.orderBook, "Snd"); // SeNDer is not authorized
         SubAccount storage subAccount = _storage.accounts[subAccountId];
-        require(subAccount.size == 0, "S>0");
-        require(subAccount.collateral > 0, "C=0");
+        require(subAccount.size == 0, "S>0"); // position Size should be Zero
+        require(subAccount.collateral > 0, "C=0"); // Collateral Is Zero
 
         Asset storage collateral = _storage.assets[decoded.collateralId];
         uint96 wadAmount = subAccount.collateral;
@@ -101,17 +104,6 @@ contract Account is Storage {
         subAccount.collateral = 0;
         collateral.transferOut(decoded.account, rawAmount, _storage.weth);
         emit WithdrawCollateral(subAccountId, decoded.account, decoded.collateralId, rawAmount, wadAmount);
-    }
-
-    function claimMLP() external {
-        address lp = msg.sender;
-        LiquidityLock storage lock = _storage.liquidityLocks[lp];
-        require(_blockTimestamp() >= lock.lastAddedTime + _storage.liquidityLockPeriod, "Lck");
-        uint96 mlpAmount = lock.pendingMLP;
-        lock.pendingMLP = 0;
-        lock.lastAddedTime = 0;
-        IERC20Upgradeable(_storage.mlp).transfer(lp, mlpAmount);
-        emit ClaimMLP(lp, mlpAmount);
     }
 
     function _positionPnlUsd(
@@ -124,7 +116,7 @@ contract Account is Storage {
         if (amount == 0) {
             return (false, 0);
         }
-        require(assetPrice > 0, "P=0");
+        require(assetPrice > 0, "P=0"); // Price Is Zero
         hasProfit = isLong ? assetPrice > subAccount.entryPrice : assetPrice < subAccount.entryPrice;
         uint96 priceDelta = assetPrice >= subAccount.entryPrice
             ? assetPrice - subAccount.entryPrice

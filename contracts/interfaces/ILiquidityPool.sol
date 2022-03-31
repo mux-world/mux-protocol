@@ -56,6 +56,17 @@ interface ILiquidityPool {
         uint96 assetPrice
     ) external;
 
+    /**
+     * @notice Close a position
+     *
+     * @param  subAccountId     check LibSubAccount.encodeSubAccountId for detail.
+     * @param  amount           position size.
+     * @param  profitAssetId    for long position (unless asset.useStable is true), ignore this argument;
+     *                          for short position, the profit asset should be one of the stable coin.
+     * @param  collateralPrice  price of subAccount.collateral.
+     * @param  assetPrice       price of subAccount.asset.
+     * @param  profitAssetPrice price of profitAssetId. ignore this argument if profitAssetId is ignored.
+     */
     function closePosition(
         bytes32 subAccountId,
         uint96 amount,
@@ -102,10 +113,16 @@ interface ILiquidityPool {
         uint96 profitAssetPrice // only used when !isLong
     ) external;
 
+    function redeemMuxToken(
+        address trader,
+        uint8 tokenId,
+        uint96 muxTokenAmount // NOTE: OrderBook SHOULD transfer muxTokenAmount to LiquidityPool
+    ) external;
+
     /////////////////////////////////////////////////////////////////////////////////
     //                            only LiquidityManager
 
-    function withdrawLiquidity(uint8[] memory assetIds, uint256[] memory amounts) external;
+    function transferLiquidityOut(uint8[] memory assetIds, uint256[] memory amounts) external;
 
-    function depositLiquidity(uint8[] memory assetIds) external;
+    function transferLiquidityIn(uint8[] memory assetIds, uint256[] memory amounts) external;
 }

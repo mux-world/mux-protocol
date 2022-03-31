@@ -5,7 +5,7 @@ import { Contract } from "ethers"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { toWei, toUnit, toBytes32, rate, PreMinedTokenTotalSupply, createFactory } from "./deployUtils"
 import { createContract, assembleSubAccountId, PositionOrderFlags } from "./deployUtils"
-import { MlpToken, OrderBook, TestLiquidityPool, LiquidityManager } from "../typechain"
+import { MlpToken, OrderBook, TestLiquidityPool, TestMlpTimeLock, LiquidityManager, Reader } from "../typechain"
 const U = ethers.utils
 
 describe("Integration", () => {
@@ -14,35 +14,43 @@ describe("Integration", () => {
   let pool: TestLiquidityPool
   let orderBook: OrderBook
   let liquidityManager: LiquidityManager
+  let mlpTimeLock: TestMlpTimeLock
   let usdc: Contract
   let wbtc: Contract
   let muxUsdc: Contract
   let muxWbtc: Contract
+  let reader: Reader
 
   let trader1: SignerWithAddress
   let lp1: SignerWithAddress
   let broker: SignerWithAddress
+  let vault: SignerWithAddress
 
   before(async () => {
     const accounts = await ethers.getSigners()
     trader1 = accounts[0]
     lp1 = accounts[1]
     broker = accounts[2]
+    vault = accounts[3]
   })
 
   beforeEach(async () => {
-    const poolHop1 = await createContract("TestLiquidityPoolHop1", [])
-    const poolHop2 = await createContract("TestLiquidityPoolHop2", [])
+    const poolHop1 = await createContract("TestLiquidityPoolHop1")
+    const poolHop2 = await createContract("TestLiquidityPoolHop2")
     pool = (await createFactory("TestLiquidityPool")).attach(poolHop1.address)
-    mlp = (await createContract("MlpToken")) as MlpToken
+    mlp = (await createContract("MlpToken", ["MLP", "MLP"])) as MlpToken
     orderBook = (await createContract("OrderBook")) as OrderBook
     liquidityManager = (await createContract("LiquidityManager")) as LiquidityManager
+    mlpTimeLock = (await createContract("TestMlpTimeLock")) as TestMlpTimeLock
+    reader = (await createContract("Reader", [pool.address, mlp.address, liquidityManager.address, mlpTimeLock.address, []])) as Reader
     await orderBook.initialize(pool.address, mlp.address, weth9)
     await orderBook.addBroker(broker.address)
-    await liquidityManager.initialize(pool.address)
-    await pool.initialize(poolHop2.address, mlp.address, orderBook.address, liquidityManager.address, weth9)
-    // fundingInterval, liquidityLockPeriod
-    await pool.setNumbers(8 * 3600, 5 * 60)
+    await liquidityManager.initialize(vault.address, pool.address)
+    await pool.initialize(poolHop2.address, mlp.address, orderBook.address, liquidityManager.address, weth9, mlpTimeLock.address)
+    // fundingInterval, mlpPrice, mlpPrice
+    await pool.setNumbers(3600 * 8, toWei("1"), toWei("2000"))
+    await mlpTimeLock.initialize(mlp.address, pool.address)
+    await mlpTimeLock.setLiquidityLockPeriod(5 * 60)
     await mlp.transfer(pool.address, toWei(PreMinedTokenTotalSupply))
 
     usdc = await createContract("MockERC20", ["Usdc", "Usdc", 6])
@@ -62,8 +70,8 @@ describe("Integration", () => {
     // 0 = USDC
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(0, toBytes32("USDC"), 6, true, usdc.address, muxUsdc.address)
-    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, oracle, oracle
-    await pool.setAssetParams(0, rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1, "0x0000000000000000000000000000000000000000", 0)
+    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight
+    await pool.setAssetParams(0, rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1)
     // id, tradable, openable, shortable, useStable
     await pool.setAssetFlags(0, false, false, false, false)
     await pool.setFundingParams(0, rate("0.0002"), rate("0.0008"))
@@ -71,27 +79,17 @@ describe("Integration", () => {
     // 1 = BTC
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(1, toBytes32("BTC"), 18, false, wbtc.address, muxWbtc.address)
-    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, oracle, oracle
-    await pool.setAssetParams(
-      1,
-      rate("0.1"),
-      rate("0.05"),
-      rate("0.001"),
-      rate("0.01"),
-      10,
-      toWei("10000000"),
-      toWei("10000000"),
-      2,
-      "0x0000000000000000000000000000000000000000",
-      0
-    )
+    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight
+    await pool.setAssetParams(1, rate("0.1"), rate("0.05"), rate("0.001"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2)
     // id, tradable, openable, shortable, useStable
     await pool.setAssetFlags(1, true, true, true, false)
     await pool.setFundingParams(1, rate("0.0003"), rate("0.0009"))
 
     await pool.setBlockTimestamp(86400 * 1)
+    await mlpTimeLock.setBlockTimestamp(86400 * 1)
     await orderBook.connect(broker).updateFundingState(rate("0"), [1], [rate("0")])
     await pool.setBlockTimestamp(86400 * 2)
+    await mlpTimeLock.setBlockTimestamp(86400 * 2)
     await orderBook.connect(broker).updateFundingState(rate("0"), [1], [rate("0")])
   })
 
@@ -140,6 +138,9 @@ describe("Integration", () => {
       expect(await mlp.balanceOf(pool.address)).to.equal(toWei("1000000000000000000"))
       const result = await orderBook.getOrder(0)
       expect(result[1]).to.equal(true)
+      const readerState = await reader.callStatic.getChainState()
+      expect(readerState.lpDeduct).to.eq(toWei("1000000000000000000"))
+      expect(readerState.stableDeduct).to.eq(toWei("1000000000000000000"))
     }
     {
       const tx1 = await orderBook.connect(broker).fillLiquidityOrder(0, toWei("1"), toWei("1000"), rate("0.0001"))
@@ -152,18 +153,25 @@ describe("Integration", () => {
       expect(await usdc.balanceOf(pool.address)).to.equal(toUnit("1000000", 6))
       expect(await mlp.balanceOf(lp1.address)).to.equal(toWei("0"))
       expect(await mlp.balanceOf(orderBook.address)).to.equal(toWei("0"))
-      expect(await mlp.balanceOf(pool.address)).to.equal(toWei("1000000000000000000"))
+      expect(await mlp.balanceOf(pool.address)).to.equal(toWei("999999999999999000.1"))
       const collateralInfo = await pool.getAssetInfo(0)
       expect(collateralInfo.spotLiquidity).to.equal(toWei("1000000"))
       expect(collateralInfo.collectedFee).to.equal(toWei("100"))
+      const readerState = await reader.callStatic.getChainState()
+      expect(readerState.lpDeduct).to.eq(toWei("999999999999999000.1"))
+      expect(readerState.stableDeduct).to.eq(toWei("1000000000000000000"))
     }
     {
-      await expect(pool.connect(lp1).claimMLP()).to.be.revertedWith("Lck")
+      await expect(mlpTimeLock.connect(lp1).claimMlp()).to.be.revertedWith("Lck")
       await pool.setBlockTimestamp(86400 * 2 + 300)
-      await pool.connect(lp1).claimMLP()
+      await mlpTimeLock.setBlockTimestamp(86400 * 2 + 300)
+      await mlpTimeLock.connect(lp1).claimMlp()
       expect(await mlp.balanceOf(lp1.address)).to.equal(toWei("999.9")) // fee = 100, (1000000 - fee) / 1000
       expect(await mlp.balanceOf(orderBook.address)).to.equal(toWei("0"))
       expect(await mlp.balanceOf(pool.address)).to.equal(toWei("999999999999999000.1"))
+      const readerState = await reader.callStatic.getChainState()
+      expect(readerState.lpDeduct).to.eq(toWei("999999999999999000.1"))
+      expect(readerState.stableDeduct).to.eq(toWei("1000000000000000000"))
     }
     // -liq usdc
     await mlp.connect(lp1).approve(orderBook.address, toWei("1"))
@@ -175,6 +183,9 @@ describe("Integration", () => {
       expect(await mlp.balanceOf(lp1.address)).to.equal(toWei("998.9"))
       expect(await mlp.balanceOf(orderBook.address)).to.equal(toWei("1"))
       expect(await mlp.balanceOf(pool.address)).to.equal(toWei("999999999999999000.1"))
+      const readerState = await reader.callStatic.getChainState()
+      expect(readerState.lpDeduct).to.eq(toWei("999999999999999000.1"))
+      expect(readerState.stableDeduct).to.eq(toWei("1000000000000000000"))
     }
     {
       const tx1 = await orderBook.connect(broker).fillLiquidityOrder(1, toWei("1"), toWei("2000"), rate("0.0001"))
@@ -189,6 +200,9 @@ describe("Integration", () => {
       const collateralInfo = await pool.getAssetInfo(0)
       expect(collateralInfo.spotLiquidity).to.equal(toWei("998000.2"))
       expect(collateralInfo.collectedFee).to.equal(toWei("100.2"))
+      const readerState = await reader.callStatic.getChainState()
+      expect(readerState.lpDeduct).to.eq(toWei("999999999999999001.1"))
+      expect(readerState.stableDeduct).to.eq(toWei("1000000000000000000"))
     }
     // +liq wbtc
     await wbtc.connect(lp1).approve(orderBook.address, toWei("100"))
@@ -208,14 +222,15 @@ describe("Integration", () => {
       expect(await wbtc.balanceOf(pool.address)).to.equal(toWei("100"))
       expect(await mlp.balanceOf(lp1.address)).to.equal(toWei("998.9"))
       expect(await mlp.balanceOf(orderBook.address)).to.equal(toWei("0"))
-      expect(await mlp.balanceOf(pool.address)).to.equal(toWei("999999999999999001.1"))
+      expect(await mlp.balanceOf(pool.address)).to.equal(toWei("999999999999998901.11"))
       const collateralInfo = await pool.getAssetInfo(1)
       expect(collateralInfo.spotLiquidity).to.equal(toWei("100")) // fee = 0.01
       expect(collateralInfo.collectedFee).to.equal(toWei("0.01"))
     }
     {
       await pool.setBlockTimestamp(86400 * 2 + 600)
-      await pool.connect(lp1).claimMLP()
+      await mlpTimeLock.setBlockTimestamp(86400 * 2 + 600)
+      await mlpTimeLock.connect(lp1).claimMlp()
       expect(await mlp.balanceOf(lp1.address)).to.equal(toWei("1098.89")) // (100 - fee) * 1000 / 1000
       expect(await mlp.balanceOf(orderBook.address)).to.equal(toWei("0"))
       expect(await mlp.balanceOf(pool.address)).to.equal(toWei("999999999999998901.11"))
@@ -323,7 +338,7 @@ describe("Integration", () => {
       expect(collateralInfo.collectedFee).to.equal(toWei("104.1"))
       const assetInfo = await pool.getAssetInfo(1)
       expect(assetInfo.totalShortPosition).to.equal(toWei("0"))
-      expect(assetInfo.averageShortPrice).to.equal(toWei("2000"))
+      expect(assetInfo.averageShortPrice).to.equal(toWei("0"))
       expect(assetInfo.totalLongPosition).to.equal(toWei("1"))
       expect(assetInfo.averageLongPrice).to.equal(toWei("2000"))
     }
@@ -357,17 +372,26 @@ describe("Integration", () => {
       expect(assetInfo.spotLiquidity).to.equal(toWei("99.954380952380952381")) // 100.001 + 0.001 - 100/2100
       expect(assetInfo.collectedFee).to.equal(toWei("0.012"))
       expect(assetInfo.totalShortPosition).to.equal(toWei("0"))
-      expect(assetInfo.averageShortPrice).to.equal(toWei("2000"))
+      expect(assetInfo.averageShortPrice).to.equal(toWei("0"))
       expect(assetInfo.totalLongPosition).to.equal(toWei("0"))
-      expect(assetInfo.averageLongPrice).to.equal(toWei("2000"))
+      expect(assetInfo.averageLongPrice).to.equal(toWei("0"))
     }
   })
-  it("muxToken", async () => {
-    // TODO: remove liquidity in muxEth
-    // TODO: close long, profit in muxEth
-  })
-  it("withdraw", async () => {
+  describe("withdraw", async () => {
     // TODO: withdraw collateral
     // TODO: withdraw profit
+  })
+  describe("muxToken", async () => {
+    it("TODO: close long, profit in muxBtc, and redeem muxBtc", async () => {
+      // open long
+      // close long
+      // deposit liquidity
+      // redeem muxBtc
+    })
+    it("TODO: remove liquidity in muxBtc", async () => {
+      // add liquidity
+      // withdraw liquidity
+      // remove liquidity
+    })
   })
 })

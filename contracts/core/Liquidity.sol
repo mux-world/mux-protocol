@@ -4,6 +4,7 @@ pragma solidity 0.8.10;
 import "../libraries/LibAsset.sol";
 import "../libraries/LibSubAccount.sol";
 import "../libraries/LibMath.sol";
+import "../interfaces/IMlpTimeLock.sol";
 
 import "./Account.sol";
 import "./Storage.sol";
@@ -20,15 +21,17 @@ contract Liquidity is Storage, Account {
         uint96 mlpPrice,
         uint32 mlpFeeRate
     ) external onlyOrderBook {
-        require(trader != address(0), "T=0");
-        require(_hasAsset(tokenId), "Lst"); // the asset is not LiSTed
-        require(tokenPrice != 0, "P=0");
-        require(mlpPrice != 0, "P=0");
+        require(trader != address(0), "T=0"); // Trader address is zero
+        require(_hasAsset(tokenId), "LST"); // the asset is not LiSTed
+        require(tokenPrice != 0, "P=0"); // Price Is Zero
+        require(mlpPrice != 0, "P=0"); // Price Is Zero
+        require(mlpPrice <= _storage.mlpPriceUpperBound, "MPO"); // Mlp Price is Out of range
+        require(mlpPrice >= _storage.mlpPriceLowerBound, "MPO"); // Mlp Price is Out of range
         require(mlpFeeRate < 1e5, "F>1");
         // token amount
         Asset storage token = _storage.assets[tokenId];
         uint256 rawAmount = token.calcTransferredBalance();
-        require(rawAmount != 0, "A=0");
+        require(rawAmount != 0, "A=0"); // Amount Is Zero
         uint96 wadAmount = token.toWad(rawAmount);
         token.spotLiquidity += wadAmount; // already reserved fee
         // fee
@@ -38,25 +41,26 @@ contract Liquidity is Storage, Account {
         wadAmount -= feeCollateral;
         // mlp
         uint96 mlpAmount = ((uint256(wadAmount) * uint256(tokenPrice)) / uint256(mlpPrice)).safeUint96();
-        LiquidityLock storage lock = _storage.liquidityLocks[trader];
-        lock.lastAddedTime = _blockTimestamp();
-        lock.pendingMLP += mlpAmount;
+        IERC20Upgradeable(_storage.mlp).transfer(_storage.mlpTimeLock, mlpAmount);
+        IMlpTimeLock(_storage.mlpTimeLock).addMlp(trader, mlpAmount);
         emit AddLiquidity(trader, tokenId, tokenPrice, mlpPrice, mlpAmount, feeCollateral);
     }
 
     function removeLiquidity(
         address trader,
-        uint96 mlpAmount, // NOTE: OrderBook should transfer mlpAmount to me
+        uint96 mlpAmount, // NOTE: OrderBook SHOULD transfer mlpAmount to LiquidityPool
         uint8 tokenId,
         uint96 tokenPrice,
         uint96 mlpPrice,
         uint32 mlpFeeRate
     ) external onlyOrderBook {
-        require(trader != address(0), "T=0");
-        require(_hasAsset(tokenId), "Lst"); // the asset is not LiSTed
-        require(tokenPrice != 0, "P=0");
-        require(mlpPrice != 0, "P=0");
-        require(mlpAmount != 0, "A=0");
+        require(trader != address(0), "T=0"); // Trader address is zero
+        require(_hasAsset(tokenId), "LST"); // the asset is not LiSTed
+        require(tokenPrice != 0, "P=0"); // Price Is Zero
+        require(mlpPrice != 0, "P=0"); // Price Is Zero
+        require(mlpPrice <= _storage.mlpPriceUpperBound, "MPO"); // Mlp Price is Out of range
+        require(mlpPrice >= _storage.mlpPriceLowerBound, "MPO"); // Mlp Price is Out of range
+        require(mlpAmount != 0, "A=0"); // Amount Is Zero
         require(mlpFeeRate < 1e5, "F>1");
         // amount
         Asset storage token = _storage.assets[tokenId];
@@ -67,11 +71,19 @@ contract Liquidity is Storage, Account {
         emit CollectedFee(tokenId, feeCollateral);
         wadAmount -= feeCollateral;
         // send token
-        require(token.spotLiquidity >= wadAmount, "Liq"); // TODO MuxToken
-        uint256 rawAmount = token.toRaw(wadAmount);
-        token.spotLiquidity -= wadAmount; // already reserved fee
-        token.transferOut(trader, rawAmount, _storage.weth);
-        emit RemoveLiquidity(trader, tokenId, tokenPrice, mlpPrice, mlpAmount, rawAmount, feeCollateral);
+        uint96 spot = LibMath.min(wadAmount, token.spotLiquidity);
+        if (spot > 0) {
+            token.spotLiquidity -= spot; // already reserved fee
+            uint256 rawAmount = token.toRaw(spot);
+            token.transferOut(trader, rawAmount, _storage.weth);
+        }
+        // debt
+        uint96 muxTokenAmount = wadAmount - spot;
+        if (muxTokenAmount > 0) {
+            token.issueMuxToken(trader, uint256(muxTokenAmount));
+            emit IssueMuxToken(token.isStable ? 0 : token.id, token.isStable, muxTokenAmount);
+        }
+        emit RemoveLiquidity(trader, tokenId, tokenPrice, mlpPrice, mlpAmount, feeCollateral);
     }
 
     /**
@@ -105,7 +117,7 @@ contract Liquidity is Storage, Account {
         uint32[] calldata unstableUtilizations, // 1e5
         uint32 timespan
     ) internal {
-        require(unstableTokenIds.length == unstableUtilizations.length, "Len"); // LENgth of 2 arguments does not match
+        require(unstableTokenIds.length == unstableUtilizations.length, "LEN"); // LENgth of 2 arguments does not match
         // stable
         {
             (uint32 newFundingRate, uint128 cumulativeFunding) = _getFundingRate(
@@ -125,7 +137,7 @@ contract Liquidity is Storage, Account {
             if (asset.isStable) {
                 continue;
             }
-            require(i < unstableTokenIds.length, "Len"); // invalid LENgth of unstableTokenIds
+            require(i < unstableTokenIds.length, "LEN"); // invalid LENgth of unstableTokenIds
             require(unstableTokenIds[i] == tokenId, "Aid"); // AssetID mismatched
             (uint32 newFundingRate, uint128 cumulativeFunding) = _getFundingRate(
                 asset.longFundingBaseRate8H,
@@ -145,9 +157,25 @@ contract Liquidity is Storage, Account {
         uint32 utilization, // 1e5
         uint32 timespan // 1e0
     ) internal pure returns (uint32 newFundingRate, uint128 cumulativeFunding) {
-        require(utilization <= 1e5, "U>1");
+        require(utilization <= 1e5, "U>1"); // %utilization > 100%
         newFundingRate = uint256(utilization).rmul(limitRate8H).safeUint32();
         newFundingRate = LibMath.max32(newFundingRate, baseRate8H);
         cumulativeFunding = ((uint256(newFundingRate) * uint256(timespan) * 1e13) / FUNDING_PERIOD).safeUint128();
+    }
+
+    function redeemMuxToken(
+        address trader,
+        uint8 tokenId,
+        uint96 muxTokenAmount // NOTE: OrderBook SHOULD transfer muxTokenAmount to LiquidityPool
+    ) external onlyOrderBook {
+        require(trader != address(0), "T=0"); // Trader address is zero
+        require(_hasAsset(tokenId), "LST"); // the asset is not LiSTed
+        require(muxTokenAmount != 0, "A=0"); // Amount Is Zero
+        Asset storage token = _storage.assets[tokenId];
+        require(token.spotLiquidity >= muxTokenAmount, "Liq"); // insufficent LIQuidity
+        uint256 rawAmount = token.toRaw(muxTokenAmount);
+        token.spotLiquidity -= muxTokenAmount;
+        token.transferOut(trader, rawAmount, _storage.weth);
+        emit RedeemMuxToken(trader, tokenId, muxTokenAmount);
     }
 }

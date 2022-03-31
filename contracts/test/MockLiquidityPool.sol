@@ -2,7 +2,10 @@
 pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import "../interfaces/ILiquidityPool.sol";
+
+import "hardhat/console.sol";
 
 contract MockLiquidityPool is ILiquidityPool {
     mapping(uint8 => address) public mockAssets;
@@ -70,13 +73,13 @@ contract MockLiquidityPool is ILiquidityPool {
 
     function getAssetInfo(uint8 assetId) external view returns (Asset memory) {}
 
-    function withdrawLiquidity(uint8[] memory assetIds, uint256[] memory amounts) external {
+    function transferLiquidityOut(uint8[] memory assetIds, uint256[] memory amounts) external {
         for (uint256 i = 0; i < assetIds.length; i++) {
             IERC20(mockAssets[assetIds[i]]).transfer(msg.sender, amounts[i]);
         }
     }
 
-    function depositLiquidity(uint8[] memory assetIds) external {}
+    function transferLiquidityIn(uint8[] memory assetIds, uint256[] memory amounts) external {}
 
     function getSubAccount(bytes32 subAccountId)
         external
@@ -102,5 +105,11 @@ contract MockLiquidityPool is ILiquidityPool {
         uint96 collateralPrice,
         uint96 assetPrice,
         uint96 profitAssetPrice // only used when !isLong
+    ) external {}
+
+    function redeemMuxToken(
+        address trader,
+        uint8 tokenId,
+        uint96 muxTokenAmount // NOTE: OrderBook SHOULD transfer muxTokenAmount to LiquidityPool
     ) external {}
 }

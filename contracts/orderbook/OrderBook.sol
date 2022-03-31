@@ -67,7 +67,7 @@ contract OrderBook is Initializable, Admin {
     }
 
     receive() external payable {
-        require(msg.sender == address(_weth), "Rcv");
+        require(msg.sender == address(_weth), "Rcv"); // we only Receive eth from WETH contract
     }
 
     function getOrderCount() external view returns (uint256) {
@@ -103,10 +103,9 @@ contract OrderBook is Initializable, Admin {
         uint8 profitTokenId,
         uint8 flags
     ) external payable onlyNotPaused {
-        // TODO: more validations
         LibSubAccount.DecodedSubAccountId memory account = subAccountId.decodeSubAccountId();
-        require(account.account == msg.sender, "Snd");
-        require(size != 0, "S=0");
+        require(account.account == msg.sender, "Snd"); // SeNDer is not authorized
+        require(size != 0, "S=0"); // order Size Is Zero
 
         if (collateralAmount > 0 && (flags & LibOrder.POSITION_INCREASING != 0)) {
             address collateralAddress = _pool.getAssetAddress(account.collateralId);
@@ -132,7 +131,7 @@ contract OrderBook is Initializable, Admin {
         uint96 amount,
         bool isAdding
     ) external payable onlyNotPaused {
-        require(amount != 0, "A=0");
+        require(amount != 0, "A=0"); // Amount Is Zero
         address account = msg.sender;
         if (isAdding) {
             address collateralAddress = _pool.getAssetAddress(assetId);
@@ -154,7 +153,7 @@ contract OrderBook is Initializable, Admin {
         bool isProfit
     ) external onlyNotPaused {
         address trader = subAccountId.getSubAccountOwner();
-        require(trader == msg.sender, "Snd");
+        require(trader == msg.sender, "Snd"); // SeNDer is not authorized
 
         uint64 orderId = _nextOrderId++;
         bytes32[3] memory data = LibOrder.encodeWithdrawalOrder(orderId, subAccountId, amount, profitTokenId, isProfit);
@@ -172,7 +171,7 @@ contract OrderBook is Initializable, Admin {
         require(_orders.contains(orderId), "Oid");
         bytes32[3] memory orderData = _orders.get(orderId);
         OrderType orderType = LibOrder.getOrderType(orderData);
-        require(orderType == OrderType.PositionOrder, "Typ");
+        require(orderType == OrderType.PositionOrder, "Typ"); // order TYPe mismatch
 
         PositionOrder memory order = orderData.decodePositionOrder();
         if (!order.isMarketOrder()) {
@@ -232,7 +231,7 @@ contract OrderBook is Initializable, Admin {
         require(_orders.contains(orderId), "Oid");
         bytes32[3] memory orderData = _orders.get(orderId);
         OrderType orderType = LibOrder.getOrderType(orderData);
-        require(orderType == OrderType.LiquidityOrder, "Typ");
+        require(orderType == OrderType.LiquidityOrder, "Typ"); // order TYPe mismatch
 
         LiquidityOrder memory order = orderData.decodeLiquidityOrder();
         if (order.isAdding) {
@@ -257,7 +256,7 @@ contract OrderBook is Initializable, Admin {
         require(_orders.contains(orderId), "Oid");
         bytes32[3] memory orderData = _orders.get(orderId);
         OrderType orderType = LibOrder.getOrderType(orderData);
-        require(orderType == OrderType.WithdrawalOrder, "Typ");
+        require(orderType == OrderType.WithdrawalOrder, "Typ"); // order TYPe mismatch
 
         WithdrawalOrder memory order = orderData.decodeWithdrawalOrder();
         if (order.isProfit) {
@@ -281,7 +280,7 @@ contract OrderBook is Initializable, Admin {
         require(_orders.contains(orderId), "Oid");
         bytes32[3] memory orderData = _orders.get(orderId);
         address account = orderData.getOrderOwner();
-        require(msg.sender == account, "Typ");
+        require(msg.sender == account, "Snd"); // SeNDer is not authorized
 
         OrderType orderType = LibOrder.getOrderType(orderData);
         if (orderType == OrderType.PositionOrder) {
@@ -325,8 +324,8 @@ contract OrderBook is Initializable, Admin {
      */
     function depositCollateral(bytes32 subAccountId, uint256 collateralAmount) external payable {
         LibSubAccount.DecodedSubAccountId memory account = subAccountId.decodeSubAccountId();
-        require(account.account == msg.sender, "Snd");
-        require(collateralAmount != 0, "C=0");
+        require(account.account == msg.sender, "Snd"); // SeNDer is not authorized
+        require(collateralAmount != 0, "C=0"); // Collateral Is Zero
         address collateralAddress = _pool.getAssetAddress(account.collateralId);
         _transferIn(collateralAddress, address(_pool), collateralAmount);
         _pool.depositCollateral(subAccountId);
@@ -340,6 +339,13 @@ contract OrderBook is Initializable, Admin {
         uint96 profitAssetPrice // only used when !isLong
     ) external onlyBroker {
         _pool.liquidate(subAccountId, profitAssetId, collateralPrice, assetPrice, profitAssetPrice);
+    }
+
+    // TODO: new order type
+    function redeemMuxToken(uint8 tokenId, uint96 muxTokenAmount) external {
+        Asset memory asset = _pool.getAssetInfo(tokenId);
+        _transferIn(asset.muxTokenAddress, address(_pool), muxTokenAmount);
+        _pool.redeemMuxToken(msg.sender, tokenId, muxTokenAmount);
     }
 
     function _transferIn(

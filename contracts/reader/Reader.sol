@@ -4,7 +4,8 @@ pragma solidity 0.8.10;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../core/LiquidityPool.sol";
-import "../liquidity/LiquidityManager.sol";
+import "../interfaces/IMlpTimeLock.sol";
+import "../interfaces/ILiquidityManager.sol";
 
 contract Reader {
     using SafeMathUpgradeable for uint256;
@@ -19,15 +20,14 @@ contract Reader {
         LiquidityPoolState poolState;
         AssetState[] assetStates;
         DexState[] dexStates;
-        uint256 lpDeduct;
-        uint256 stableDeduct;
+        uint256 lpDeduct; // MLP totalSupply = PRE_MINED - Σ_chains lpDeduct
+        uint256 stableDeduct; // debt of stable coins = PRE_MINED - Σ_chains stableDeduct
     }
 
     struct LiquidityPoolConfig {
         uint32 shortFundingBaseRate8H; // 1e5
         uint32 shortFundingLimitRate8H; // 1e5
         uint32 fundingInterval; // 1e0
-        uint32 liquidityLockPeriod; // 1e0
     }
 
     struct LiquidityPoolState {
@@ -45,7 +45,7 @@ contract Reader {
         bool isOpenable;
         bool isShortable;
         bool useStableTokenForProfit;
-        uint8 backupOracleType;
+        uint8 referenceOracleType;
         uint96 maxLongPositionSize;
         uint96 maxShortPositionSize;
         // -----------------
@@ -58,18 +58,20 @@ contract Reader {
         uint32 longFundingLimitRate8H; // 1e5
         uint32 spotWeight;
         // -----------------
-        address backupOracle;
+        address referenceOracle;
         address tokenAddress;
         address muxTokenAddress;
+        uint32 referenceDeviation;
     }
 
     struct AssetState {
         uint8 id;
         uint96 spotLiquidity;
-        // note: 152 bits remaining
+        uint128 collectedFee;
+        // note: 24 bits remaining
         // -----------------
         uint128 longCumulativeFunding;
-        uint128 collectedFee;
+        uint128 shortCumulativeFunding; // all unstable asset.shortCumulativeFunding are the same as LiquidityPoolState.shortCumulativeFunding.
         // -----------------
         uint96 totalLongPosition;
         uint96 averageLongPrice;
@@ -77,7 +79,7 @@ contract Reader {
         uint96 totalShortPosition;
         uint96 averageShortPrice;
         // -----------------
-        uint256 deduct;
+        uint256 deduct; // debt of a non-stable coin = PRE_MINED - Σ_chains deduct
     }
 
     struct DexConfig {
@@ -104,18 +106,21 @@ contract Reader {
 
     LiquidityPool public pool;
     IERC20 public mlp;
-    LiquidityManager public dex;
+    ILiquidityManager public dex;
+    IMlpTimeLock public mlpTimeLock;
     address[] public deductWhiteList;
 
     constructor(
         address pool_,
         address mlp_,
         address dex_,
+        address mlpTimeLock_,
         address[] memory deductWhiteList_ // muxToken in these addresses are also not considered as debt
     ) {
         pool = LiquidityPool(payable(pool_));
         mlp = IERC20(mlp_);
-        dex = LiquidityManager(dex_);
+        dex = ILiquidityManager(dex_);
+        mlpTimeLock = IMlpTimeLock(mlpTimeLock_);
         uint256 listLength = deductWhiteList_.length;
         for (uint256 i = 0; i < listLength; i++) {
             deductWhiteList.push(deductWhiteList_[i]);
@@ -124,11 +129,10 @@ contract Reader {
 
     function getChainConfig() public view returns (ChainConfig memory chainConfig) {
         // from pool
-        (, uint32[5] memory u32s) = pool.getLiquidityPoolStorage();
+        (, uint32[4] memory u32s) = pool.getLiquidityPoolStorage();
         chainConfig.poolConfig.shortFundingBaseRate8H = u32s[0];
         chainConfig.poolConfig.shortFundingLimitRate8H = u32s[1];
         chainConfig.poolConfig.fundingInterval = u32s[3];
-        chainConfig.poolConfig.liquidityLockPeriod = u32s[4];
         // from assets
         Asset[] memory assets = pool.getAllAssetInfo();
         uint256 assetLength = assets.length;
@@ -147,7 +151,7 @@ contract Reader {
 
     function getChainState() public returns (ChainState memory chainState) {
         // from pool
-        (uint128[1] memory u128s, uint32[5] memory u32s) = pool.getLiquidityPoolStorage();
+        (uint128[1] memory u128s, uint32[4] memory u32s) = pool.getLiquidityPoolStorage();
         chainState.poolState.shortCumulativeFunding = u128s[0];
         chainState.poolState.lastFundingTime = u32s[2];
         // from assets
@@ -159,6 +163,7 @@ contract Reader {
             chainState.assetStates[i] = _convertAssetState(assets[i]);
             if (!assets[i].isStable) {
                 chainState.assetStates[i].deduct = getDeduct(assets[i].muxTokenAddress);
+                chainState.assetStates[i].shortCumulativeFunding = chainState.poolState.shortCumulativeFunding;
             } else {
                 stableMuxTokenAddress = assets[i].muxTokenAddress;
             }
@@ -172,12 +177,7 @@ contract Reader {
             chainState.dexStates[i].dexId = dexId;
             (uint256[] memory liquidities, uint256 lpBalance) = dex.getDexLiquidity(dexId);
             chainState.dexStates[i].dexLPBalance = lpBalance;
-            // chainState.dexStates[i].liquidityBalance = liquidities;
-
-            // mock
-            chainState.dexStates[i].liquidityBalance = new uint256[](2);
-            chainState.dexStates[i].liquidityBalance[0] = 2500e6;
-            chainState.dexStates[i].liquidityBalance[1] = 1e18;
+            chainState.dexStates[i].liquidityBalance = liquidities;
         }
         // Deduct
         chainState.lpDeduct = getDeduct(address(mlp));
@@ -204,10 +204,14 @@ contract Reader {
     }
 
     function getAssetsState(uint8[] memory assetIds) public view returns (AssetState[] memory assetsState) {
+        (uint128[1] memory u128s, ) = pool.getLiquidityPoolStorage();
         assetsState = new AssetState[](assetIds.length);
         for (uint256 i = 0; i < assetIds.length; i++) {
             Asset memory asset = pool.getAssetInfo(assetIds[i]);
             assetsState[i] = _convertAssetState(asset);
+            if (!asset.isStable) {
+                assetsState[i].shortCumulativeFunding = u128s[0];
+            }
         }
     }
 
@@ -220,7 +224,7 @@ contract Reader {
             uint96 pendingMLP
         )
     {
-        return pool.getLiquidityLockInfo(lp);
+        return mlpTimeLock.getLiquidityLockInfo(lp);
     }
 
     function _convertAssetConfig(Asset memory asset) internal pure returns (AssetConfig memory c) {
@@ -232,8 +236,9 @@ contract Reader {
         c.isOpenable = asset.isOpenable;
         c.isShortable = asset.isShortable;
         c.useStableTokenForProfit = asset.useStableTokenForProfit;
-        c.backupOracleType = asset.backupOracleType;
-        c.backupOracle = asset.backupOracle;
+        c.referenceOracleType = asset.referenceOracleType;
+        c.referenceOracle = asset.referenceOracle;
+        c.referenceDeviation = asset.referenceDeviation;
         c.tokenAddress = asset.tokenAddress;
         c.muxTokenAddress = asset.muxTokenAddress;
         c.initialMarginRate = asset.initialMarginRate;

@@ -8,7 +8,7 @@ contract Getter is Storage {
     using LibSubAccount for bytes32;
 
     function getAssetInfo(uint8 assetId) external view returns (Asset memory) {
-        require(assetId < _storage.assets.length, "Lst"); // the asset is not LiSTed
+        require(assetId < _storage.assets.length, "LST"); // the asset is not LiSTed
         return _storage.assets[assetId];
     }
 
@@ -17,7 +17,7 @@ contract Getter is Storage {
     }
 
     function getAssetAddress(uint8 assetId) external view returns (address) {
-        require(assetId < _storage.assets.length, "Lst"); // the asset is not LiSTed
+        require(assetId < _storage.assets.length, "LST"); // the asset is not LiSTed
         return _storage.assets[assetId].tokenAddress;
     }
 
@@ -31,8 +31,7 @@ contract Getter is Storage {
             // [1] shortFundingLimitRate8H
             // [2] lastFundingTime
             // [3] fundingInterval
-            // [4] liquidityLockPeriod
-            uint32[5] memory u32s
+            uint32[4] memory u32s
         )
     {
         u32s[0] = _storage.shortFundingBaseRate8H;
@@ -40,7 +39,6 @@ contract Getter is Storage {
         u128s[0] = _storage.shortCumulativeFunding;
         u32s[2] = _storage.lastFundingTime;
         u32s[3] = _storage.fundingInterval;
-        u32s[4] = _storage.liquidityLockPeriod;
     }
 
     function getSubAccount(bytes32 subAccountId)
@@ -60,20 +58,5 @@ contract Getter is Storage {
         lastIncreasedTime = subAccount.lastIncreasedTime;
         entryPrice = subAccount.entryPrice;
         entryFunding = subAccount.entryFunding;
-    }
-
-    function getLiquidityLockInfo(address lp)
-        external
-        view
-        returns (
-            uint32 liquidityLockPeriod,
-            uint32 lastAddedTime,
-            uint96 pendingMLP
-        )
-    {
-        liquidityLockPeriod = _storage.liquidityLockPeriod;
-        LiquidityLock storage lock = _storage.liquidityLocks[lp];
-        lastAddedTime = lock.lastAddedTime;
-        pendingMLP = lock.pendingMLP;
     }
 }

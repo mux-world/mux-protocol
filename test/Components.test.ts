@@ -35,7 +35,7 @@ describe("Components", async () => {
     expect(await ownable.owner()).to.equal(user0.address)
     expect(await ownable.pendingOwner()).to.equal(user2.address)
 
-    await expect(ownable.connect(user1).takeOwnership()).to.be.revertedWith("Own")
+    await expect(ownable.connect(user1).takeOwnership()).to.be.revertedWith("Snd")
     await ownable.connect(user2).takeOwnership()
     expect(await ownable.owner()).to.equal(user2.address)
     expect(await ownable.pendingOwner()).to.equal(zeroAddress)
