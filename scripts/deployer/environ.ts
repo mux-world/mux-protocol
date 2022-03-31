@@ -1,3 +1,4 @@
+import { ethers } from "hardhat"
 import { Deployer, DeploymentOptions } from "./deployer"
 import { printError } from "../../test/deployUtils"
 
@@ -7,7 +8,7 @@ export async function restorableEnviron(
   ...args: any
 ) {
   // detect network
-  const deployer = new Deployer(options)
+  const deployer = new Deployer(ethers, options)
   await deployer.initialize()
   // main logic
   try {
@@ -26,7 +27,7 @@ export async function readOnlyEnviron(
   ...args: any
 ) {
   // detect network
-  const deployer = new Deployer(options)
+  const deployer = new Deployer(ethers, options)
   await deployer.initialize()
   // main logic
   await job(deployer, ...args)

@@ -58,13 +58,13 @@ describe("LibOrder - enumerable order list", () => {
 
     it("returns false when adding values already in the set", async function () {
       await orderBook.add(valueA)
-      await expect(orderBook.add(valueA)).to.revertedWith("Dup")
+      await expect(orderBook.add(valueA)).to.revertedWith("DUP")
     })
   })
 
   describe("at", function () {
     it("reverts when retrieving non-existent elements", async function () {
-      await expect(orderBook.at(0)).to.revertedWith("Idx")
+      await expect(orderBook.at(0)).to.revertedWith("IDX")
     })
   })
 
@@ -78,7 +78,7 @@ describe("LibOrder - enumerable order list", () => {
     })
 
     it("returns false when removing values not in the set", async function () {
-      await expect(orderBook.remove(valueA)).to.revertedWith("Oid")
+      await expect(orderBook.remove(valueA)).to.revertedWith("OID")
       expect(await orderBook.contains(valueA)).to.equal(false)
     })
 
@@ -90,7 +90,7 @@ describe("LibOrder - enumerable order list", () => {
       await expectMembersMatch([valueA, valueC])
 
       await orderBook.remove(valueA)
-      await expect(orderBook.remove(valueB)).to.revertedWith("Oid")
+      await expect(orderBook.remove(valueB)).to.revertedWith("OID")
       await expectMembersMatch([valueC])
 
       await orderBook.add(valueB)
@@ -100,8 +100,8 @@ describe("LibOrder - enumerable order list", () => {
       await orderBook.remove(valueC)
       await expectMembersMatch([valueA, valueB])
 
-      await expect(orderBook.add(valueA)).to.revertedWith("Dup")
-      await expect(orderBook.add(valueB)).to.revertedWith("Dup")
+      await expect(orderBook.add(valueA)).to.revertedWith("DUP")
+      await expect(orderBook.add(valueB)).to.revertedWith("DUP")
       await expectMembersMatch([valueA, valueB])
 
       await orderBook.add(valueC)

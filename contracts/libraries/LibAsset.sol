@@ -15,18 +15,6 @@ library LibAsset {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using SafeMathUpgradeable for uint256;
 
-    function balanceOf(Asset storage token) internal view returns (uint256) {
-        return IERC20Upgradeable(token.tokenAddress).balanceOf(address(this));
-    }
-
-    function calcTransferredBalance(Asset storage token) internal returns (uint256 rawAmount) {
-        uint256 newBalance = balanceOf(token);
-        uint256 oldBalance = uint256(token.tokenBalance);
-        require(newBalance >= oldBalance, "B<B");
-        rawAmount = newBalance - oldBalance;
-        token.tokenBalance = newBalance.safeUint128();
-    }
-
     function transferOut(
         Asset storage token,
         address recipient,
@@ -39,7 +27,6 @@ library LibAsset {
         } else {
             IERC20Upgradeable(token.tokenAddress).safeTransfer(recipient, rawAmount);
         }
-        token.tokenBalance = balanceOf(token).safeUint128();
     }
 
     function issueMuxToken(

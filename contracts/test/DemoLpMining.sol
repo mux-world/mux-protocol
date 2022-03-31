@@ -6,9 +6,9 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/presets/ERC20PresetMinte
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "../components/SafeOwnable.sol";
+import "../components/SafeOwnableUpgradeable.sol";
 
-contract DemoLpMining is Initializable, SafeOwnable {
+contract DemoLpMining is Initializable, SafeOwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     struct UserInfo {

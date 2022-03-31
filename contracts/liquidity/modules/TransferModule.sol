@@ -10,6 +10,9 @@ import "./Module.sol";
 
 import "hardhat/console.sol";
 
+/**
+ * @notice This a a system module which defines how to move fund between `LiquidityPool` and `LiquidityManager`
+ */
 contract TransferModule is Module {
     using SafeERC20 for IERC20;
 
@@ -27,23 +30,38 @@ contract TransferModule is Module {
             bytes32[] memory initialStates
         )
     {
-        ids = new bytes32[](3);
+        ids = new bytes32[](5);
         ids[0] = LibUtils.toBytes32("transferFromPool");
         ids[1] = LibUtils.toBytes32("transferToPool");
         ids[2] = LibUtils.toBytes32("transferToVault");
-        selectors = new bytes4[](3);
+        ids[3] = LibUtils.toBytes32("transferFromPoolByDex");
+        ids[4] = LibUtils.toBytes32("transferToPoolByDex");
+        selectors = new bytes4[](5);
         selectors[0] = this.transferFromPool.selector;
         selectors[1] = this.transferToPool.selector;
         selectors[2] = this.transferToVault.selector;
+        selectors[3] = this.transferFromPoolByDex.selector;
+        selectors[4] = this.transferToPoolByDex.selector;
         initialStates = new bytes32[](0);
     }
 
-    function transferFromPool(uint8[] memory assetIds, uint256[] memory amounts) external {
+    function transferFromPoolByDex(uint8 dexId, uint256[] memory amounts) external {
+        uint8[] memory assetIds = _getDexSpotConfig(dexId).assetIds;
+        transferFromPool(assetIds, amounts);
+    }
+
+    function transferToPoolByDex(uint8 dexId, uint256[] memory amounts) external {
+        uint8[] memory assetIds = _getDexSpotConfig(dexId).assetIds;
+        require(assetIds.length == amounts.length, "LEN"); // LENgth of 2 arguments does not match
+        transferToPool(assetIds, amounts);
+    }
+
+    function transferFromPool(uint8[] memory assetIds, uint256[] memory amounts) public {
         require(assetIds.length == amounts.length, "LEN"); // LENgth of 2 arguments does not match
         ILiquidityPool(_pool).transferLiquidityOut(assetIds, amounts);
     }
 
-    function transferToPool(uint8[] memory assetIds, uint256[] memory amounts) external {
+    function transferToPool(uint8[] memory assetIds, uint256[] memory amounts) public {
         _transferTo(_pool, assetIds, amounts);
         ILiquidityPool(_pool).transferLiquidityIn(assetIds, amounts);
     }

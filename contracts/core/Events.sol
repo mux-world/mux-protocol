@@ -4,54 +4,60 @@ pragma solidity 0.8.10;
 contract Events {
     //////////////////////////////////////////////////////////////////////////////////////
     //                                   trade
-    event OpenPosition(
-        bytes32 subAccountId,
-        address indexed trader,
-        uint8 collateralId,
-        uint8 indexed assetId,
-        bool isLong,
-        uint96 amount,
-        uint96 assetPrice,
-        uint96 entryPrice,
-        uint96 feeUsd
-    );
-    event ClosePosition(
-        bytes32 subAccountId,
-        address indexed trader,
-        uint8 collateralId,
-        uint8 indexed assetId,
-        bool isLong,
-        uint96 amount,
-        uint96 assetPrice,
-        uint96 entryPrice,
-        uint96 feeUsd,
-        bool hasProfit,
-        uint96 pnlUsd
-    );
-    event Liquidate(
-        bytes32 subAccountId,
-        address indexed trader,
-        uint8 collateralId,
-        uint8 indexed assetId,
-        bool isLong,
-        uint96 amount,
-        uint96 assetPrice,
-        uint96 entryPrice,
-        uint96 feeUsd,
-        bool hasProfit,
-        uint96 pnlUsd
-    );
-    event WithdrawProfit(
-        bytes32 subAccountId,
-        address indexed trader,
-        uint8 collateralId,
-        uint8 indexed assetId,
-        bool isLong,
-        uint256 withdrawRawAmount,
-        uint96 assetPrice,
-        uint96 entryPrice,
-        uint96 feeUsd
-    );
+    struct OpenPositionArgs {
+        bytes32 subAccountId;
+        uint8 collateralId;
+        bool isLong;
+        uint96 amount;
+        uint96 assetPrice;
+        uint96 collateralPrice;
+        uint96 entryPrice;
+        uint96 feeUsd;
+    }
+    event OpenPosition(address indexed trader, uint8 indexed assetId, OpenPositionArgs args);
+    struct ClosePositionArgs {
+        bytes32 subAccountId;
+        uint8 collateralId;
+        uint8 profitAssetId;
+        bool isLong;
+        uint96 amount;
+        uint96 assetPrice;
+        uint96 collateralPrice;
+        uint96 profitAssetPrice;
+        uint96 entryPrice;
+        uint96 feeUsd;
+        bool hasProfit;
+        uint96 pnlUsd;
+    }
+    event ClosePosition(address indexed trader, uint8 indexed assetId, ClosePositionArgs args);
+    struct LiquidateArgs {
+        bytes32 subAccountId;
+        uint8 collateralId;
+        uint8 profitAssetId;
+        bool isLong;
+        uint96 amount;
+        uint96 assetPrice;
+        uint96 collateralPrice;
+        uint96 profitAssetPrice;
+        uint96 entryPrice;
+        uint96 feeUsd;
+        bool hasProfit;
+        uint96 pnlUsd;
+    }
+    event Liquidate(address indexed trader, uint8 indexed assetId, LiquidateArgs args);
+    struct WithdrawProfitArgs {
+        bytes32 subAccountId;
+        uint8 collateralId;
+        uint8 profitAssetId;
+        bool isLong;
+        uint256 withdrawRawAmount;
+        uint96 assetPrice;
+        uint96 collateralPrice;
+        uint96 profitAssetPrice;
+        uint96 entryPrice;
+        uint96 feeUsd;
+    }
+    event WithdrawProfit(address indexed trader, uint8 indexed assetId, WithdrawProfitArgs args);
     event CollectedFee(uint8 tokenId, uint96 fee);
 
     //////////////////////////////////////////////////////////////////////////////////////
@@ -73,10 +79,11 @@ contract Events {
         uint96 fee
     );
     event UpdateFundingRate(
-        uint8 indexed tokenId, // if isStable, tokenId will always be 0
-        bool isStable,
-        uint32 fundingRate, // 1e5
-        uint128 accumulateFunding
+        uint8 indexed tokenId,
+        uint32 longFundingRate, // 1e5
+        uint128 longCumulativeFundingRate, // Σ_t fundingRate_t
+        uint32 shortFundingRate, // 1e5
+        uint128 shortCumulativeFunding // Σ_t fundingRate_t * indexPrice_t
     );
     event IssueMuxToken(
         uint8 indexed tokenId, // if isStable, tokenId will always be 0
@@ -111,7 +118,9 @@ contract Events {
         bool isTradable,
         bool isOpenable,
         bool isShortable,
-        bool useStableTokenForProfit
+        bool useStableTokenForProfit,
+        bool isEnabled,
+        bool isStrictStable
     );
     event SetReferenceOracle(
         uint8 indexed assetId,
@@ -122,5 +131,6 @@ contract Events {
     event SetFundingParams(uint8 indexed assetId, uint32 newBaseRate8H, uint32 newLimitRate8H);
     event SetFundingInterval(uint32 oldFundingInterval, uint32 newFundingInterval);
     event SetMlpPriceRange(uint96 newLowerBound, uint96 newUpperBound);
+    event SetLiquidityFee(uint32 newLiquidityBaseFeeRate, uint32 newLiquidityDynamicFeeRate);
     event TransferLiquidity(address indexed sender, address indexed recipient, uint8 assetId, uint256 amount);
 }

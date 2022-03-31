@@ -9,13 +9,7 @@ import "./MockUniV2Pool.sol";
 import "hardhat/console.sol";
 
 contract MockCurve2Pool is MockUniV2Pool {
-    address public tokenA;
-    address public tokenB;
-
-    constructor(address tokenA_, address tokenB_) MockUniV2Pool() {
-        tokenA = tokenA_;
-        tokenB = tokenB_;
-    }
+    constructor(address tokenA_, address tokenB_) MockUniV2Pool(tokenA_, tokenB_) {}
 
     function balances() external view returns (uint256[2] memory balances_) {
         balances_[0] = reserveA;
@@ -36,8 +30,8 @@ contract MockCurve2Pool is MockUniV2Pool {
         address _receiver
     ) public returns (uint256) {
         (, , uint256 liquidity) = addLiquidity(
-            tokenA,
-            tokenB,
+            _tokenA,
+            _tokenB,
             _amounts[0],
             _amounts[1],
             0,
@@ -56,8 +50,8 @@ contract MockCurve2Pool is MockUniV2Pool {
     ) public returns (uint256[2] memory) {
         uint256[2] memory amounts;
         (amounts[0], amounts[1]) = removeLiquidity(
-            tokenA,
-            tokenB,
+            _tokenA,
+            _tokenB,
             _burn_amount,
             _min_amounts[0],
             _min_amounts[1],

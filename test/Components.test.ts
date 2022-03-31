@@ -24,8 +24,8 @@ describe("Components", async () => {
     user3 = accounts[3]
   })
 
-  it("SafeOwnable", async () => {
-    const ownable = await createContract("TestSafeOwnable")
+  it("SafeOwnableUpgradeable", async () => {
+    const ownable = await createContract("TestSafeOwnableUpgradeable")
     await ownable.initialize()
 
     expect(await ownable.owner()).to.equal(user0.address)
@@ -35,7 +35,31 @@ describe("Components", async () => {
     expect(await ownable.owner()).to.equal(user0.address)
     expect(await ownable.pendingOwner()).to.equal(user2.address)
 
-    await expect(ownable.connect(user1).takeOwnership()).to.be.revertedWith("Snd")
+    await expect(ownable.connect(user1).takeOwnership()).to.be.revertedWith("SND")
+    await ownable.connect(user2).takeOwnership()
+    expect(await ownable.owner()).to.equal(user2.address)
+    expect(await ownable.pendingOwner()).to.equal(zeroAddress)
+
+    await expect(ownable.connect(user1).renounceOwnership()).to.be.revertedWith("not the owner")
+    await expect(ownable.connect(user2).transferOwnership(user2.address)).to.be.revertedWith("O=O")
+    await expect(ownable.connect(user2).transferOwnership(zeroAddress)).to.be.revertedWith("O=0")
+    await ownable.connect(user2).transferOwnership(user3.address)
+    await ownable.connect(user2).renounceOwnership()
+    expect(await ownable.owner()).to.equal(zeroAddress)
+    expect(await ownable.pendingOwner()).to.equal(zeroAddress)
+  })
+
+  it("SafeOwnable", async () => {
+    const ownable = await createContract("TestSafeOwnable")
+
+    expect(await ownable.owner()).to.equal(user0.address)
+    expect(await ownable.pendingOwner()).to.equal(zeroAddress)
+
+    await ownable.transferOwnership(user2.address)
+    expect(await ownable.owner()).to.equal(user0.address)
+    expect(await ownable.pendingOwner()).to.equal(user2.address)
+
+    await expect(ownable.connect(user1).takeOwnership()).to.be.revertedWith("SND")
     await ownable.connect(user2).takeOwnership()
     expect(await ownable.owner()).to.equal(user2.address)
     expect(await ownable.pendingOwner()).to.equal(zeroAddress)

@@ -10,6 +10,9 @@ import "./Module.sol";
 
 import "hardhat/console.sol";
 
+/**
+ * @notice A module to provide liquidity to curve then farm on some project with the lpToken.
+ */
 contract CurveFarmModule is Module {
     using Address for address;
     using SafeERC20 for IERC20;
@@ -124,7 +127,11 @@ contract CurveFarmModule is Module {
     }
 
     function _getLpBalance() internal view returns (uint256) {
-        return IERC20(pool).balanceOf(address(this));
+        if (stake != address(0)) {
+            return IStake(stake).balanceOf(address(this));
+        } else {
+            return IERC20(pool).balanceOf(address(this));
+        }
     }
 
     function _getFees() internal view returns (bool hasFee, uint256[] memory feeAmounts) {
@@ -185,4 +192,6 @@ interface IStake {
     function stake(uint256 amount) external;
 
     function redeem(uint256 amount) external;
+
+    function balanceOf(address account) external view returns (uint256);
 }

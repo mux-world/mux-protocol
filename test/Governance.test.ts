@@ -30,7 +30,6 @@ describe("Trade", () => {
 
   it("admin", async () => {
     const ownable = await createContract("TestSafeOwnable")
-    await ownable.initialize()
     await ownable.transferOwnership(admin.address)
 
     await expect(admin.schedule(ownable.address, 0, U.id("takeOwnership()").slice(0, 10), zero, zero, 0)).to.be.revertedWith(U.id("PROPOSER_ROLE"))
@@ -61,11 +60,9 @@ describe("Trade", () => {
     expect(await ownable.pendingOwner()).to.equal(user0.address)
   })
 
-
   it("quickPlugin", async () => {
     const p = await createContract("QuickTransferOwner")
     const ownable = await createContract("TestSafeOwnable")
-    await ownable.initialize()
     await ownable.transferOwnership(admin.address)
     await admin.connect(user1).schedule(ownable.address, 0, U.id("takeOwnership()").slice(0, 10), zero, zero, 0)
     await admin.connect(user2).execute(ownable.address, 0, U.id("takeOwnership()").slice(0, 10), zero, zero)
@@ -101,6 +98,83 @@ describe("Trade", () => {
       zero,
       0
     )
+    await expect(admin.connect(user3).removeQuickPath(p.address)).to.be.revertedWith("S!T")
+
+    await admin.connect(user2).execute(
+      admin.address,
+      0,
+      U.id("removeQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      zero,
+      zero
+    )
+    await expect(admin.connect(user2).executeQuickPath(
+      p.address,
+      U.id("transferOwnership(address,address)").slice(0, 10) + U.defaultAbiCoder.encode(["address", "address"], [ownable.address, user3.address]).slice(2)
+    )).to.be.revertedWith("!QP")
+  })
+
+  it("quickPlugin2", async () => {
+    const p = await createContract("QuickTransferOwner")
+    const ownable = await createContract("TestSafeOwnable")
+    await ownable.transferOwnership(admin.address)
+    await admin.connect(user1).schedule(ownable.address, 0, U.id("takeOwnership()").slice(0, 10), zero, zero, 0)
+    await admin.connect(user2).execute(ownable.address, 0, U.id("takeOwnership()").slice(0, 10), zero, zero)
+
+    await admin.connect(user1).schedule(
+      admin.address,
+      0,
+      U.id("addQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [user0.address]).slice(2),
+      zero,
+      zero,
+      0
+    )
+    await expect(admin.connect(user2).execute(
+      admin.address,
+      0,
+      U.id("addQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [user0.address]).slice(2),
+      zero,
+      zero
+    )).to.be.revertedWith("underlying transaction reverted")
+
+    await admin.connect(user1).schedule(
+      admin.address,
+      0,
+      U.id("addQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      zero,
+      zero,
+      0
+    )
+    await admin.connect(user2).execute(
+      admin.address,
+      0,
+      U.id("addQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      zero,
+      zero
+    )
+    await admin.connect(user1).schedule(
+      admin.address,
+      0,
+      U.id("addQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      zero,
+      toBytes32("123"),
+      0
+    )
+    await expect(admin.connect(user2).execute(
+      admin.address,
+      0,
+      U.id("addQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      zero,
+      toBytes32("123"),
+    )).to.be.revertedWith("underlying transaction reverted")
+
+    await admin.connect(user1).schedule(
+      admin.address,
+      0,
+      U.id("removeQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      zero,
+      zero,
+      0
+    )
     await admin.connect(user2).execute(
       admin.address,
       0,
@@ -109,10 +183,21 @@ describe("Trade", () => {
       zero
     )
 
-    await expect(admin.connect(user2).executeQuickPath(
-      p.address,
-      U.id("transferOwnership(address,address)").slice(0, 10) + U.defaultAbiCoder.encode(["address", "address"], [ownable.address, user3.address]).slice(2)
-    )).to.be.revertedWith("!QP")
+    await admin.connect(user1).schedule(
+      admin.address,
+      0,
+      U.id("removeQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      zero,
+      toBytes32("123"),
+      0
+    )
+    await expect(admin.connect(user2).execute(
+      admin.address,
+      0,
+      U.id("removeQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      zero,
+      toBytes32("123")
+    )).to.be.revertedWith("underlying transaction reverted")
 
   })
 })

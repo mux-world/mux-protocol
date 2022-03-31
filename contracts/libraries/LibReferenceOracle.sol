@@ -75,7 +75,9 @@ library LibReferenceOracle {
     }
 
     function checkPrice(Asset storage asset, uint96 price) internal returns (uint96) {
-        if (ReferenceOracleType(asset.referenceOracleType) == ReferenceOracleType.Chainlink) {
+        if (asset.isStrictStable) {
+            return 1e18;
+        } else if (ReferenceOracleType(asset.referenceOracleType) == ReferenceOracleType.Chainlink) {
             int256 ref = IChainlinkV2V3(asset.referenceOracle).latestAnswer();
             require(ref > 0, "P=0"); // oracle Price <= 0
             ref *= 1e10; // decimals 8 => 18

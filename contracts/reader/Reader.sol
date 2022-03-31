@@ -3,17 +3,16 @@ pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../core/LiquidityPool.sol";
-import "../interfaces/IMlpTimeLock.sol";
+import "../interfaces/ILiquidityPool.sol";
+import "../interfaces/IOrderBook.sol";
 import "../interfaces/ILiquidityManager.sol";
 
 contract Reader {
-    using SafeMathUpgradeable for uint256;
-
     struct ChainConfig {
         LiquidityPoolConfig poolConfig;
         AssetConfig[] assetConfigs;
         DexConfig[] dexConfigs;
+        uint32 liquidityLockPeriod; // 1e0
     }
 
     struct ChainState {
@@ -28,16 +27,20 @@ contract Reader {
         uint32 shortFundingBaseRate8H; // 1e5
         uint32 shortFundingLimitRate8H; // 1e5
         uint32 fundingInterval; // 1e0
+        uint32 liquidityBaseFeeRate; // 1e5
+        uint32 liquidityDynamicFeeRate; // 1e5
+        uint96 mlpPriceLowerBound;
+        uint96 mlpPriceUpperBound;
     }
 
     struct LiquidityPoolState {
-        uint128 shortCumulativeFunding;
         uint32 lastFundingTime; // 1e0
     }
 
     struct AssetConfig {
         bytes32 symbol;
-        // -----------------
+        address tokenAddress;
+        address muxTokenAddress;
         uint8 id;
         uint8 decimals;
         bool isStable;
@@ -45,40 +48,33 @@ contract Reader {
         bool isOpenable;
         bool isShortable;
         bool useStableTokenForProfit;
-        uint8 referenceOracleType;
-        uint96 maxLongPositionSize;
-        uint96 maxShortPositionSize;
-        // -----------------
+        bool isEnabled;
+        bool isStrictStable;
         uint32 initialMarginRate; // 1e5
         uint32 maintenanceMarginRate; // 1e5
         uint32 positionFeeRate; // 1e5
         uint32 minProfitRate; // 1e5
         uint32 minProfitTime; // 1e0
+        uint96 maxLongPositionSize;
+        uint96 maxShortPositionSize;
+        uint32 spotWeight;
         uint32 longFundingBaseRate8H; // 1e5
         uint32 longFundingLimitRate8H; // 1e5
-        uint32 spotWeight;
-        // -----------------
+        uint8 referenceOracleType;
         address referenceOracle;
-        address tokenAddress;
-        address muxTokenAddress;
         uint32 referenceDeviation;
     }
 
     struct AssetState {
         uint8 id;
+        uint128 longCumulativeFundingRate;
+        uint128 shortCumulativeFunding;
         uint96 spotLiquidity;
-        uint128 collectedFee;
-        // note: 24 bits remaining
-        // -----------------
-        uint128 longCumulativeFunding;
-        uint128 shortCumulativeFunding; // all unstable asset.shortCumulativeFunding are the same as LiquidityPoolState.shortCumulativeFunding.
-        // -----------------
         uint96 totalLongPosition;
-        uint96 averageLongPrice;
-        // -----------------
         uint96 totalShortPosition;
+        uint96 averageLongPrice;
         uint96 averageShortPrice;
-        // -----------------
+        uint128 collectedFee;
         uint256 deduct; // debt of a non-stable coin = PRE_MINED - Σ_chains deduct
     }
 
@@ -104,23 +100,23 @@ contract Reader {
         uint128 entryFunding;
     }
 
-    LiquidityPool public pool;
+    ILiquidityPool public pool;
     IERC20 public mlp;
     ILiquidityManager public dex;
-    IMlpTimeLock public mlpTimeLock;
+    IOrderBook public orderBook;
     address[] public deductWhiteList;
 
     constructor(
         address pool_,
         address mlp_,
         address dex_,
-        address mlpTimeLock_,
+        address orderBook_,
         address[] memory deductWhiteList_ // muxToken in these addresses are also not considered as debt
     ) {
-        pool = LiquidityPool(payable(pool_));
+        pool = ILiquidityPool(pool_);
         mlp = IERC20(mlp_);
         dex = ILiquidityManager(dex_);
-        mlpTimeLock = IMlpTimeLock(mlpTimeLock_);
+        orderBook = IOrderBook(orderBook_);
         uint256 listLength = deductWhiteList_.length;
         for (uint256 i = 0; i < listLength; i++) {
             deductWhiteList.push(deductWhiteList_[i]);
@@ -129,10 +125,8 @@ contract Reader {
 
     function getChainConfig() public view returns (ChainConfig memory chainConfig) {
         // from pool
-        (, uint32[4] memory u32s) = pool.getLiquidityPoolStorage();
-        chainConfig.poolConfig.shortFundingBaseRate8H = u32s[0];
-        chainConfig.poolConfig.shortFundingLimitRate8H = u32s[1];
-        chainConfig.poolConfig.fundingInterval = u32s[3];
+        (uint32[6] memory u32s, uint96[2] memory u96s) = pool.getLiquidityPoolStorage();
+        chainConfig.poolConfig = _convertPoolConfig(u32s, u96s);
         // from assets
         Asset[] memory assets = pool.getAllAssetInfo();
         uint256 assetLength = assets.length;
@@ -147,13 +141,14 @@ contract Reader {
         for (uint256 i = 0; i < dexConfigLength; i++) {
             chainConfig.dexConfigs[i] = _convertDexConfig(dexConfigs[i]);
         }
+        // from orderBook
+        chainConfig.liquidityLockPeriod = orderBook.liquidityLockPeriod();
     }
 
     function getChainState() public returns (ChainState memory chainState) {
         // from pool
-        (uint128[1] memory u128s, uint32[4] memory u32s) = pool.getLiquidityPoolStorage();
-        chainState.poolState.shortCumulativeFunding = u128s[0];
-        chainState.poolState.lastFundingTime = u32s[2];
+        (uint32[6] memory u32s, uint96[2] memory u96s) = pool.getLiquidityPoolStorage();
+        chainState.poolState = _convertPoolState(u32s, u96s);
         // from assets
         address stableMuxTokenAddress;
         Asset[] memory assets = pool.getAllAssetInfo();
@@ -163,7 +158,6 @@ contract Reader {
             chainState.assetStates[i] = _convertAssetState(assets[i]);
             if (!assets[i].isStable) {
                 chainState.assetStates[i].deduct = getDeduct(assets[i].muxTokenAddress);
-                chainState.assetStates[i].shortCumulativeFunding = chainState.poolState.shortCumulativeFunding;
             } else {
                 stableMuxTokenAddress = assets[i].muxTokenAddress;
             }
@@ -177,7 +171,11 @@ contract Reader {
             chainState.dexStates[i].dexId = dexId;
             (uint256[] memory liquidities, uint256 lpBalance) = dex.getDexLiquidity(dexId);
             chainState.dexStates[i].dexLPBalance = lpBalance;
-            chainState.dexStates[i].liquidityBalance = liquidities;
+            if (lpBalance == 0) {
+                chainState.dexStates[i].liquidityBalance = new uint256[](dexConfigs[i].assetIds.length);
+            } else {
+                chainState.dexStates[i].liquidityBalance = liquidities;
+            }
         }
         // Deduct
         chainState.lpDeduct = getDeduct(address(mlp));
@@ -204,31 +202,39 @@ contract Reader {
     }
 
     function getAssetsState(uint8[] memory assetIds) public view returns (AssetState[] memory assetsState) {
-        (uint128[1] memory u128s, ) = pool.getLiquidityPoolStorage();
         assetsState = new AssetState[](assetIds.length);
         for (uint256 i = 0; i < assetIds.length; i++) {
             Asset memory asset = pool.getAssetInfo(assetIds[i]);
             assetsState[i] = _convertAssetState(asset);
-            if (!asset.isStable) {
-                assetsState[i].shortCumulativeFunding = u128s[0];
-            }
         }
     }
 
-    function getLiquidityLockInfo(address lp)
-        public
-        view
-        returns (
-            uint32 liquidityLockPeriod,
-            uint32 lastAddedTime,
-            uint96 pendingMLP
-        )
+    function _convertPoolConfig(uint32[6] memory u32s, uint96[2] memory u96s)
+        internal
+        pure
+        returns (LiquidityPoolConfig memory c)
     {
-        return mlpTimeLock.getLiquidityLockInfo(lp);
+        c.shortFundingBaseRate8H = u32s[0];
+        c.shortFundingLimitRate8H = u32s[1];
+        c.fundingInterval = u32s[3];
+        c.liquidityBaseFeeRate = u32s[4];
+        c.liquidityDynamicFeeRate = u32s[5];
+        c.mlpPriceLowerBound = u96s[0];
+        c.mlpPriceUpperBound = u96s[1];
+    }
+
+    function _convertPoolState(uint32[6] memory u32s, uint96[2] memory u96s)
+        internal
+        pure
+        returns (LiquidityPoolState memory s)
+    {
+        s.lastFundingTime = u32s[2];
     }
 
     function _convertAssetConfig(Asset memory asset) internal pure returns (AssetConfig memory c) {
         c.symbol = asset.symbol;
+        c.tokenAddress = asset.tokenAddress;
+        c.muxTokenAddress = asset.muxTokenAddress;
         c.id = asset.id;
         c.decimals = asset.decimals;
         c.isStable = asset.isStable;
@@ -236,11 +242,8 @@ contract Reader {
         c.isOpenable = asset.isOpenable;
         c.isShortable = asset.isShortable;
         c.useStableTokenForProfit = asset.useStableTokenForProfit;
-        c.referenceOracleType = asset.referenceOracleType;
-        c.referenceOracle = asset.referenceOracle;
-        c.referenceDeviation = asset.referenceDeviation;
-        c.tokenAddress = asset.tokenAddress;
-        c.muxTokenAddress = asset.muxTokenAddress;
+        c.isEnabled = asset.isEnabled;
+        c.isStrictStable = asset.isStrictStable;
         c.initialMarginRate = asset.initialMarginRate;
         c.maintenanceMarginRate = asset.maintenanceMarginRate;
         c.positionFeeRate = asset.positionFeeRate;
@@ -251,11 +254,15 @@ contract Reader {
         c.spotWeight = asset.spotWeight;
         c.longFundingBaseRate8H = asset.longFundingBaseRate8H;
         c.longFundingLimitRate8H = asset.longFundingLimitRate8H;
+        c.referenceOracleType = asset.referenceOracleType;
+        c.referenceOracle = asset.referenceOracle;
+        c.referenceDeviation = asset.referenceDeviation;
     }
 
     function _convertAssetState(Asset memory asset) internal pure returns (AssetState memory s) {
         s.id = asset.id;
-        s.longCumulativeFunding = asset.longCumulativeFunding;
+        s.longCumulativeFundingRate = asset.longCumulativeFundingRate;
+        s.shortCumulativeFunding = asset.shortCumulativeFunding;
         s.spotLiquidity = asset.spotLiquidity;
         s.totalLongPosition = asset.totalLongPosition;
         s.totalShortPosition = asset.totalShortPosition;

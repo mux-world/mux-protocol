@@ -3,23 +3,23 @@ pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import "../components/SafeOwnable.sol";
+import "../components/SafeOwnableUpgradeable.sol";
 import "../libraries/LibSubAccount.sol";
 import "./Types.sol";
 import "./Events.sol";
 
-contract Storage is Initializable, SafeOwnable, Events {
+contract Storage is Initializable, SafeOwnableUpgradeable, Events {
     uint32 internal constant FUNDING_PERIOD = 3600 * 8;
 
     LiquidityPoolStorage internal _storage;
 
     modifier onlyOrderBook() {
-        require(_msgSender() == _storage.orderBook, "Bok"); // can only be called by order BOoK
+        require(_msgSender() == _storage.orderBook, "BOK"); // can only be called by order BOoK
         _;
     }
 
     modifier onlyLiquidityManager() {
-        require(_msgSender() == _storage.liquidityManager, "LqM"); // can only be called by LiQuidity Manager
+        require(_msgSender() == _storage.liquidityManager, "LQM"); // can only be called by LiQuidity Manager
         _;
     }
 

@@ -11,10 +11,19 @@ import "hardhat/console.sol";
 contract MockUniV2Pool is ERC20 {
     using Address for address;
 
-    uint256 reserveA;
-    uint256 reserveB;
+    address internal _tokenA;
+    address internal _tokenB;
+    uint256 internal reserveA;
+    uint256 internal reserveB;
 
-    constructor() ERC20("MockUniPool", "MUP") {}
+    constructor(address tokenA_, address tokenB_) ERC20("MockUniPool", "MUP") {
+        _tokenA = tokenA_;
+        _tokenB = tokenB_;
+    }
+
+    function getPrice() public view returns (uint256) {
+        return (reserveA * 1e18) / reserveB;
+    }
 
     function getReserves()
         public
@@ -36,6 +45,8 @@ contract MockUniV2Pool is ERC20 {
         uint256 amountA,
         uint256 amountB
     ) external {
+        require(tokenA == _tokenA, "!TA");
+        require(tokenB == _tokenB, "!TB");
         IERC20(tokenA).transferFrom(msg.sender, address(this), amountA);
         reserveA += amountA;
         IERC20(tokenB).transferFrom(msg.sender, address(this), amountB);
@@ -48,6 +59,8 @@ contract MockUniV2Pool is ERC20 {
         uint256 amountA,
         uint256 amountB
     ) external {
+        require(tokenA == _tokenA, "!TA");
+        require(tokenB == _tokenB, "!TB");
         IERC20(tokenA).transfer(msg.sender, amountA);
         reserveA -= amountA;
         IERC20(tokenB).transfer(msg.sender, amountB);
@@ -71,16 +84,21 @@ contract MockUniV2Pool is ERC20 {
             uint256 liquidity
         )
     {
+        require(tokenA == _tokenA, "!TA");
+        require(tokenB == _tokenB, "!TB");
         require(block.timestamp <= deadline, "Deadline");
         if (reserveA == 0 && reserveB == 0) {
             (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
             uint256 amountBRequired = (amountADesired * reserveB) / reserveA;
             if (amountBRequired <= amountBDesired) {
+                console.log("amountBRequired vs amountBMin", amountBRequired, amountBMin);
                 require(amountBRequired >= amountBMin, "amountBRequired < amountBMin");
                 (amountA, amountB) = (amountADesired, amountBRequired);
             } else {
                 uint256 amountARequired = (amountBDesired * reserveA) / reserveB;
+                console.log("amountARequired vs amountADesired", amountARequired, amountADesired);
+                console.log("amountARequired vs amountAMin", amountBRequired, amountAMin);
                 require(amountARequired <= amountADesired, "amountARequired > amountADesired");
                 require(amountARequired >= amountAMin, "amountARequired < amountAMin");
                 (amountA, amountB) = (amountARequired, amountBDesired);
@@ -112,6 +130,8 @@ contract MockUniV2Pool is ERC20 {
         address to,
         uint256 deadline
     ) public returns (uint256 amountA, uint256 amountB) {
+        require(tokenA == _tokenA, "!TA");
+        require(tokenB == _tokenB, "!TB");
         require(block.timestamp <= deadline, "Deadline");
 
         uint256 ratio = (liquidity * 1e18) / totalSupply();
@@ -125,5 +145,34 @@ contract MockUniV2Pool is ERC20 {
         IERC20(tokenB).transfer(to, amountB);
         reserveB -= amountB;
         _burn(msg.sender, liquidity);
+    }
+
+    function _getAmountOut(
+        uint256 amountIn,
+        uint256 reserveIn,
+        uint256 reserveOut
+    ) internal pure returns (uint256 amountOut) {
+        require(amountIn > 0, "UniswapV2Library: INSUFFICIENT_INPUT_AMOUNT");
+        require(reserveIn > 0 && reserveOut > 0, "UniswapV2Library: INSUFFICIENT_LIQUIDITY");
+        uint256 amountInWithFee = amountIn * 997;
+        uint256 numerator = amountInWithFee * reserveOut;
+        uint256 denominator = reserveIn * 1000 + amountInWithFee;
+        amountOut = numerator / denominator;
+    }
+
+    function swapA4B(uint256 amountA) external {
+        uint256 amountB = _getAmountOut(amountA, reserveA, reserveB);
+        IERC20(_tokenA).transferFrom(msg.sender, address(this), amountA);
+        IERC20(_tokenB).transfer(msg.sender, amountB);
+        reserveA += amountA;
+        reserveB -= amountB;
+    }
+
+    function swapB4A(uint256 amountB) external {
+        uint256 amountA = _getAmountOut(amountB, reserveB, reserveA);
+        IERC20(_tokenB).transferFrom(msg.sender, address(this), amountB);
+        IERC20(_tokenA).transfer(msg.sender, amountA);
+        reserveA -= amountA;
+        reserveB += amountB;
     }
 }

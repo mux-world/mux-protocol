@@ -6,8 +6,6 @@ import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../interfaces/IConnector.sol";
 import "./Storage.sol";
 
-import "hardhat/console.sol";
-
 contract ModuleCall is Storage {
     using AddressUpgradeable for address;
 

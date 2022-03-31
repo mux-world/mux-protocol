@@ -19,27 +19,28 @@ enum OrderType {
 struct PositionOrder {
     uint64 id;
     bytes32 subAccountId; // 160 + 8 + 8 + 8 = 184
-    uint96 collateral; // 96
-    uint96 size; // 96
-    uint96 price; // 96
-    uint8 profitTokenId; // 8
-    uint8 flags; // 8
+    uint96 collateral;
+    uint96 size;
+    uint96 price;
+    uint8 profitTokenId;
+    uint8 flags;
 }
 
-//                                  160       152       144    96          72       64               8        0
-// +------------------------------------------------------------+-----------+------------------------+--------+
-// |                   subAccountId 160                         | unused 24 |       orderId 64       | type 8 |
-// +----------------------------------+---------+---------+-----+-----------+--------+---------------+--------+
-// |             amount 96            | asset 8 | flags 8 |         unused 80        |      enumIndex 64      |
-// +----------------------------------+---------+---------+--------------------------+------------------------+
-// |                                             unused 256                                                   |
-// +----------------------------------------------------------------------------------------------------------+
+//                                  160       152       144          96          72    64              8        0
+// +------------------------------------------------------------------+-----------+--------------------+--------+
+// |                        account 160                               | unused 24 |     orderId 64     | type 8 |
+// +----------------------------------+---------+---------+-----------+-----------+-----+--------------+--------+
+// |             amount 96            | asset 8 | flags 8 | unused 48 |     time 32     |      enumIndex 64     |
+// +----------------------------------+---------+---------+-----------+-----------------+-----------------------+
+// |                                             unused 256                                                     |
+// +------------------------------------------------------------------------------------------------------------+
 struct LiquidityOrder {
     uint64 id;
-    address account; // 160
-    uint96 amount; // 96
-    uint8 assetId; // 8
-    bool isAdding; // 8
+    address account;
+    uint96 amount;
+    uint8 assetId;
+    bool isAdding;
+    uint32 placeOrderTime;
 }
 
 //                                  160        152       144               72       64               8        0
@@ -52,8 +53,8 @@ struct LiquidityOrder {
 // +----------------------------------------------------------------------------------------------------------+
 struct WithdrawalOrder {
     uint64 id;
-    bytes32 subAccountId; // 184
-    uint96 amount; // 96
-    uint8 profitTokenId; // 8
-    bool isProfit; // 8
+    bytes32 subAccountId; // 160 + 8 + 8 + 8 = 184
+    uint96 amount;
+    uint8 profitTokenId;
+    bool isProfit;
 }

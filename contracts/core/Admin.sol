@@ -77,15 +77,46 @@ contract Admin is Storage {
         bool isTradable,
         bool isOpenable,
         bool isShortable,
-        bool useStableTokenForProfit
+        bool useStableTokenForProfit,
+        bool isEnabled,
+        bool isStrictStable
     ) external onlyOwner {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         Asset storage asset = _storage.assets[assetId];
+        if (!asset.isStable) {
+            require(!isStrictStable, "STB"); // the asset is impossible to be a strict STaBle coin
+        }
         asset.isTradable = isTradable;
         asset.isOpenable = isOpenable;
         asset.isShortable = isShortable;
         asset.useStableTokenForProfit = useStableTokenForProfit;
-        emit SetAssetFlags(assetId, isTradable, isOpenable, isShortable, useStableTokenForProfit);
+        asset.isEnabled = isEnabled;
+        asset.isStrictStable = isStrictStable;
+        emit SetAssetFlags(
+            assetId,
+            isTradable,
+            isOpenable,
+            isShortable,
+            useStableTokenForProfit,
+            isEnabled,
+            isStrictStable
+        );
+    }
+
+    function pauseAll() external onlyOwner {
+        for (uint8 assetId = 0; assetId < _storage.assets.length; assetId++) {
+            Asset storage asset = _storage.assets[assetId];
+            asset.isEnabled = false;
+            emit SetAssetFlags(
+                assetId,
+                asset.isTradable,
+                asset.isOpenable,
+                asset.isShortable,
+                asset.useStableTokenForProfit,
+                asset.isEnabled,
+                asset.isStrictStable
+            );
+        }
     }
 
     function setFundingParams(
@@ -123,14 +154,12 @@ contract Admin is Storage {
     function setNumbers(
         uint32 newFundingInterval,
         uint96 newMlpPriceLowerBound,
-        uint96 newMlpPriceUpperBound
+        uint96 newMlpPriceUpperBound,
+        uint32 newLiquidityBaseFeeRate, // 1e5
+        uint32 newLiquidityDynamicFeeRate // 1e5
     ) external onlyOwner {
-        require(
-            _storage.fundingInterval != newFundingInterval ||
-                _storage.mlpPriceLowerBound != newMlpPriceLowerBound ||
-                _storage.mlpPriceUpperBound != newMlpPriceUpperBound,
-            "CHG"
-        ); // setting is not CHanGed
+        require(newLiquidityBaseFeeRate < 1e5, "F>1"); // %fee > 100%
+        require(newLiquidityDynamicFeeRate < 1e5, "F>1"); // %fee > 100%
         if (_storage.fundingInterval != newFundingInterval) {
             emit SetFundingInterval(_storage.fundingInterval, newFundingInterval);
             _storage.fundingInterval = newFundingInterval;
@@ -141,6 +170,14 @@ contract Admin is Storage {
             _storage.mlpPriceLowerBound = newMlpPriceLowerBound;
             _storage.mlpPriceUpperBound = newMlpPriceUpperBound;
             emit SetMlpPriceRange(newMlpPriceLowerBound, newMlpPriceUpperBound);
+        }
+        if (
+            _storage.liquidityBaseFeeRate != newLiquidityBaseFeeRate ||
+            _storage.liquidityDynamicFeeRate != newLiquidityDynamicFeeRate
+        ) {
+            _storage.liquidityBaseFeeRate = newLiquidityBaseFeeRate;
+            _storage.liquidityDynamicFeeRate = newLiquidityDynamicFeeRate;
+            emit SetLiquidityFee(newLiquidityBaseFeeRate, newLiquidityDynamicFeeRate);
         }
     }
 

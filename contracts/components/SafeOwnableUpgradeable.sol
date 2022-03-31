@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.10;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract SafeOwnable is Ownable {
+contract SafeOwnableUpgradeable is OwnableUpgradeable {
     address internal _pendingOwner;
 
     event PrepareToTransferOwnership(address indexed pendingOwner);
 
-    constructor() Ownable() {}
+    function __SafeOwnable_init() internal onlyInitializing {
+        __Ownable_init();
+    }
 
     function transferOwnership(address newOwner) public virtual override onlyOwner {
         require(newOwner != address(0), "O=0"); // Owner Is Zero

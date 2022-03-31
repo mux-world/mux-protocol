@@ -9,7 +9,6 @@ import "../libraries/LibSubAccount.sol";
 import "../libraries/LibMath.sol";
 import "../libraries/LibAsset.sol";
 import "../libraries/LibReferenceOracle.sol";
-
 import "./Storage.sol";
 
 contract Account is Storage {
@@ -34,18 +33,22 @@ contract Account is Storage {
         uint96 wadAmount
     );
 
-    function depositCollateral(bytes32 subAccountId) external {
+    function depositCollateral(
+        bytes32 subAccountId,
+        uint256 rawAmount // NOTE: OrderBook SHOULD transfer rawAmount collateral to LiquidityPool
+    ) external onlyOrderBook {
         LibSubAccount.DecodedSubAccountId memory decoded = subAccountId.decodeSubAccountId();
         require(decoded.account != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(decoded.collateralId), "LST"); // the asset is not LiSTed
         require(_hasAsset(decoded.assetId), "LST"); // the asset is not LiSTed
+        require(rawAmount != 0, "A=0"); // Amount Is Zero
 
         SubAccount storage subAccount = _storage.accounts[subAccountId];
+        Asset storage asset = _storage.assets[decoded.assetId];
         Asset storage collateral = _storage.assets[decoded.collateralId];
-        uint256 rawAmount = collateral.calcTransferredBalance();
-        require(rawAmount != 0, "A=0"); // Amount Is Zero
+        require(asset.isEnabled, "ENA"); // the token is temporarily not ENAbled
+        require(collateral.isEnabled, "ENA"); // the token is temporarily not ENAbled
         uint96 wadAmount = collateral.toWad(rawAmount);
-
         subAccount.collateral += wadAmount;
 
         emit DepositCollateral(subAccountId, decoded.account, decoded.collateralId, rawAmount, wadAmount);
@@ -67,18 +70,23 @@ contract Account is Storage {
 
         Asset storage asset = _storage.assets[decoded.assetId];
         Asset storage collateral = _storage.assets[decoded.collateralId];
+        require(asset.isEnabled, "ENA"); // the token is temporarily not ENAbled
+        require(collateral.isEnabled, "ENA"); // the token is temporarily not ENAbled
         SubAccount storage subAccount = _storage.accounts[subAccountId];
         assetPrice = LibReferenceOracle.checkPrice(asset, assetPrice);
         collateralPrice = LibReferenceOracle.checkPrice(collateral, collateralPrice);
 
         // fee & funding
-        uint96 feeUsd = _getFundingFeeUsd(subAccount, asset, decoded.isLong);
+        uint96 feeUsd = _getFundingFeeUsd(subAccount, asset, decoded.isLong, assetPrice);
+        if (subAccount.size > 0) {
+            _updateEntryFunding(subAccount, asset, decoded.isLong);
+        }
         {
-            subAccount.entryFunding = _getCumulativeFunding(asset, decoded.isLong);
             uint96 feeCollateral = uint256(feeUsd).wdiv(collateralPrice).safeUint96();
-            require(subAccount.collateral >= feeCollateral, "Fee"); // remaining collateral can not pay FEE
+            require(subAccount.collateral >= feeCollateral, "FEE"); // remaining collateral can not pay FEE
             subAccount.collateral -= feeCollateral;
             collateral.collectedFee += feeCollateral;
+            collateral.spotLiquidity += feeCollateral;
         }
         // withdraw
         uint96 wadAmount = collateral.toWad(rawAmount);
@@ -90,15 +98,16 @@ contract Account is Storage {
         emit WithdrawCollateral(subAccountId, decoded.account, decoded.collateralId, rawAmount, wadAmount);
     }
 
-    // Trader can withdraw all collateral only when position = 0
-    function withdrawAllCollateral(bytes32 subAccountId) external {
+    function withdrawAllCollateral(bytes32 subAccountId) external onlyOrderBook {
         LibSubAccount.DecodedSubAccountId memory decoded = subAccountId.decodeSubAccountId();
-        require(msg.sender == decoded.account || msg.sender == _storage.orderBook, "Snd"); // SeNDer is not authorized
         SubAccount storage subAccount = _storage.accounts[subAccountId];
         require(subAccount.size == 0, "S>0"); // position Size should be Zero
         require(subAccount.collateral > 0, "C=0"); // Collateral Is Zero
 
+        Asset storage asset = _storage.assets[decoded.assetId];
         Asset storage collateral = _storage.assets[decoded.collateralId];
+        require(asset.isEnabled, "ENA"); // the token is temporarily not ENAbled
+        require(collateral.isEnabled, "ENA"); // the token is temporarily not ENAbled
         uint96 wadAmount = subAccount.collateral;
         uint256 rawAmount = collateral.toRaw(wadAmount);
         subAccount.collateral = 0;
@@ -124,7 +133,7 @@ contract Account is Storage {
         if (
             hasProfit &&
             _blockTimestamp() < subAccount.lastIncreasedTime + asset.minProfitTime &&
-            priceDelta < uint256(subAccount.entryPrice).wmul(asset.minProfitRate).safeUint96()
+            priceDelta < uint256(subAccount.entryPrice).rmul(asset.minProfitRate).safeUint96()
         ) {
             hasProfit = false;
             return (false, 0);
@@ -186,19 +195,26 @@ contract Account is Storage {
         uint96 amount,
         uint96 assetPrice
     ) internal view returns (uint96) {
-        return _getFundingFeeUsd(subAccount, asset, isLong) + _getPositionFeeUsd(asset, amount, assetPrice);
+        return _getFundingFeeUsd(subAccount, asset, isLong, assetPrice) + _getPositionFeeUsd(asset, amount, assetPrice);
     }
 
     function _getFundingFeeUsd(
         SubAccount storage subAccount,
         Asset storage asset,
-        bool isLong
+        bool isLong,
+        uint96 assetPrice
     ) internal view returns (uint96) {
         if (subAccount.size == 0) {
             return 0;
         }
-        uint128 cumulativeFunding = _getCumulativeFunding(asset, isLong);
-        return uint256(cumulativeFunding - subAccount.entryFunding).wmul(subAccount.size).safeUint96();
+        uint256 cumulativeFunding;
+        if (isLong) {
+            cumulativeFunding = asset.longCumulativeFundingRate - subAccount.entryFunding;
+            cumulativeFunding = cumulativeFunding.wmul(assetPrice);
+        } else {
+            cumulativeFunding = asset.shortCumulativeFunding - subAccount.entryFunding;
+        }
+        return cumulativeFunding.wmul(subAccount.size).safeUint96();
     }
 
     function _getPositionFeeUsd(
@@ -206,14 +222,20 @@ contract Account is Storage {
         uint96 amount,
         uint96 assetPrice
     ) internal view returns (uint96) {
-        if (amount == 0) {
-            return 0;
-        }
         uint256 feeUsd = ((uint256(assetPrice) * uint256(asset.positionFeeRate)) * uint256(amount)) / 1e5 / 1e18;
         return feeUsd.safeUint96();
     }
 
-    function _getCumulativeFunding(Asset storage asset, bool isLong) internal view returns (uint128) {
-        return isLong ? asset.longCumulativeFunding : _storage.shortCumulativeFunding;
+    // note: you can skip this function if newPositionSize > 0
+    function _updateEntryFunding(
+        SubAccount storage subAccount,
+        Asset storage asset,
+        bool isLong
+    ) internal {
+        if (isLong) {
+            subAccount.entryFunding = asset.longCumulativeFundingRate;
+        } else {
+            subAccount.entryFunding = asset.shortCumulativeFunding;
+        }
     }
 }

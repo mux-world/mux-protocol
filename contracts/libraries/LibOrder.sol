@@ -22,14 +22,14 @@ library LibOrder {
         uint64 orderId,
         bytes32[3] memory order
     ) internal {
-        require(!contains(list, orderId), "Dup"); // already seen this orderId
+        require(!contains(list, orderId), "DUP"); // already seen this orderId
         list._orderIds.push(orderId);
         // The value is stored at length-1, but we add 1 to all indexes
         // and use 0 as a sentinel value
         uint256 enumIndex = list._orderIds.length;
-        require(enumIndex <= type(uint64).max, "O64");
+        require(enumIndex <= type(uint64).max, "O64"); // Overflow uint64
         // order data[1] SHOULD reserve lower 64bits for enumIndex
-        require((order[1] & ENUM_INDEX_BITS) == 0, "O1f");
+        require((order[1] & ENUM_INDEX_BITS) == 0, "O1F"); // bad Order[1] Field
         order[1] = bytes32(uint256(order[1]) | uint256(enumIndex));
         list._orders[orderId] = order;
     }
@@ -37,7 +37,7 @@ library LibOrder {
     function remove(OrderList storage list, uint64 orderId) internal {
         bytes32[3] storage orderToRemove = list._orders[orderId];
         uint64 enumIndexToRemove = uint64(uint256(orderToRemove[1]));
-        require(enumIndexToRemove != 0, "Oid"); // orderId is not found
+        require(enumIndexToRemove != 0, "OID"); // orderId is not found
         // swap and pop
         uint256 indexToRemove = enumIndexToRemove - 1;
         uint256 lastIndex = list._orderIds.length - 1;
@@ -64,7 +64,7 @@ library LibOrder {
     }
 
     function at(OrderList storage list, uint256 index) internal view returns (bytes32[3] memory order) {
-        require(index < list._orderIds.length, "Idx");
+        require(index < list._orderIds.length, "IDX"); // InDex overflow
         uint64 orderId = list._orderIds[index];
         order = list._orders[orderId];
     }
@@ -81,10 +81,6 @@ library LibOrder {
         return address(bytes20(orderData[0]));
     }
 
-    function getEnumIndex(bytes32[3] memory orderData) internal pure returns (uint64) {
-        return uint64(uint256(orderData[1]));
-    }
-
     // check Types.PositionOrder for schema
     function encodePositionOrder(
         uint64 orderId,
@@ -95,7 +91,7 @@ library LibOrder {
         uint8 profitTokenId,
         uint8 flags
     ) internal pure returns (bytes32[3] memory data) {
-        require((subAccountId & LibSubAccount.SUB_ACCOUNT_ID_FORBIDDEN_BITS) == 0, "Aid");
+        require((subAccountId & LibSubAccount.SUB_ACCOUNT_ID_FORBIDDEN_BITS) == 0, "AID"); // bad subAccount ID
         data[0] = subAccountId | bytes32(uint256(orderId) << 8) | bytes32(uint256(OrderType.PositionOrder));
         data[1] = bytes32((uint256(size) << 160) | (uint256(profitTokenId) << 152) | (uint256(flags) << 144));
         data[2] = bytes32((uint256(price) << 160) | (uint256(collateral) << 64));
@@ -117,13 +113,19 @@ library LibOrder {
         address account,
         uint8 assetId,
         uint96 amount,
-        bool isAdding
+        bool isAdding,
+        uint32 placeOrderTime
     ) internal pure returns (bytes32[3] memory data) {
         uint8 flags = isAdding ? 1 : 0;
         data[0] = bytes32(
             (uint256(uint160(account)) << 96) | (uint256(orderId) << 8) | uint256(OrderType.LiquidityOrder)
         );
-        data[1] = bytes32((uint256(amount) << 160) | (uint256(assetId) << 152) | (uint256(flags) << 144));
+        data[1] = bytes32(
+            (uint256(amount) << 160) |
+                (uint256(assetId) << 152) |
+                (uint256(flags) << 144) |
+                (uint256(placeOrderTime) << 64)
+        );
     }
 
     // check Types.LiquidityOrder for schema
@@ -133,6 +135,7 @@ library LibOrder {
         order.assetId = uint8(bytes1(data[1] << 96));
         uint8 flags = uint8(bytes1(data[1] << 104));
         order.isAdding = flags > 0;
+        order.placeOrderTime = uint32(bytes4(data[1] << 160));
     }
 
     // check Types.WithdrawalOrder for schema
@@ -143,7 +146,7 @@ library LibOrder {
         uint8 profitTokenId,
         bool isProfit
     ) internal pure returns (bytes32[3] memory data) {
-        require((subAccountId & LibSubAccount.SUB_ACCOUNT_ID_FORBIDDEN_BITS) == 0, "Aid");
+        require((subAccountId & LibSubAccount.SUB_ACCOUNT_ID_FORBIDDEN_BITS) == 0, "AID"); // bad subAccount ID
         uint8 flags = isProfit ? 1 : 0;
         data[0] = subAccountId | bytes32(uint256(orderId) << 8) | bytes32(uint256(OrderType.WithdrawalOrder));
         data[1] = bytes32((uint256(amount) << 160) | (uint256(profitTokenId) << 152) | (uint256(flags) << 144));

@@ -7,7 +7,7 @@ import "../interfaces/IModule.sol";
 import "./Storage.sol";
 import "./ModuleCall.sol";
 
-contract Admin is Storage, Initializable, SafeOwnable, ModuleCall {
+contract Admin is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall {
     using AddressUpgradeable for address;
 
     event AddExternalAccessor(address indexed accessor);
@@ -18,11 +18,13 @@ contract Admin is Storage, Initializable, SafeOwnable, ModuleCall {
     event UninstallModule(bytes32 indexed moduleId, address module, bytes32[] methods);
 
     function addExternalAccessor(address accessor) external onlyOwner {
+        require(!_externalAccessors[accessor], "DEA"); // duplicated external accessor
         _externalAccessors[accessor] = true;
         emit AddExternalAccessor(accessor);
     }
 
     function removeExternalAccessor(address accessor) external onlyOwner {
+        require(_externalAccessors[accessor], "ANE"); // accessor not exists
         _externalAccessors[accessor] = false;
         emit RemoveExternalAccessor(accessor);
     }
@@ -74,17 +76,13 @@ contract Admin is Storage, Initializable, SafeOwnable, ModuleCall {
         emit SetDexWeight(dexId, dexWeight);
     }
 
-    // /**
-    //  * @notice Add a connector contract for given dex. The connector contracts implements a standard set of functions to adapt to the calls of target dex contract.
-    //  *         It works as a plugin and can be upgrade and replace by administrator.
-    //  *         See `IConnector.sol` for details.
-    //  * @param dexId The id of the dex.
-    //  * @param connector The address of connector contract.
-    //  *                  See 'contracts/liquidity/connectors' for more.
-    //  * @param dexContext The bytes array contains customized abi-encoded data to help calling the dex methods.
-    //  *
-    //  */
-    function installModule(address module) external onlyOwner {
+    /**
+     * @notice Install a generic module. A generic module implements basic method to extend 
+               the abilities of `LiquidityManager`, eg: transfer funds and transfer across chain.
+               The module must implement the `IModule` interface (contracts/interfaces/IModule.sol).
+     * @param module The address of the module to install.
+     */
+    function installGenericModule(address module) external onlyOwner {
         require(module.isContract(), "MNC"); // the module is not a contract
         (
             bytes32 moduleId,
@@ -109,6 +107,11 @@ contract Admin is Storage, Initializable, SafeOwnable, ModuleCall {
         emit InstallModule(moduleId, module, methodIds, selectors);
     }
 
+    /**
+     * @notice Install a dex module. A dex module implements interfaces to operate the dex (add/removeLiquidity or farming).
+     * @param dexId The id of the dex.
+     * @param module The address of the module to install.
+     */
     function installDexModule(uint8 dexId, address module) external onlyOwner {
         require(dexId != 0 && dexId < _dexSpotConfigs.length, "LST"); // the asset is not LiSTed
         require(module.isContract(), "MNC"); // the module is not a contract
@@ -136,6 +139,10 @@ contract Admin is Storage, Initializable, SafeOwnable, ModuleCall {
         emit InstallModule(moduleId, module, methodIds, selectors);
     }
 
+    /**
+     * @notice Uninstall a generic module or a dex module.
+     * @param moduleId The id of the module to install.
+     */
     function uninstallModule(bytes32 moduleId) external onlyOwner {
         require(_hasModule(moduleId), "MNI"); // module is not installed
         ModuleInfo storage moduleInfo = _moduleInfos[moduleId];

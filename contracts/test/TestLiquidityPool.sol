@@ -42,9 +42,28 @@ contract TestLiquidityPoolHop2 is LiquidityPoolHop2, TestLiquidityPoolInject {
         uint32 baseRate8H, // 1e5
         uint32 limitRate8H, // 1e5
         uint32 utilization, // 1e5
-        uint32 timespan // 1e0
+        uint32 timeSpan // 1e0
     ) external pure returns (uint32 newFundingRate, uint128 cumulativeFunding) {
-        return _getFundingRate(baseRate8H, limitRate8H, utilization, timespan);
+        return _getFundingRate(baseRate8H, limitRate8H, utilization, timeSpan);
+    }
+
+    function getLiquidityFeeRatePublic(
+        uint96 currentAssetValue,
+        uint96 targetAssetValue,
+        bool isAdd,
+        uint96 deltaValue,
+        uint32 liquidityBaseFeeRate, // 1e5
+        uint32 liquidityDynamicFeeRate // 1e5
+    ) external pure returns (uint32 liquidityFee) {
+        return
+            _getLiquidityFeeRate(
+                currentAssetValue,
+                targetAssetValue,
+                isAdd,
+                deltaValue,
+                liquidityBaseFeeRate,
+                liquidityDynamicFeeRate
+            );
     }
 }
 
@@ -56,6 +75,15 @@ contract TestLiquidityPool is LiquidityPoolHop1, LiquidityPoolHop2 {
         uint32 baseRate8H, // 1e5
         uint32 limitRate8H, // 1e5
         uint32 utilization, // 1e5
-        uint32 timespan // 1e0
+        uint32 timeSpan // 1e0
     ) external pure returns (uint32 newFundingRate, uint128 cumulativeFunding) {}
+
+    function getLiquidityFeeRatePublic(
+        uint96 currentAssetValue,
+        uint96 targetAssetValue,
+        bool isAdd,
+        uint96 deltaValue,
+        uint32 liquidityBaseFeeRate, // 1e5
+        uint32 liquidityDynamicFeeRate // 1e5
+    ) external pure returns (uint32 liquidityFee) {}
 }

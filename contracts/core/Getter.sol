@@ -25,20 +25,26 @@ contract Getter is Storage {
         external
         view
         returns (
-            // [0] shortCumulativeFunding
-            uint128[1] memory u128s,
             // [0] shortFundingBaseRate8H
             // [1] shortFundingLimitRate8H
             // [2] lastFundingTime
             // [3] fundingInterval
-            uint32[4] memory u32s
+            // [4] liquidityBaseFeeRate
+            // [5] liquidityDynamicFeeRate
+            uint32[6] memory u32s,
+            // [0] mlpPriceLowerBound
+            // [1] mlpPriceUpperBound
+            uint96[2] memory u96s
         )
     {
         u32s[0] = _storage.shortFundingBaseRate8H;
         u32s[1] = _storage.shortFundingLimitRate8H;
-        u128s[0] = _storage.shortCumulativeFunding;
         u32s[2] = _storage.lastFundingTime;
         u32s[3] = _storage.fundingInterval;
+        u32s[4] = _storage.liquidityBaseFeeRate;
+        u32s[5] = _storage.liquidityDynamicFeeRate;
+        u96s[0] = _storage.mlpPriceLowerBound;
+        u96s[1] = _storage.mlpPriceUpperBound;
     }
 
     function getSubAccount(bytes32 subAccountId)

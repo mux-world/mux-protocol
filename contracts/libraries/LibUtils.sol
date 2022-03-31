@@ -10,11 +10,11 @@ library LibUtils {
         }
     }
 
-    function toAddress(bytes32 val) internal pure returns (address) {
-        return address(bytes20(val));
-    }
+    // function toAddress(bytes32 val) internal pure returns (address) {
+    //     return address(bytes20(val));
+    // }
 
-    function toBytes32(address val) internal pure returns (bytes32) {
-        return bytes32(bytes20(val));
-    }
+    // function toBytes32(address val) internal pure returns (bytes32) {
+    //     return bytes32(bytes20(val));
+    // }
 }

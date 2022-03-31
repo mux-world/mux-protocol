@@ -8,8 +8,9 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "../../libraries/LibUtils.sol";
 import "./Module.sol";
 
-import "hardhat/console.sol";
-
+/**
+ * @notice A module to provide liquidity to uniswap-v2-like dex then farm on some project with the lpToken.
+ */
 contract UniFarmModule is Module {
     using Address for address;
     using SafeERC20 for IERC20;
@@ -185,7 +186,7 @@ contract UniFarmModule is Module {
             uint256 k = uint256(_readState(0));
             (uint256 reserveA, uint256 reserveB) = _getReserves();
             feeAmounts[0] = (reserveA * shareAmount) / shareTotalSupply - _sqrt((k / reserveB) * reserveA);
-            feeAmounts[1] = (reserveB / reserveA) * feeAmounts[0];
+            feeAmounts[1] = (reserveB * feeAmounts[0]) / reserveA;
         }
     }
 
@@ -217,29 +218,6 @@ contract UniFarmModule is Module {
         shareAmount = shareAmountA >= shareAmountB ? shareAmountA : shareAmountB;
     }
 
-    function _addLiquidity(
-        uint256 amountADesired,
-        uint256 amountBDesired,
-        uint256 amountAMin,
-        uint256 amountBMin
-    ) internal virtual returns (uint256 amountA, uint256 amountB) {
-        (uint256 reserveA, uint256 reserveB) = _getReserves();
-        if (reserveA == 0 && reserveB == 0) {
-            (amountA, amountB) = (amountADesired, amountBDesired);
-        } else {
-            uint256 amountBOptimal = _quote(amountADesired, reserveA, reserveB);
-            if (amountBOptimal <= amountBDesired) {
-                require(amountBOptimal >= amountBMin, "UniswapV2Router: INSUFFICIENT_B_AMOUNT");
-                (amountA, amountB) = (amountADesired, amountBOptimal);
-            } else {
-                uint256 amountAOptimal = _quote(amountBDesired, reserveB, reserveA);
-                assert(amountAOptimal <= amountADesired);
-                require(amountAOptimal >= amountAMin, "UniswapV2Router: INSUFFICIENT_A_AMOUNT");
-                (amountA, amountB) = (amountAOptimal, amountBDesired);
-            }
-        }
-    }
-
     function _getReserves() internal view returns (uint256 reserveA, uint256 reserveB) {
         (address token0, ) = _sortTokens();
         (uint256 reserve0, uint256 reserve1, ) = IUniswapV2Pair(pair).getReserves();
@@ -250,16 +228,6 @@ contract UniFarmModule is Module {
         require(tokenA != tokenB, "UniswapV2Library: IDENTICAL_ADDRESSES");
         (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
         require(token0 != address(0), "UniswapV2Library: ZERO_ADDRESS");
-    }
-
-    function _quote(
-        uint256 amountA,
-        uint256 reserveA,
-        uint256 reserveB
-    ) internal pure returns (uint256 amountB) {
-        require(amountA > 0, "UniswapV2Library: INSUFFICIENT_AMOUNT");
-        require(reserveA > 0 && reserveB > 0, "UniswapV2Library: INSUFFICIENT_LIQUIDITY");
-        amountB = (amountA * reserveB) / reserveA;
     }
 
     function _sqrt(uint256 y) internal pure returns (uint256 z) {

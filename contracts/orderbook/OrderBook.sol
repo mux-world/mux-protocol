@@ -1,19 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.10;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-
-import "../interfaces/ILiquidityPool.sol";
-import "../interfaces/IWETH9.sol";
-import "../libraries/LibSubAccount.sol";
-import "../libraries/LibOrder.sol";
-
 import "./Types.sol";
 import "./Admin.sol";
+import "../libraries/LibSubAccount.sol";
 
-contract OrderBook is Initializable, Admin {
+contract OrderBook is Storage, Admin {
     using LibSubAccount for bytes32;
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using LibOrder for LibOrder.OrderList;
@@ -21,12 +14,6 @@ contract OrderBook is Initializable, Admin {
     using LibOrder for PositionOrder;
     using LibOrder for LiquidityOrder;
     using LibOrder for WithdrawalOrder;
-
-    ILiquidityPool internal _pool;
-    uint64 internal _nextOrderId;
-    LibOrder.OrderList internal _orders;
-    IERC20Upgradeable internal _mlp;
-    IWETH internal _weth;
 
     event NewPositionOrder(
         bytes32 indexed subAccountId,
@@ -67,7 +54,7 @@ contract OrderBook is Initializable, Admin {
     }
 
     receive() external payable {
-        require(msg.sender == address(_weth), "Rcv"); // we only Receive eth from WETH contract
+        require(msg.sender == address(_weth), "RCV"); // we only Receive eth from WETH contract
     }
 
     function getOrderCount() external view returns (uint256) {
@@ -95,6 +82,20 @@ contract OrderBook is Initializable, Admin {
         }
     }
 
+    /**
+     * @dev   Open/close position. called by Trader
+     *
+     * @param subAccountId       sub account id. see LibSubAccount.decodeSubAccountId
+     * @param collateralAmount   deposit collateral before open; or withdraw collateral after close. decimals = erc20.decimals
+     * @param size               position size. decimals = 18
+     * @param price              limit price. decimals = 18
+     * @param profitTokenId      specify the profitable asset.id when closing a position and making a profit.
+     *                           take no effect when opening a position or loss.
+     * @param flags              a bitset of LibOrder.POSITION_*
+     *                           POSITION_INCREASING               1 for openPosition, 0 for closePosition
+     *                           POSITION_MARKET_ORDER             ignore limitPrice
+     *                           POSITION_WITHDRAW_ALL_IF_EMPTY    auto withdraw all if position.size == 0
+     */
     function placePositionOrder(
         bytes32 subAccountId,
         uint96 collateralAmount,
@@ -102,9 +103,9 @@ contract OrderBook is Initializable, Admin {
         uint96 price,
         uint8 profitTokenId,
         uint8 flags
-    ) external payable onlyNotPaused {
+    ) external payable {
         LibSubAccount.DecodedSubAccountId memory account = subAccountId.decodeSubAccountId();
-        require(account.account == msg.sender, "Snd"); // SeNDer is not authorized
+        require(account.account == msg.sender, "SND"); // SeNDer is not authorized
         require(size != 0, "S=0"); // order Size Is Zero
 
         if (collateralAmount > 0 && (flags & LibOrder.POSITION_INCREASING != 0)) {
@@ -126,11 +127,18 @@ contract OrderBook is Initializable, Admin {
         emit NewPositionOrder(subAccountId, orderId, collateralAmount, size, price, profitTokenId, flags);
     }
 
+    /**
+     * @dev   Add/remove liquidity. called by Liquidity Provider
+     *
+     * @param assetId   asset.id that added/removed to
+     * @param amount    asset token amount. decimals = erc20.decimals
+     * @param isAdding  true for add liquidity, false for remove liquidity
+     */
     function placeLiquidityOrder(
         uint8 assetId,
         uint96 amount,
         bool isAdding
-    ) external payable onlyNotPaused {
+    ) external payable {
         require(amount != 0, "A=0"); // Amount Is Zero
         address account = msg.sender;
         if (isAdding) {
@@ -140,20 +148,36 @@ contract OrderBook is Initializable, Admin {
             _mlp.safeTransferFrom(msg.sender, address(this), amount);
         }
         uint64 orderId = _nextOrderId++;
-        bytes32[3] memory data = LibOrder.encodeLiquidityOrder(orderId, account, assetId, amount, isAdding);
+        bytes32[3] memory data = LibOrder.encodeLiquidityOrder(
+            orderId,
+            account,
+            assetId,
+            amount,
+            isAdding,
+            _blockTimestamp()
+        );
         _orders.add(orderId, data);
 
         emit NewLiquidityOrder(account, orderId, assetId, amount, isAdding);
     }
 
+    /**
+     * @dev   Withdraw collateral/profit. called by Trader
+     *
+     * @param subAccountId       sub account id. see LibSubAccount.decodeSubAccountId
+     * @param amount             collateral or profit asset amount. decimals = erc20.decimals
+     * @param profitTokenId      specify the profitable asset.id
+     * @param isProfit           true for withdraw profit. false for withdraw collateral
+     */
     function placeWithdrawalOrder(
         bytes32 subAccountId,
         uint96 amount,
         uint8 profitTokenId,
         bool isProfit
-    ) external onlyNotPaused {
+    ) external {
         address trader = subAccountId.getSubAccountOwner();
-        require(trader == msg.sender, "Snd"); // SeNDer is not authorized
+        require(trader == msg.sender, "SND"); // SeNDer is not authorized
+        require(amount != 0, "A=0"); // Amount Is Zero
 
         uint64 orderId = _nextOrderId++;
         bytes32[3] memory data = LibOrder.encodeWithdrawalOrder(orderId, subAccountId, amount, profitTokenId, isProfit);
@@ -162,16 +186,25 @@ contract OrderBook is Initializable, Admin {
         emit NewWithdrawalOrder(subAccountId, orderId, amount, profitTokenId, isProfit);
     }
 
+    /**
+     * @dev   Open/close a position. called by Broker
+     *
+     * @param orderId           order id
+     * @param collateralPrice   collateral price. decimals = 18
+     * @param assetPrice        asset price. decimals = 18
+     * @param profitAssetPrice  profit asset price. decimals = 18
+     */
     function fillPositionOrder(
         uint64 orderId,
         uint96 collateralPrice,
         uint96 assetPrice,
         uint96 profitAssetPrice // only used when !isLong
     ) external onlyBroker {
-        require(_orders.contains(orderId), "Oid");
+        require(_orders.contains(orderId), "OID"); // can not find this OrderID
         bytes32[3] memory orderData = _orders.get(orderId);
+        _orders.remove(orderId);
         OrderType orderType = LibOrder.getOrderType(orderData);
-        require(orderType == OrderType.PositionOrder, "Typ"); // order TYPe mismatch
+        require(orderType == OrderType.PositionOrder, "TYP"); // order TYPe mismatch
 
         PositionOrder memory order = orderData.decodePositionOrder();
         if (!order.isMarketOrder()) {
@@ -184,16 +217,17 @@ contract OrderBook is Initializable, Admin {
             } else {
                 isLimitPriceOk = assetPrice >= order.price;
             }
-            require(isLimitPriceOk, "Lmt");
+            require(isLimitPriceOk, "LMT"); // LiMiTed by limitPrice
         }
         if (order.isIncreasing()) {
             // auto deposit
-            if (order.collateral > 0) {
+            uint96 collateralAmount = order.collateral;
+            if (collateralAmount > 0) {
                 IERC20Upgradeable collateral = IERC20Upgradeable(
                     _pool.getAssetAddress(order.subAccountId.getSubAccountCollateralId())
                 );
-                collateral.safeTransfer(address(_pool), order.collateral);
-                _pool.depositCollateral(order.subAccountId);
+                collateral.safeTransfer(address(_pool), collateralAmount);
+                _pool.depositCollateral(order.subAccountId, collateralAmount);
             }
             _pool.openPosition(order.subAccountId, order.size, collateralPrice, assetPrice);
         } else {
@@ -207,8 +241,9 @@ contract OrderBook is Initializable, Admin {
             );
 
             // auto withdraw
-            if (order.collateral > 0) {
-                _pool.withdrawCollateral(order.subAccountId, order.collateral, collateralPrice, assetPrice);
+            uint96 collateralAmount = order.collateral;
+            if (collateralAmount > 0) {
+                _pool.withdrawCollateral(order.subAccountId, collateralAmount, collateralPrice, assetPrice);
             }
             if (order.isWithdrawIfEmpty()) {
                 (uint96 collateral, uint96 size, , , ) = _pool.getSubAccount(order.subAccountId);
@@ -219,44 +254,80 @@ contract OrderBook is Initializable, Admin {
         }
 
         emit FillOrder(orderId, orderType, orderData);
-        _orders.remove(orderId);
     }
 
+    /**
+     * @dev   Add/remove liquidity. called by Broker
+     *
+     * @param orderId           order id
+     * @param assetPrice        token price that added/removed to
+     * @param mlpPrice          mlp price
+     * @param currentAssetValue liquidity USD value of a single asset
+     * @param targetAssetValue  weight / Σ weight * total liquidity USD value
+     */
     function fillLiquidityOrder(
         uint64 orderId,
         uint96 assetPrice,
         uint96 mlpPrice,
-        uint32 mlpFeeRate
+        uint96 currentAssetValue,
+        uint96 targetAssetValue
     ) external onlyBroker {
-        require(_orders.contains(orderId), "Oid");
+        require(_orders.contains(orderId), "OID"); // can not find this OrderID
         bytes32[3] memory orderData = _orders.get(orderId);
+        _orders.remove(orderId);
         OrderType orderType = LibOrder.getOrderType(orderData);
-        require(orderType == OrderType.LiquidityOrder, "Typ"); // order TYPe mismatch
+        require(orderType == OrderType.LiquidityOrder, "TYP"); // order TYPe mismatch
 
         LiquidityOrder memory order = orderData.decodeLiquidityOrder();
+        require(_blockTimestamp() >= order.placeOrderTime + liquidityLockPeriod, "LCK"); // mlp token is LoCKed
+        uint96 amount = order.amount;
         if (order.isAdding) {
             IERC20Upgradeable collateral = IERC20Upgradeable(_pool.getAssetAddress(order.assetId));
-            collateral.safeTransfer(address(_pool), order.amount);
-            _pool.addLiquidity(order.account, order.assetId, assetPrice, mlpPrice, mlpFeeRate);
+            collateral.safeTransfer(address(_pool), amount);
+            _pool.addLiquidity(
+                order.account,
+                order.assetId,
+                amount,
+                assetPrice,
+                mlpPrice,
+                currentAssetValue,
+                targetAssetValue
+            );
         } else {
-            _mlp.safeTransfer(address(_pool), order.amount);
-            _pool.removeLiquidity(order.account, order.amount, order.assetId, assetPrice, mlpPrice, mlpFeeRate);
+            _mlp.safeTransfer(address(_pool), amount);
+            _pool.removeLiquidity(
+                order.account,
+                amount,
+                order.assetId,
+                assetPrice,
+                mlpPrice,
+                currentAssetValue,
+                targetAssetValue
+            );
         }
 
         emit FillOrder(orderId, orderType, orderData);
-        _orders.remove(orderId);
     }
 
+    /**
+     * @dev   Withdraw collateral/profit. called by Broker
+     *
+     * @param orderId           order id
+     * @param collateralPrice   collateral price. decimals = 18
+     * @param assetPrice        asset price. decimals = 18
+     * @param profitAssetPrice  profit asset price. decimals = 18
+     */
     function fillWithdrawalOrder(
         uint64 orderId,
         uint96 collateralPrice,
         uint96 assetPrice,
         uint96 profitAssetPrice // only used when !isLong
     ) external onlyBroker {
-        require(_orders.contains(orderId), "Oid");
+        require(_orders.contains(orderId), "OID"); // can not find this OrderID
         bytes32[3] memory orderData = _orders.get(orderId);
+        _orders.remove(orderId);
         OrderType orderType = LibOrder.getOrderType(orderData);
-        require(orderType == OrderType.WithdrawalOrder, "Typ"); // order TYPe mismatch
+        require(orderType == OrderType.WithdrawalOrder, "TYP"); // order TYPe mismatch
 
         WithdrawalOrder memory order = orderData.decodeWithdrawalOrder();
         if (order.isProfit) {
@@ -273,35 +344,44 @@ contract OrderBook is Initializable, Admin {
         }
 
         emit FillOrder(orderId, orderType, orderData);
-        _orders.remove(orderId);
     }
 
+    /**
+     * @notice Cancel an order
+     */
     function cancelOrder(uint64 orderId) external {
-        require(_orders.contains(orderId), "Oid");
+        require(_orders.contains(orderId), "OID"); // can not find this OrderID
         bytes32[3] memory orderData = _orders.get(orderId);
+        _orders.remove(orderId);
         address account = orderData.getOrderOwner();
-        require(msg.sender == account, "Snd"); // SeNDer is not authorized
+        require(msg.sender == account, "SND"); // SeNDer is not authorized
 
         OrderType orderType = LibOrder.getOrderType(orderData);
         if (orderType == OrderType.PositionOrder) {
             PositionOrder memory order = orderData.decodePositionOrder();
             if (order.isIncreasing() && order.collateral > 0) {
-                IERC20Upgradeable collateral = IERC20Upgradeable(
-                    _pool.getAssetAddress(order.subAccountId.getSubAccountCollateralId())
-                );
-                collateral.safeTransfer(account, order.collateral);
+                address collateralAddress = _pool.getAssetAddress(order.subAccountId.getSubAccountCollateralId());
+                _transferOut(collateralAddress, account, order.collateral);
             }
         } else if (orderType == OrderType.LiquidityOrder) {
             LiquidityOrder memory order = orderData.decodeLiquidityOrder();
             if (order.isAdding) {
-                IERC20Upgradeable collateral = IERC20Upgradeable(_pool.getAssetAddress(order.assetId));
-                collateral.safeTransfer(account, order.amount);
+                address collateralAddress = _pool.getAssetAddress(order.assetId);
+                _transferOut(collateralAddress, account, order.amount);
             } else {
                 _mlp.safeTransfer(account, order.amount);
             }
         }
-        _orders.remove(orderId);
         emit CancelOrder(orderId, LibOrder.getOrderType(orderData), orderData);
+    }
+
+    /**
+     * @notice Trader can withdraw all collateral only when position = 0
+     */
+    function withdrawAllCollateral(bytes32 subAccountId) external {
+        LibSubAccount.DecodedSubAccountId memory account = subAccountId.decodeSubAccountId();
+        require(account.account == msg.sender, "SND"); // SeNDer is not authorized
+        _pool.withdrawAllCollateral(subAccountId);
     }
 
     /**
@@ -310,13 +390,15 @@ contract OrderBook is Initializable, Admin {
      * @param  stableUtilization    Stable coin utilization
      * @param  unstableTokenIds     All unstable Asset id(s) MUST be passed in order. ex: 1, 2, 5, 6, ...
      * @param  unstableUtilizations Unstable Asset utilizations
+     * @param  unstablePrices       Unstable Asset prices
      */
     function updateFundingState(
         uint32 stableUtilization, // 1e5
         uint8[] calldata unstableTokenIds,
-        uint32[] calldata unstableUtilizations // 1e5
+        uint32[] calldata unstableUtilizations, // 1e5
+        uint96[] calldata unstablePrices
     ) external onlyBroker {
-        _pool.updateFundingState(stableUtilization, unstableTokenIds, unstableUtilizations);
+        _pool.updateFundingState(stableUtilization, unstableTokenIds, unstableUtilizations, unstablePrices);
     }
 
     /**
@@ -324,11 +406,11 @@ contract OrderBook is Initializable, Admin {
      */
     function depositCollateral(bytes32 subAccountId, uint256 collateralAmount) external payable {
         LibSubAccount.DecodedSubAccountId memory account = subAccountId.decodeSubAccountId();
-        require(account.account == msg.sender, "Snd"); // SeNDer is not authorized
+        require(account.account == msg.sender, "SND"); // SeNDer is not authorized
         require(collateralAmount != 0, "C=0"); // Collateral Is Zero
         address collateralAddress = _pool.getAssetAddress(account.collateralId);
         _transferIn(collateralAddress, address(_pool), collateralAmount);
-        _pool.depositCollateral(subAccountId);
+        _pool.depositCollateral(subAccountId, collateralAmount);
     }
 
     function liquidate(
@@ -339,9 +421,13 @@ contract OrderBook is Initializable, Admin {
         uint96 profitAssetPrice // only used when !isLong
     ) external onlyBroker {
         _pool.liquidate(subAccountId, profitAssetId, collateralPrice, assetPrice, profitAssetPrice);
+        // auto withdraw
+        (uint96 collateral, uint96 size, , , ) = _pool.getSubAccount(subAccountId);
+        if (collateral > 0) {
+            _pool.withdrawAllCollateral(subAccountId);
+        }
     }
 
-    // TODO: new order type
     function redeemMuxToken(uint8 tokenId, uint96 muxTokenAmount) external {
         Asset memory asset = _pool.getAssetInfo(tokenId);
         _transferIn(asset.muxTokenAddress, address(_pool), muxTokenAmount);
@@ -354,7 +440,7 @@ contract OrderBook is Initializable, Admin {
         uint256 rawAmount
     ) private {
         if (tokenAddress == address(_weth)) {
-            require(msg.value > 0 && msg.value == rawAmount, "Val");
+            require(msg.value > 0 && msg.value == rawAmount, "VAL"); // transaction VALue SHOULD equal to rawAmount
             _weth.deposit{ value: rawAmount }();
             if (recipient != address(this)) {
                 _weth.transfer(recipient, rawAmount);
@@ -364,5 +450,20 @@ contract OrderBook is Initializable, Admin {
         }
     }
 
-    bytes32[50] _gap;
+    function _transferOut(
+        address tokenAddress,
+        address recipient,
+        uint256 rawAmount
+    ) internal {
+        if (tokenAddress == address(_weth)) {
+            _weth.withdraw(rawAmount);
+            AddressUpgradeable.sendValue(payable(recipient), rawAmount);
+        } else {
+            IERC20Upgradeable(tokenAddress).safeTransfer(recipient, rawAmount);
+        }
+    }
+
+    function _blockTimestamp() internal view virtual returns (uint32) {
+        return uint32(block.timestamp);
+    }
 }
