@@ -811,26 +811,6 @@ describe("Trade", () => {
       await pool.redeemMuxToken(user0.address, 1, toWei("0.49"))
       expect(await asset1.balanceOf(user0.address)).to.equal(toWei("0.49"))
     })
-    it("remove liquidity in muxUsd", async () => {
-      const current = toWei("29700")
-      const target = toWei("29700")
-
-      // remove liq
-      await pool.removeLiquidity(user0.address, toWei("1"), 0, toWei("1"), toWei("1"), current, target)
-      expect(await muxAsset0.balanceOf(user0.address)).to.equal(toWei("1"))
-      expect(await asset0.balanceOf(user0.address)).to.equal(toWei("0"))
-      expect(await asset2.balanceOf(user0.address)).to.equal(toWei("0"))
-
-      // add liq
-      await asset0.mint(pool.address, toWei("1"))
-      await pool.addLiquidity(user0.address, 0, toWei("1"), toWei("1"), toWei("1"), current, target)
-      expect(await asset0.balanceOf(pool.address)).to.equal(toWei("1"))
-
-      // redeem muxUsd
-      await pool.redeemMuxToken(user0.address, 0, toWei("1"))
-      expect(await asset0.balanceOf(user0.address)).to.equal(toWei("1"))
-    })
-
     it("close short, profit in muxUsd, and redeem muxUsd", async () => {
       const subAccountId = assembleSubAccountId(user0.address, 1, 1, false)
       const current = toWei("29700")

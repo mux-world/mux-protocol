@@ -112,18 +112,10 @@ contract Liquidity is Storage, Account {
         emit CollectedFee(tokenId, feeCollateral);
         wadAmount -= feeCollateral;
         // send token
-        uint96 spot = LibMath.min(wadAmount, token.spotLiquidity);
-        if (spot > 0) {
-            token.spotLiquidity -= spot; // already reserved fee
-            uint256 rawAmount = token.toRaw(spot);
-            token.transferOut(trader, rawAmount, _storage.weth);
-        }
-        // debt
-        uint96 muxTokenAmount = wadAmount - spot;
-        if (muxTokenAmount > 0) {
-            token.issueMuxToken(trader, uint256(muxTokenAmount));
-            emit IssueMuxToken(token.isStable ? 0 : token.id, token.isStable, muxTokenAmount);
-        }
+        require(wadAmount <= token.spotLiquidity, "LIQ"); // insufficient LIQuidity
+        token.spotLiquidity -= wadAmount; // already deduct fee
+        uint256 rawAmount = token.toRaw(wadAmount);
+        token.transferOut(trader, rawAmount, _storage.weth);
         emit RemoveLiquidity(trader, tokenId, tokenPrice, mlpPrice, mlpAmount, feeCollateral);
     }
 
