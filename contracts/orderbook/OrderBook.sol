@@ -112,10 +112,7 @@ contract OrderBook is Storage, Admin {
             // note: profitTokenId == 0 is also valid, this only partially protects the function from misuse
             require((flags & LibOrder.POSITION_INCREASING) == 0, "T!0"); // opening position does not need a Token id
         }
-        if (collateralAmount > 0 && ((flags & LibOrder.POSITION_INCREASING) != 0)) {
-            address collateralAddress = _pool.getAssetAddress(account.collateralId);
-            _transferIn(collateralAddress, address(this), collateralAmount);
-        }
+        // add order
         uint64 orderId = _nextOrderId++;
         bytes32[3] memory data = LibOrder.encodePositionOrder(
             orderId,
@@ -127,7 +124,11 @@ contract OrderBook is Storage, Admin {
             flags
         );
         _orders.add(orderId, data);
-
+        // fetch collateral
+        if (collateralAmount > 0 && ((flags & LibOrder.POSITION_INCREASING) != 0)) {
+            address collateralAddress = _pool.getAssetAddress(account.collateralId);
+            _transferIn(collateralAddress, address(this), collateralAmount);
+        }
         emit NewPositionOrder(subAccountId, orderId, collateralAmount, size, price, profitTokenId, flags);
     }
 
