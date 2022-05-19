@@ -181,11 +181,9 @@ contract Account is Storage {
         // break down "collateral_usd +/- pnl_usd >= threshold_usd>= 0"
         if (hasProfit) {
             return collateralUsd + pnlUsd >= thresholdUsd;
+        } else {
+            return collateralUsd >= thresholdUsd + pnlUsd;
         }
-        if (collateralUsd < pnlUsd) {
-            return false;
-        }
-        return collateralUsd - pnlUsd >= thresholdUsd;
     }
 
     function _getFeeUsd(
