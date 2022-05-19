@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../components/SafeOwnableUpgradeable.sol";
 import "../interfaces/ILiquidityPool.sol";
 import "../interfaces/IWETH9.sol";
+import "../interfaces/INativeUnwrapper.sol";
 import "../libraries/LibOrder.sol";
 
 contract Storage is Initializable, SafeOwnableUpgradeable {
@@ -17,5 +18,6 @@ contract Storage is Initializable, SafeOwnableUpgradeable {
     IERC20Upgradeable internal _mlp;
     IWETH internal _weth;
     uint32 public liquidityLockPeriod; // 1e0
+    INativeUnwrapper public _nativeUnwrapper;
     bytes32[50] _gap;
 }

@@ -24,6 +24,8 @@ struct LiquidityPoolStorage {
     uint96 mlpPriceUpperBound; // safeguard against mlp price attacks
     uint32 liquidityBaseFeeRate; // 1e5
     uint32 liquidityDynamicFeeRate; // 1e5
+    // slot
+    address nativeUnwrapper;
     bytes32[50] _gap;
 }
 

@@ -45,12 +45,12 @@ describe("Integration", () => {
     dexLiquidity = await createContract("DexLiquidity", [liquidityManager.address])
     reader = (await createContract("Reader", [pool.address, mlp.address, dexLiquidity.address, orderBook.address, []])) as Reader
     await mlp.initialize("MLP", "MLP")
-    await orderBook.initialize(pool.address, mlp.address, weth9)
+    await orderBook.initialize(pool.address, mlp.address, weth9, weth9)
     await orderBook.addBroker(broker.address)
     await orderBook.setLiquidityLockPeriod(5 * 60)
     await liquidityManager.initialize(vault.address, pool.address)
     await liquidityManager.addExternalAccessor(dexLiquidity.address)
-    await pool.initialize(poolHop2.address, mlp.address, orderBook.address, liquidityManager.address, weth9)
+    await pool.initialize(poolHop2.address, mlp.address, orderBook.address, liquidityManager.address, weth9, weth9)
     // fundingInterval, mlpPrice, mlpPrice, liqBase, liqDyn
     await pool.setNumbers(3600 * 8, toWei("1"), toWei("2000"), rate("0.0001"), rate("0.0000"))
     await mlp.transfer(pool.address, toWei(PreMinedTokenTotalSupply))

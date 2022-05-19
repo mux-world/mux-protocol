@@ -92,7 +92,7 @@ contract Account is Storage {
         uint96 wadAmount = collateral.toWad(rawAmount);
         require(subAccount.collateral >= wadAmount, "C<W"); // Collateral can not pay fee or is less than the amount requested for Withdrawal
         subAccount.collateral = subAccount.collateral - wadAmount;
-        collateral.transferOut(decoded.account, rawAmount, _storage.weth);
+        collateral.transferOut(decoded.account, rawAmount, _storage.weth, _storage.nativeUnwrapper);
         require(_isAccountImSafe(subAccount, decoded.assetId, decoded.isLong, collateralPrice, assetPrice), "!IM");
 
         emit WithdrawCollateral(subAccountId, decoded.account, decoded.collateralId, rawAmount, wadAmount);
@@ -111,7 +111,7 @@ contract Account is Storage {
         uint96 wadAmount = subAccount.collateral;
         uint256 rawAmount = collateral.toRaw(wadAmount);
         subAccount.collateral = 0;
-        collateral.transferOut(decoded.account, rawAmount, _storage.weth);
+        collateral.transferOut(decoded.account, rawAmount, _storage.weth, _storage.nativeUnwrapper);
         emit WithdrawCollateral(subAccountId, decoded.account, decoded.collateralId, rawAmount, wadAmount);
     }
 

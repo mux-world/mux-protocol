@@ -4,9 +4,9 @@ pragma solidity 0.8.10;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 
 import "../interfaces/IWETH9.sol";
+import "../interfaces/INativeUnwrapper.sol";
 import "../libraries/LibMath.sol";
 import "../core/Types.sol";
 
@@ -19,11 +19,12 @@ library LibAsset {
         Asset storage token,
         address recipient,
         uint256 rawAmount,
-        address weth
+        address weth,
+        address nativeUnwrapper
     ) internal {
         if (token.tokenAddress == weth) {
-            IWETH(weth).withdraw(rawAmount);
-            AddressUpgradeable.sendValue(payable(recipient), rawAmount);
+            IWETH(weth).transfer(nativeUnwrapper, rawAmount);
+            INativeUnwrapper(nativeUnwrapper).unwrap(payable(recipient), rawAmount);
         } else {
             IERC20Upgradeable(token.tokenAddress).safeTransfer(recipient, rawAmount);
         }

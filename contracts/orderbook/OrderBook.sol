@@ -44,17 +44,15 @@ contract OrderBook is Storage, Admin {
     function initialize(
         address pool,
         address mlp,
-        address weth
+        address weth,
+        address nativeUnwrapper
     ) external initializer {
         __SafeOwnable_init();
 
         _pool = ILiquidityPool(pool);
         _mlp = IERC20Upgradeable(mlp);
         _weth = IWETH(weth);
-    }
-
-    receive() external payable {
-        require(msg.sender == address(_weth), "RCV"); // we only Receive eth from WETH contract
+        _nativeUnwrapper = INativeUnwrapper(nativeUnwrapper);
     }
 
     function getOrderCount() external view returns (uint256) {
@@ -456,8 +454,8 @@ contract OrderBook is Storage, Admin {
         uint256 rawAmount
     ) internal {
         if (tokenAddress == address(_weth)) {
-            _weth.withdraw(rawAmount);
-            AddressUpgradeable.sendValue(payable(recipient), rawAmount);
+            _weth.transfer(address(_nativeUnwrapper), rawAmount);
+            INativeUnwrapper(_nativeUnwrapper).unwrap(payable(recipient), rawAmount);
         } else {
             IERC20Upgradeable(tokenAddress).safeTransfer(recipient, rawAmount);
         }

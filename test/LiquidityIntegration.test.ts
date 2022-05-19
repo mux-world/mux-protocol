@@ -42,10 +42,10 @@ describe("LiquidityIntegration", () => {
     orderBook = (await createContract("OrderBook")) as OrderBook
     liquidityManager = (await createContract("LiquidityManager")) as LiquidityManager
     await mlp.initialize("MLP", "MLP")
-    await orderBook.initialize(pool.address, mlp.address, weth9)
+    await orderBook.initialize(pool.address, mlp.address, weth9, weth9)
     await orderBook.addBroker(broker.address)
     await liquidityManager.initialize(vault.address, pool.address)
-    await pool.initialize(poolHop2.address, mlp.address, orderBook.address, liquidityManager.address, weth9)
+    await pool.initialize(poolHop2.address, mlp.address, orderBook.address, liquidityManager.address, weth9, weth9)
     // fundingInterval, mlpPrice, mlpPrice, liqBase, liqDyn
     await pool.setNumbers(3600 * 8, toWei("1"), toWei("2"), rate("0.0001"), rate("0.0000"))
     await mlp.transfer(pool.address, toWei(PreMinedTokenTotalSupply))

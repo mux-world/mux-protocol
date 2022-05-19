@@ -473,7 +473,7 @@ contract Trade is Storage, Account {
             if (spot > 0) {
                 profitAsset.spotLiquidity -= spot; // already reserved fee
                 uint256 rawAmount = profitAsset.toRaw(spot);
-                profitAsset.transferOut(trader, rawAmount, _storage.weth);
+                profitAsset.transferOut(trader, rawAmount, _storage.weth, _storage.nativeUnwrapper);
             }
             // debt
             {

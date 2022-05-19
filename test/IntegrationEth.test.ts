@@ -17,6 +17,7 @@ describe("IntegrationEth", () => {
   let muxWeth: Contract
   let reader: Reader
   let dexLiquidity: Contract
+  let nativeUnwrapper: Contract
 
   let trader1: SignerWithAddress
   let lp1: SignerWithAddress
@@ -40,16 +41,19 @@ describe("IntegrationEth", () => {
     liquidityManager = (await createContract("LiquidityManager")) as LiquidityManager
     dexLiquidity = await createContract("DexLiquidity", [liquidityManager.address])
     weth9 = (await createContract("WETH9")) as MockERC20
+    nativeUnwrapper = await createContract("NativeUnwrapper", [weth9.address])
     reader = (await createContract("Reader", [pool.address, mlp.address, dexLiquidity.address, orderBook.address, []])) as Reader
     await mlp.initialize("MLP", "MLP")
-    await orderBook.initialize(pool.address, mlp.address, weth9.address)
+    await orderBook.initialize(pool.address, mlp.address, weth9.address, nativeUnwrapper.address)
     await orderBook.addBroker(broker.address)
     await orderBook.setLiquidityLockPeriod(5 * 60)
     await liquidityManager.initialize(vault.address, pool.address)
     await liquidityManager.addExternalAccessor(dexLiquidity.address)
-    await pool.initialize(poolHop2.address, mlp.address, orderBook.address, liquidityManager.address, weth9.address)
+    await pool.initialize(poolHop2.address, mlp.address, orderBook.address, liquidityManager.address, weth9.address, nativeUnwrapper.address)
     // fundingInterval, mlpPrice, mlpPrice, liqBase, liqDyn
     await pool.setNumbers(3600 * 8, toWei("1"), toWei("2000"), rate("0.0001"), rate("0.0000"))
+    await nativeUnwrapper.addWhiteList(pool.address)
+    await nativeUnwrapper.addWhiteList(orderBook.address)
     await mlp.transfer(pool.address, toWei(PreMinedTokenTotalSupply))
 
     muxWeth = await createContract("MuxToken")

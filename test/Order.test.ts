@@ -80,7 +80,7 @@ describe("Order", () => {
 
     pool = await createContract("MockLiquidityPool")
     orderBook = (await createContract("OrderBook")) as OrderBook
-    await orderBook.initialize(pool.address, mlp.address, weth9)
+    await orderBook.initialize(pool.address, mlp.address, weth9, weth9)
     await orderBook.addBroker(user0.address)
 
     await pool.setAssetAddress(0, ctk.address)

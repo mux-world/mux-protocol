@@ -115,7 +115,7 @@ contract Liquidity is Storage, Account {
         require(wadAmount <= token.spotLiquidity, "LIQ"); // insufficient LIQuidity
         token.spotLiquidity -= wadAmount; // already deduct fee
         uint256 rawAmount = token.toRaw(wadAmount);
-        token.transferOut(trader, rawAmount, _storage.weth);
+        token.transferOut(trader, rawAmount, _storage.weth, _storage.nativeUnwrapper);
         emit RemoveLiquidity(trader, tokenId, tokenPrice, mlpPrice, mlpAmount, feeCollateral);
     }
 
@@ -140,7 +140,7 @@ contract Liquidity is Storage, Account {
         require(token.spotLiquidity >= muxTokenAmount, "LIQ"); // insufficient LIQuidity
         uint256 rawAmount = token.toRaw(muxTokenAmount);
         token.spotLiquidity -= muxTokenAmount;
-        token.transferOut(trader, rawAmount, _storage.weth);
+        token.transferOut(trader, rawAmount, _storage.weth, _storage.nativeUnwrapper);
         emit RedeemMuxToken(trader, tokenId, muxTokenAmount);
     }
 

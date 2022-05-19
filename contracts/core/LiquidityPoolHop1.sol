@@ -15,7 +15,8 @@ contract LiquidityPoolHop1 is Storage, Trade, Getter, Proxy {
         address mlp,
         address orderBook,
         address liquidityManager,
-        address weth
+        address weth,
+        address nativeUnwrapper
     ) external initializer {
         __SafeOwnable_init();
 
@@ -24,10 +25,7 @@ contract LiquidityPoolHop1 is Storage, Trade, Getter, Proxy {
         _storage.orderBook = orderBook;
         _storage.liquidityManager = liquidityManager;
         _storage.weth = weth;
-    }
-
-    receive() external payable override {
-        require(msg.sender == address(_storage.weth), "RCV"); // we can only ReCeiVe ETH from WETH contract
+        _storage.nativeUnwrapper = nativeUnwrapper;
     }
 
     /**
