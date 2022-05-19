@@ -105,8 +105,14 @@ contract OrderBook is Storage, Admin {
         LibSubAccount.DecodedSubAccountId memory account = subAccountId.decodeSubAccountId();
         require(account.account == msg.sender, "SND"); // SeNDer is not authorized
         require(size != 0, "S=0"); // order Size Is Zero
-
-        if (collateralAmount > 0 && (flags & LibOrder.POSITION_INCREASING != 0)) {
+        if ((flags & LibOrder.POSITION_MARKET_ORDER) != 0) {
+            require(price == 0, "P!0"); // market order does not need a limit Price
+        }
+        if (profitTokenId > 0) {
+            // note: profitTokenId == 0 is also valid, this only partially protects the function from misuse
+            require((flags & LibOrder.POSITION_INCREASING) == 0, "T!0"); // opening position does not need a Token id
+        }
+        if (collateralAmount > 0 && ((flags & LibOrder.POSITION_INCREASING) != 0)) {
             address collateralAddress = _pool.getAssetAddress(account.collateralId);
             _transferIn(collateralAddress, address(this), collateralAmount);
         }

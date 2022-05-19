@@ -22,8 +22,9 @@ function parsePositionOrder(orderData: string[]) {
     size: BigNumber.from(arr[1].slice(0, 12)),
     price: BigNumber.from(arr[2].slice(0, 12)),
     profitTokenId: BigNumber.from(arr[1].slice(12, 13)),
-    isMarketOrder: (flags & 0x40) > 0,
     isIncreasing: (flags & 0x80) > 0,
+    isMarketOrder: (flags & 0x40) > 0,
+    isWithdrawAllIfEmpty: (flags & 0x20) > 0,
   }
 }
 
@@ -96,7 +97,7 @@ describe("Order", () => {
         toWei("1"),
         toWei("0.2"),
         toWei("3000"),
-        1,
+        0,
         PositionOrderFlags.OpenPosition
       )
       expect(await orderBook.getOrderCount()).to.equal(1)
@@ -115,11 +116,11 @@ describe("Order", () => {
       expect(order.collateral).to.equal(toWei("1"))
       expect(order.size).to.equal(toWei("0.2"))
       expect(order.price).to.equal(toWei("3000"))
-      expect(order.profitTokenId).to.equal(1)
-      expect(order.isMarketOrder).to.equal(false)
+      expect(order.profitTokenId).to.equal(0)
       expect(order.isIncreasing).to.equal(true)
-
-      expect(await ctk.balanceOf(user0.address)).to.equal(0)
+      expect(order.isMarketOrder).to.equal(false)
+      expect(order.isWithdrawAllIfEmpty).to.equal(false)
+      expect(await ctk.balanceOf(user0.address)).to.equal(toWei("0"))
       expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("1"))
     }
     {
