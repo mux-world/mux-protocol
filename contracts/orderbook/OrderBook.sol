@@ -263,11 +263,12 @@ contract OrderBook is Storage, Admin {
     /**
      * @dev   Add/remove liquidity. called by Broker
      *
+     *        Check _getLiquidityFeeRate in Liquidity.sol on how to calculate liquidity fee.
      * @param orderId           order id
      * @param assetPrice        token price that added/removed to
      * @param mlpPrice          mlp price
-     * @param currentAssetValue liquidity USD value of a single asset
-     * @param targetAssetValue  weight / Σ weight * total liquidity USD value
+     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset)
+     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains
      */
     function fillLiquidityOrder(
         uint64 orderId,
@@ -391,9 +392,10 @@ contract OrderBook is Storage, Admin {
     /**
      * @notice Broker can update funding each [fundingInterval] seconds by specifying utilizations.
      *
-     * @param  stableUtilization    Stable coin utilization
+     *         Check _getFundingRate in Liquidity.sol on how to calculate funding rate.
+     * @param  stableUtilization    Stable coin utilization in all chains
      * @param  unstableTokenIds     All unstable Asset id(s) MUST be passed in order. ex: 1, 2, 5, 6, ...
-     * @param  unstableUtilizations Unstable Asset utilizations
+     * @param  unstableUtilizations Unstable Asset utilizations in all chains
      * @param  unstablePrices       Unstable Asset prices
      */
     function updateFundingState(

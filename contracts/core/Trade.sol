@@ -471,7 +471,7 @@ contract Trade is Storage, Account {
             // transfer profit token
             uint96 spot = LibMath.min(profitCollateral, profitAsset.spotLiquidity);
             if (spot > 0) {
-                profitAsset.spotLiquidity -= spot; // already reserved fee
+                profitAsset.spotLiquidity -= spot; // already deduct fee
                 uint256 rawAmount = profitAsset.toRaw(spot);
                 profitAsset.transferOut(trader, rawAmount, _storage.weth, _storage.nativeUnwrapper);
             }

@@ -21,8 +21,8 @@ contract Liquidity is Storage, Account {
      * @param rawAmount         asset token amount. decimals = erc20.decimals
      * @param tokenPrice        token price
      * @param mlpPrice          mlp price
-     * @param currentAssetValue liquidity USD value of a single asset
-     * @param targetAssetValue  weight / Σ weight * total liquidity USD value
+     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset)
+     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains
      */
     function addLiquidity(
         address trader,
@@ -72,8 +72,8 @@ contract Liquidity is Storage, Account {
      * @param tokenId           asset.id that removed to
      * @param tokenPrice        token price
      * @param mlpPrice          mlp price
-     * @param currentAssetValue liquidity USD value of a single asset
-     * @param targetAssetValue  weight / Σ weight * total liquidity USD value
+     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset)
+     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains
      */
     function removeLiquidity(
         address trader,
@@ -147,9 +147,10 @@ contract Liquidity is Storage, Account {
     /**
      * @notice Broker can update funding each [fundingInterval] seconds by specifying utilizations.
      *
-     * @param  stableUtilization    Stable coin utilization
+     *         Check _getFundingRate in Liquidity.sol on how to calculate funding rate.
+     * @param  stableUtilization    Stable coin utilization in all chains
      * @param  unstableTokenIds     All unstable Asset id(s) MUST be passed in order. ex: 1, 2, 5, 6, ...
-     * @param  unstableUtilizations Unstable Asset utilizations
+     * @param  unstableUtilizations Unstable Asset utilizations in all chains
      * @param  unstablePrices       Unstable Asset prices
      */
     function updateFundingState(
@@ -224,8 +225,24 @@ contract Liquidity is Storage, Account {
     /**
      * @dev   Liquidity fee rate
      *
-     * @param currentAssetValue liquidity USD value of a single asset
-     * @param targetAssetValue  weight / Σ weight * total liquidity USD value
+     *        Lower rates indicate liquidity is closer to target.
+     *
+     *                                                  targetLiquidity
+     *                     <------------------------------------+--------------------------------------> liquidity
+     *
+     * case 1: high rebate   * currentLiq * newLiq
+     *                       * currentLiq                                                    * newLiq
+     *
+     * case 2: low rebate                 * currentLiq * newLiq
+     *                                    * currentLiq                          * newLiq
+     *
+     * case 3: higher fee                                          * currentLiq * newLiq
+     *
+     * case 4: max fee                                             * currentLiq              * newLiq
+     *                                                                          * currentLiq * newLiq
+     *
+     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset)
+     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains
      * @param isAdd             true if add liquidity, false if remove liquidity
      * @param deltaValue        add/remove liquidity USD value
      * @param baseFeeRate       base fee
