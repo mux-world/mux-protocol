@@ -453,6 +453,7 @@ contract OrderBook is Storage, Admin {
                 _weth.transfer(recipient, rawAmount);
             }
         } else {
+            require(msg.value == 0, "VAL"); // transaction VALue SHOULD be 0
             IERC20Upgradeable(tokenAddress).safeTransferFrom(msg.sender, recipient, rawAmount);
         }
     }
