@@ -8,6 +8,8 @@ import "./Admin.sol";
 import "../libraries/LibChainedProxy.sol";
 
 contract LiquidityPoolHop1 is Storage, Trade, Getter, Proxy {
+    event UpgradeChainedProxy(address prevNextHop, address nextHop);
+
     function initialize(
         address nextHop,
         address mlp,
@@ -34,6 +36,7 @@ contract LiquidityPoolHop1 is Storage, Trade, Getter, Proxy {
      * @param   nextHop Hop2 address
      */
     function upgradeChainedProxy(address nextHop) external onlyOwner {
+        emit UpgradeChainedProxy(_implementation(), nextHop);
         ChainedProxy.replace(nextHop);
     }
 

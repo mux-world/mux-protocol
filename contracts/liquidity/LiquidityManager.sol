@@ -18,6 +18,8 @@ import "./Admin.sol";
 contract LiquidityManager is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall, Admin {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    event CallMethod(uint8 dexId, bytes32 methodId, bytes params);
+
     /**
      * @notice Initialize the LiquidityManager.
      */
@@ -70,6 +72,7 @@ contract LiquidityManager is Storage, Initializable, SafeOwnableUpgradeable, Mod
     }
 
     function _moduleCall(CallContext memory context) internal returns (bytes memory) {
+        emit CallMethod(context.dexId, context.methodId, context.params);
         if (context.dexId != 0) {
             return _dexCall(context.dexId, context.methodId, context.params);
         } else {
