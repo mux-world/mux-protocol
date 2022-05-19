@@ -13,17 +13,17 @@ contract Admin is Storage {
         _;
     }
 
-    function addBroker(address newBroker) public onlyOwner {
+    function addBroker(address newBroker) external onlyOwner {
         require(!brokers[newBroker], "BKR"); // BroKeR existed
         brokers[newBroker] = true;
         emit AddBroker(newBroker);
     }
 
-    function removeBroker(address broker) public onlyOwner {
+    function removeBroker(address broker) external onlyOwner {
         _removeBroker(broker);
     }
 
-    function renounceBroker() public {
+    function renounceBroker() external {
         _removeBroker(msg.sender);
     }
 

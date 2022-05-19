@@ -61,7 +61,7 @@ contract OrderBook is Storage, Admin {
         return _orders.length();
     }
 
-    function getOrder(uint64 orderId) public view returns (bytes32[3] memory, bool) {
+    function getOrder(uint64 orderId) external view returns (bytes32[3] memory, bool) {
         return (_orders.get(orderId), _orders.contains(orderId));
     }
 
