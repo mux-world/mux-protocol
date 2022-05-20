@@ -38,22 +38,23 @@ contract Admin is Storage {
 
     function setAssetParams(
         uint8 assetId,
-        uint32 newInitialMarginRate,
-        uint32 newMaintenanceMarginRate,
-        uint32 newPositionFeeRate,
-        uint32 newMinProfitRate,
-        uint32 newMinProfitTime,
+        uint32 newInitialMarginRate, // 1e5
+        uint32 newMaintenanceMarginRate, // 1e5
+        uint32 newPositionFeeRate, // 1e5
+        uint32 newMinProfitRate, // 1e5
+        uint32 newMinProfitTime, // 1e0
         uint96 newMaxLongPositionSize,
         uint96 newMaxShortPositionSize,
         uint32 newSpotWeight
     ) external onlyOwner {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
-
         Asset storage asset = _storage.assets[assetId];
+        require(asset.initialMarginRate == 0 || newInitialMarginRate <= asset.initialMarginRate, "IMR"); // Initial Margin Raised
+        require(asset.maintenanceMarginRate == 0 || newMaintenanceMarginRate <= asset.maintenanceMarginRate, "MMR"); // Maintenance Margin Raised
         asset.initialMarginRate = newInitialMarginRate;
-        asset.maintenanceMarginRate = newMaintenanceMarginRate; // 1e5
-        asset.positionFeeRate = newPositionFeeRate; // 1e5
-        asset.minProfitRate = newMinProfitRate; // 1e5
+        asset.maintenanceMarginRate = newMaintenanceMarginRate;
+        asset.positionFeeRate = newPositionFeeRate;
+        asset.minProfitRate = newMinProfitRate;
         asset.minProfitTime = newMinProfitTime;
         asset.maxLongPositionSize = newMaxLongPositionSize;
         asset.maxShortPositionSize = newMaxShortPositionSize;
