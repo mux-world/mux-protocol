@@ -31,7 +31,9 @@ contract Getter is Storage {
             // [3] fundingInterval
             // [4] liquidityBaseFeeRate
             // [5] liquidityDynamicFeeRate
-            uint32[6] memory u32s,
+            // [6] sequence. note: will be 0 after 0xffffffff
+            // [7] __future_strictStableDeviation__
+            uint32[8] memory u32s,
             // [0] mlpPriceLowerBound
             // [1] mlpPriceUpperBound
             uint96[2] memory u96s
@@ -43,6 +45,8 @@ contract Getter is Storage {
         u32s[3] = _storage.fundingInterval;
         u32s[4] = _storage.liquidityBaseFeeRate;
         u32s[5] = _storage.liquidityDynamicFeeRate;
+        u32s[6] = _storage.sequence;
+        u32s[7] = _storage.__future_strictStableDeviation__;
         u96s[0] = _storage.mlpPriceLowerBound;
         u96s[1] = _storage.mlpPriceUpperBound;
     }

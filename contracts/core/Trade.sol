@@ -18,14 +18,12 @@ contract Trade is Storage, Account {
         uint96 amount,
         uint96 collateralPrice,
         uint96 assetPrice
-    ) external onlyOrderBook {
+    ) external onlyOrderBook updateSequence returns (uint96) {
         LibSubAccount.DecodedSubAccountId memory decoded = subAccountId.decodeSubAccountId();
         require(decoded.account != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(decoded.collateralId), "LST"); // the asset is not LiSTed
         require(_hasAsset(decoded.assetId), "LST"); // the asset is not LiSTed
         require(amount != 0, "A=0"); // Amount Is Zero
-        require(collateralPrice != 0, "P=0"); // Price Is Zero
-        require(assetPrice != 0, "P=0"); // Price Is Zero
 
         Asset storage asset = _storage.assets[decoded.assetId];
         Asset storage collateral = _storage.assets[decoded.collateralId];
@@ -36,11 +34,6 @@ contract Trade is Storage, Account {
         require(asset.isEnabled, "ENA"); // the token is temporarily not ENAbled
         require(collateral.isEnabled, "ENA"); // the token is temporarily not ENAbled
         require(decoded.isLong || asset.isShortable, "SHT"); // can not SHorT this asset
-        if (decoded.isLong) {
-            require(asset.totalLongPosition + amount <= asset.maxLongPositionSize, "MXP"); // MaX Position exceeded
-        } else {
-            require(asset.totalShortPosition + amount <= asset.maxShortPositionSize, "MXP"); // MaX Position exceeded
-        }
         assetPrice = LibReferenceOracle.checkPrice(asset, assetPrice);
         collateralPrice = LibReferenceOracle.checkPrice(collateral, collateralPrice);
 
@@ -79,8 +72,10 @@ contract Trade is Storage, Account {
                 amount: amount,
                 assetPrice: assetPrice,
                 collateralPrice: collateralPrice,
-                entryPrice: subAccount.entryPrice,
-                feeUsd: feeUsd
+                newEntryPrice: subAccount.entryPrice,
+                feeUsd: feeUsd,
+                remainPosition: subAccount.size,
+                remainCollateral: subAccount.collateral
             });
             emit OpenPosition(decoded.account, decoded.assetId, args);
         }
@@ -88,13 +83,13 @@ contract Trade is Storage, Account {
         _increaseTotalSize(asset, decoded.isLong, amount, assetPrice);
         // post check
         require(_isAccountImSafe(subAccount, decoded.assetId, decoded.isLong, collateralPrice, assetPrice), "!IM");
+        return assetPrice;
     }
 
     struct ClosePositionContext {
         LibSubAccount.DecodedSubAccountId id;
         uint96 totalFeeUsd;
         uint96 paidFeeUsd;
-        uint96 oldEntryPrice;
     }
 
     /**
@@ -115,15 +110,13 @@ contract Trade is Storage, Account {
         uint96 collateralPrice,
         uint96 assetPrice,
         uint96 profitAssetPrice // only used when !isLong
-    ) external onlyOrderBook {
+    ) external onlyOrderBook updateSequence returns (uint96) {
         ClosePositionContext memory ctx;
         ctx.id = subAccountId.decodeSubAccountId();
         require(ctx.id.account != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(ctx.id.collateralId), "LST"); // the asset is not LiSTed
         require(_hasAsset(ctx.id.assetId), "LST"); // the asset is not LiSTed
         require(amount != 0, "A=0"); // Amount Is Zero
-        require(collateralPrice != 0, "P=0"); // Price Is Zero
-        require(assetPrice != 0, "P=0"); // Price Is Zero
 
         Asset storage asset = _storage.assets[ctx.id.assetId];
         Asset storage collateral = _storage.assets[ctx.id.collateralId];
@@ -141,14 +134,12 @@ contract Trade is Storage, Account {
             profitAssetPrice = assetPrice;
         } else {
             require(_isStable(profitAssetId), "STB"); // profit asset should be a STaBle coin
-            require(profitAssetPrice != 0, "P=0"); // Price Is Zero
             profitAssetPrice = LibReferenceOracle.checkPrice(_storage.assets[profitAssetId], profitAssetPrice);
         }
         require(_storage.assets[profitAssetId].isEnabled, "ENA"); // the token is temporarily not ENAbled
 
         // total
-        ctx.oldEntryPrice = subAccount.entryPrice;
-        _decreaseTotalSize(asset, ctx.id.isLong, amount, ctx.oldEntryPrice);
+        _decreaseTotalSize(asset, ctx.id.isLong, amount, subAccount.entryPrice);
         // fee & funding
         ctx.totalFeeUsd = _getFeeUsd(subAccount, asset, ctx.id.isLong, amount, assetPrice);
         _updateEntryFunding(subAccount, asset, ctx.id.isLong);
@@ -191,22 +182,23 @@ contract Trade is Storage, Account {
                 assetPrice: assetPrice,
                 collateralPrice: collateralPrice,
                 profitAssetPrice: profitAssetPrice,
-                entryPrice: ctx.oldEntryPrice,
                 feeUsd: ctx.paidFeeUsd,
                 hasProfit: hasProfit,
-                pnlUsd: pnlUsd
+                pnlUsd: pnlUsd,
+                remainPosition: subAccount.size,
+                remainCollateral: subAccount.collateral
             });
             emit ClosePosition(ctx.id.account, ctx.id.assetId, args);
         }
         // post check
         require(_isAccountMmSafe(subAccount, ctx.id.assetId, ctx.id.isLong, collateralPrice, assetPrice), "!MM");
+        return assetPrice;
     }
 
     struct LiquidateContext {
         LibSubAccount.DecodedSubAccountId id;
         uint96 totalFeeUsd;
         uint96 paidFeeUsd;
-        uint96 oldEntryPrice;
         uint96 oldPositionSize;
     }
 
@@ -216,14 +208,12 @@ contract Trade is Storage, Account {
         uint96 collateralPrice,
         uint96 assetPrice,
         uint96 profitAssetPrice // only used when !isLong
-    ) external onlyOrderBook {
+    ) external onlyOrderBook updateSequence returns (uint96) {
         LiquidateContext memory ctx;
         ctx.id = subAccountId.decodeSubAccountId();
         require(ctx.id.account != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(ctx.id.collateralId), "LST"); // the asset is not LiSTed
         require(_hasAsset(ctx.id.assetId), "LST"); // the asset is not LiSTed
-        require(collateralPrice != 0, "P=0"); // Price Is Zero
-        require(assetPrice != 0, "P=0"); // Price Is Zero
 
         Asset storage asset = _storage.assets[ctx.id.assetId];
         Asset storage collateral = _storage.assets[ctx.id.collateralId];
@@ -241,28 +231,36 @@ contract Trade is Storage, Account {
             profitAssetPrice = assetPrice;
         } else {
             require(_isStable(profitAssetId), "STB"); // profit asset should be a STaBle coin
-            require(profitAssetPrice != 0, "P=0"); // Price Is Zero
             profitAssetPrice = LibReferenceOracle.checkPrice(_storage.assets[profitAssetId], profitAssetPrice);
         }
         require(_storage.assets[profitAssetId].isEnabled, "ENA"); // the token is temporarily not ENAbled
 
         // total
-        ctx.oldEntryPrice = subAccount.entryPrice;
-        _decreaseTotalSize(asset, ctx.id.isLong, subAccount.size, ctx.oldEntryPrice);
+        _decreaseTotalSize(asset, ctx.id.isLong, subAccount.size, subAccount.entryPrice);
         // fee & funding
-        ctx.totalFeeUsd = _getFeeUsd(subAccount, asset, ctx.id.isLong, subAccount.size, assetPrice);
-        // should mm unsafe
-        (bool hasProfit, uint96 pnlUsd) = _positionPnlUsd(
-            asset,
-            subAccount,
-            ctx.id.isLong,
-            subAccount.size,
-            assetPrice
-        );
-        require(
-            !_isAccountSafe(subAccount, collateralPrice, assetPrice, asset.maintenanceMarginRate, hasProfit, pnlUsd),
-            "MMS"
-        ); // Maintenance Margin Safe
+        bool hasProfit;
+        uint96 pnlUsd;
+        {
+            uint96 fundingFee = _getFundingFeeUsd(subAccount, asset, ctx.id.isLong, assetPrice);
+            {
+                uint96 positionFee = _getPositionFeeUsd(asset, subAccount.size, assetPrice);
+                ctx.totalFeeUsd = fundingFee + positionFee;
+            }
+            // should mm unsafe
+            (hasProfit, pnlUsd) = _positionPnlUsd(asset, subAccount, ctx.id.isLong, subAccount.size, assetPrice);
+            require(
+                !_isAccountSafe(
+                    subAccount,
+                    collateralPrice,
+                    assetPrice,
+                    asset.maintenanceMarginRate,
+                    hasProfit,
+                    pnlUsd,
+                    fundingFee
+                ),
+                "MMS"
+            ); // Maintenance Margin Safe
+        }
         // realize pnl
         ctx.oldPositionSize = subAccount.size;
         if (hasProfit) {
@@ -301,13 +299,14 @@ contract Trade is Storage, Account {
                 assetPrice: assetPrice,
                 collateralPrice: collateralPrice,
                 profitAssetPrice: profitAssetPrice,
-                entryPrice: ctx.oldEntryPrice,
                 feeUsd: ctx.paidFeeUsd,
                 hasProfit: hasProfit,
-                pnlUsd: pnlUsd
+                pnlUsd: pnlUsd,
+                remainCollateral: subAccount.collateral
             });
             emit Liquidate(ctx.id.account, ctx.id.assetId, args);
         }
+        return assetPrice;
     }
 
     struct WithdrawProfitContext {
@@ -325,15 +324,13 @@ contract Trade is Storage, Account {
         uint96 collateralPrice,
         uint96 assetPrice,
         uint96 profitAssetPrice // only used when !isLong
-    ) external onlyOrderBook {
+    ) external onlyOrderBook updateSequence {
         require(rawAmount != 0, "A=0"); // Amount Is Zero
         WithdrawProfitContext memory ctx;
         ctx.id = subAccountId.decodeSubAccountId();
         require(ctx.id.account != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(ctx.id.collateralId), "LST"); // the asset is not LiSTed
         require(_hasAsset(ctx.id.assetId), "LST"); // the asset is not LiSTed
-        require(collateralPrice != 0, "P=0"); // Price Is Zero
-        require(assetPrice != 0, "P=0"); // Price Is Zero
 
         Asset storage asset = _storage.assets[ctx.id.assetId];
         Asset storage collateral = _storage.assets[ctx.id.collateralId];
@@ -351,7 +348,6 @@ contract Trade is Storage, Account {
             profitAssetPrice = assetPrice;
         } else {
             require(_isStable(profitAssetId), "STB"); // profit asset should be a STaBle coin
-            require(profitAssetPrice != 0, "P=0"); // Price Is Zero
             profitAssetPrice = LibReferenceOracle.checkPrice(_storage.assets[profitAssetId], profitAssetPrice);
         }
         require(_storage.assets[profitAssetId].isEnabled, "ENA"); // the token is temporarily not ENAbled

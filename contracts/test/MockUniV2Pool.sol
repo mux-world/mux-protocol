@@ -92,13 +92,10 @@ contract MockUniV2Pool is ERC20 {
         } else {
             uint256 amountBRequired = (amountADesired * reserveB) / reserveA;
             if (amountBRequired <= amountBDesired) {
-                console.log("amountBRequired vs amountBMin", amountBRequired, amountBMin);
                 require(amountBRequired >= amountBMin, "amountBRequired < amountBMin");
                 (amountA, amountB) = (amountADesired, amountBRequired);
             } else {
                 uint256 amountARequired = (amountBDesired * reserveA) / reserveB;
-                console.log("amountARequired vs amountADesired", amountARequired, amountADesired);
-                console.log("amountARequired vs amountAMin", amountBRequired, amountAMin);
                 require(amountARequired <= amountADesired, "amountARequired > amountADesired");
                 require(amountARequired >= amountAMin, "amountARequired < amountAMin");
                 (amountA, amountB) = (amountARequired, amountBDesired);
@@ -157,6 +154,27 @@ contract MockUniV2Pool is ERC20 {
         uint256 amountInWithFee = amountIn * 997;
         uint256 numerator = amountInWithFee * reserveOut;
         uint256 denominator = reserveIn * 1000 + amountInWithFee;
+        amountOut = numerator / denominator;
+    }
+
+    function getAmountOut(
+        uint256 amountIn,
+        uint256 reserveIn,
+        uint256 reserveOut
+    ) public pure returns (uint256 amountOut) {
+        return _getAmountOut(amountIn, reserveIn, reserveOut);
+    }
+
+    function getAmountOutNoFee(
+        uint256 amountIn,
+        uint256 reserveIn,
+        uint256 reserveOut
+    ) public pure returns (uint256 amountOut) {
+        require(amountIn > 0, "UniswapV2Library: INSUFFICIENT_INPUT_AMOUNT");
+        require(reserveIn > 0 && reserveOut > 0, "UniswapV2Library: INSUFFICIENT_LIQUIDITY");
+        uint256 amountInWithFee = amountIn;
+        uint256 numerator = amountInWithFee * reserveOut;
+        uint256 denominator = reserveIn + amountInWithFee;
         amountOut = numerator / denominator;
     }
 

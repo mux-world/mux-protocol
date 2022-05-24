@@ -23,7 +23,9 @@ interface ILiquidityPool {
             // [3] fundingInterval
             // [4] liquidityBaseFeeRate
             // [5] liquidityDynamicFeeRate
-            uint32[6] memory u32s,
+            // [6] sequence. note: will be 0 after 0xffffffff
+            // [7] __future_strictStableDeviation__
+            uint32[8] memory u32s,
             // [0] mlpPriceLowerBound
             // [1] mlpPriceUpperBound
             uint96[2] memory u96s
@@ -114,7 +116,7 @@ interface ILiquidityPool {
         uint96 amount,
         uint96 collateralPrice,
         uint96 assetPrice
-    ) external;
+    ) external returns (uint96);
 
     /**
      * @notice Close a position
@@ -134,7 +136,7 @@ interface ILiquidityPool {
         uint96 collateralPrice,
         uint96 assetPrice,
         uint96 profitAssetPrice // only used when !isLong
-    ) external;
+    ) external returns (uint96);
 
     /**
      * @notice Broker can update funding each [fundingInterval] seconds by specifying utilizations.
@@ -157,7 +159,7 @@ interface ILiquidityPool {
         uint96 collateralPrice,
         uint96 assetPrice,
         uint96 profitAssetPrice // only used when !isLong
-    ) external;
+    ) external returns (uint96);
 
     function redeemMuxToken(
         address trader,

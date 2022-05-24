@@ -32,16 +32,17 @@ contract Liquidity is Storage, Account {
         uint96 mlpPrice,
         uint96 currentAssetValue,
         uint96 targetAssetValue
-    ) external onlyOrderBook {
+    ) external onlyOrderBook updateSequence {
         require(trader != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(tokenId), "LST"); // the asset is not LiSTed
         require(rawAmount != 0, "A=0"); // Amount Is Zero
-        require(tokenPrice != 0, "P=0"); // Price Is Zero
         require(mlpPrice != 0, "P=0"); // Price Is Zero
         require(mlpPrice <= _storage.mlpPriceUpperBound, "MPO"); // Mlp Price is Out of range
         require(mlpPrice >= _storage.mlpPriceLowerBound, "MPO"); // Mlp Price is Out of range
-        // token amount
         Asset storage token = _storage.assets[tokenId];
+        tokenPrice = LibReferenceOracle.checkPrice(token, tokenPrice);
+
+        // token amount
         require(token.isEnabled, "ENA"); // the token is temporarily not ENAbled
         uint96 wadAmount = token.toWad(rawAmount);
         token.spotLiquidity += wadAmount; // already reserved fee
@@ -83,16 +84,17 @@ contract Liquidity is Storage, Account {
         uint96 mlpPrice,
         uint96 currentAssetValue,
         uint96 targetAssetValue
-    ) external onlyOrderBook {
+    ) external onlyOrderBook updateSequence {
         require(trader != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(tokenId), "LST"); // the asset is not LiSTed
-        require(tokenPrice != 0, "P=0"); // Price Is Zero
         require(mlpPrice != 0, "P=0"); // Price Is Zero
         require(mlpPrice <= _storage.mlpPriceUpperBound, "MPO"); // Mlp Price is Out of range
         require(mlpPrice >= _storage.mlpPriceLowerBound, "MPO"); // Mlp Price is Out of range
         require(mlpAmount != 0, "A=0"); // Amount Is Zero
-        // amount
         Asset storage token = _storage.assets[tokenId];
+        tokenPrice = LibReferenceOracle.checkPrice(token, tokenPrice);
+
+        // amount
         require(token.isEnabled, "ENA"); // the token is temporarily not ENAbled
         uint96 wadAmount = ((uint256(mlpAmount) * uint256(mlpPrice)) / uint256(tokenPrice)).safeUint96();
         // fee
@@ -128,7 +130,7 @@ contract Liquidity is Storage, Account {
         address trader,
         uint8 tokenId,
         uint96 muxTokenAmount // NOTE: OrderBook SHOULD transfer muxTokenAmount to LiquidityPool
-    ) external onlyOrderBook {
+    ) external onlyOrderBook updateSequence {
         require(trader != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(tokenId), "LST"); // the asset is not LiSTed
         require(muxTokenAmount != 0, "A=0"); // Amount Is Zero
@@ -158,7 +160,7 @@ contract Liquidity is Storage, Account {
         uint8[] calldata unstableTokenIds,
         uint32[] calldata unstableUtilizations, // 1e5
         uint96[] calldata unstablePrices
-    ) external onlyOrderBook {
+    ) external onlyOrderBook updateSequence {
         uint32 nextFundingTime = (_blockTimestamp() / _storage.fundingInterval) * _storage.fundingInterval;
         if (_storage.lastFundingTime == 0) {
             // init state. just update lastFundingTime

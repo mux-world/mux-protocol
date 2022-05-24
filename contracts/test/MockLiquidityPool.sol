@@ -20,22 +20,7 @@ contract MockLiquidityPool is ILiquidityPool {
 
     function getAllAssetInfo() external view returns (Asset[] memory) {}
 
-    function getLiquidityPoolStorage()
-        external
-        view
-        returns (
-            // [0] shortFundingBaseRate8H
-            // [1] shortFundingLimitRate8H
-            // [2] lastFundingTime
-            // [3] fundingInterval
-            // [4] liquidityBaseFeeRate
-            // [5] liquidityDynamicFeeRate
-            uint32[6] memory u32s,
-            // [0] mlpPriceLowerBound
-            // [1] mlpPriceUpperBound
-            uint96[2] memory u96s
-        )
-    {}
+    function getLiquidityPoolStorage() external view returns (uint32[8] memory u32s, uint96[2] memory u96s) {}
 
     function getSubAccount(bytes32 subAccountId)
         external
@@ -93,20 +78,24 @@ contract MockLiquidityPool is ILiquidityPool {
     ) external {}
 
     function openPosition(
-        bytes32 subAccountId,
-        uint96 amount,
-        uint96 collateralPrice,
+        bytes32,
+        uint96,
+        uint96,
         uint96 assetPrice
-    ) external {}
+    ) external pure returns (uint96) {
+        return assetPrice;
+    }
 
     function closePosition(
-        bytes32 subAccountId,
-        uint96 amount,
-        uint8 profitAssetId, // only used when !isLong
-        uint96 collateralPrice,
+        bytes32,
+        uint96,
+        uint8, // only used when !isLong
+        uint96,
         uint96 assetPrice,
-        uint96 profitAssetPrice // only used when !isLong
-    ) external {}
+        uint96 // only used when !isLong
+    ) external pure returns (uint96) {
+        return assetPrice;
+    }
 
     function transferLiquidityOut(uint8[] memory assetIds, uint256[] memory amounts) external {
         for (uint256 i = 0; i < assetIds.length; i++) {
@@ -124,12 +113,14 @@ contract MockLiquidityPool is ILiquidityPool {
     ) external {}
 
     function liquidate(
-        bytes32 subAccountId,
-        uint8 profitAssetId, // only used when !isLong
-        uint96 collateralPrice,
+        bytes32,
+        uint8, // only used when !isLong
+        uint96,
         uint96 assetPrice,
-        uint96 profitAssetPrice // only used when !isLong
-    ) external {}
+        uint96 // only used when !isLong
+    ) external pure returns (uint96) {
+        return assetPrice;
+    }
 
     function redeemMuxToken(
         address trader,

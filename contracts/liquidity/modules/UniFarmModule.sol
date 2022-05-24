@@ -41,7 +41,7 @@ contract UniFarmModule is Module {
     }
 
     function id() public pure override returns (bytes32) {
-        return LibUtils.toBytes32("pc-demo-farm-mod");
+        return LibUtils.toBytes32("uni-like-farm-mod");
     }
 
     function meta()
@@ -70,13 +70,12 @@ contract UniFarmModule is Module {
     }
 
     function getLpBalance() public view returns (uint256) {
-        (bool hasFee, uint256[] memory feeAmounts) = _getFees();
-        uint256 shareAmount = hasFee ? _getRedeemingShareAmount(feeAmounts[0], feeAmounts[1]) : 0;
-        return _getLpBalance() - shareAmount;
+        return _getLpBalance() - _getFeeShareAmount();
     }
 
     function getFees() public view returns (uint256[] memory feeAmounts) {
-        (, feeAmounts) = _getFees();
+        uint256 feeShareAmount = _getFeeShareAmount();
+        return getSpotAmounts(feeShareAmount);
     }
 
     function getSpotAmounts(uint256 shareAmount) public view returns (uint256[] memory amounts) {
@@ -95,25 +94,20 @@ contract UniFarmModule is Module {
         require(maxAmounts.length == 2, "L!2");
         require(maxAmounts.length == minAmounts.length, "L!L");
         // fee
-        {
-            (bool hasFee, uint256[] memory feeAmounts) = _getFees();
-            if (hasFee) {
-                require(_vault != address(0), "ZVD"); // zero vault address
-                uint256 shareAmount = _getRedeemingShareAmount(feeAmounts[0], feeAmounts[1]);
-                IERC20(pair).approve(router, shareAmount);
-                (feeAmounts[0], feeAmounts[1]) = IUniswapV2Router(router).removeLiquidity(
-                    tokenA,
-                    tokenB,
-                    shareAmount,
-                    feeAmounts[0],
-                    feeAmounts[1],
-                    address(this),
-                    deadline
-                );
-
-                IERC20(tokenA).safeTransfer(_vault, feeAmounts[0]);
-                IERC20(tokenB).safeTransfer(_vault, feeAmounts[1]);
-            }
+        uint256 feeShareAmount = _getFeeShareAmount();
+        if (feeShareAmount > 0 && _vault != address(0)) {
+            IERC20(pair).approve(router, feeShareAmount);
+            (uint256 feeAmount0, uint256 feeAmount1) = IUniswapV2Router(router).removeLiquidity(
+                tokenA,
+                tokenB,
+                feeShareAmount,
+                0,
+                0,
+                address(this),
+                deadline
+            );
+            IERC20(tokenA).safeTransfer(_vault, feeAmount0);
+            IERC20(tokenB).safeTransfer(_vault, feeAmount1);
         }
         // approve
         IERC20(tokenA).approve(router, maxAmounts[0]);
@@ -135,9 +129,7 @@ contract UniFarmModule is Module {
             IERC20(pair).approve(stake, liquidityAmount);
             IStake(stake).deposit(poolId, liquidityAmount);
         }
-        // update k
-        uint256[] memory amounts = getSpotAmounts(_getLpBalance());
-        _writeState(K_INDEX, bytes32(amounts[0] * amounts[1]));
+        _updateK();
     }
 
     function removeLiquidity(
@@ -147,8 +139,7 @@ contract UniFarmModule is Module {
     ) external returns (uint256[] memory removedAmounts) {
         require(minAmounts.length == 2, "L!2");
         // fee
-        (bool hasFee, uint256[] memory feeAmounts) = _getFees();
-        uint256 feeShareAmount = _getRedeemingShareAmount(feeAmounts[0], feeAmounts[1]);
+        uint256 feeShareAmount = _getFeeShareAmount();
         // stake
         if (stake != address(0)) {
             IStake(stake).withdraw(poolId, shareAmount + feeShareAmount);
@@ -164,30 +155,33 @@ contract UniFarmModule is Module {
             address(this),
             deadline
         );
-        if (hasFee) {
+        uint256 feeRate = (feeShareAmount * 1e18) / (shareAmount + feeShareAmount);
+        uint256 feeAmount0 = (removedAmounts[0] * feeRate) / 1e18;
+        uint256 feeAmount1 = (removedAmounts[1] * feeRate) / 1e18;
+        if (feeShareAmount > 0) {
             require(_vault != address(0), "ZVD"); // zero vault address
-            IERC20(tokenA).safeTransfer(_vault, feeAmounts[0]);
-            IERC20(tokenB).safeTransfer(_vault, feeAmounts[1]);
+            IERC20(tokenA).safeTransfer(_vault, feeAmount0);
+            IERC20(tokenB).safeTransfer(_vault, feeAmount1);
         }
-        // update k
+        removedAmounts[0] -= feeAmount0;
+        removedAmounts[1] -= feeAmount1;
+        _updateK();
+    }
+
+    function _updateK() internal {
         uint256[] memory amounts = getSpotAmounts(_getLpBalance());
         _writeState(K_INDEX, bytes32(amounts[0] * amounts[1]));
     }
 
-    function _getFees() internal view returns (bool hasFee, uint256[] memory feeAmounts) {
-        // x = reserveA * shareAmount / shareTotalSupply - _sqrt(k1 * reserveA / reserveB)
-        // y = reserveB / reserveA * x
-        feeAmounts = new uint256[](2);
+    function _getFeeShareAmount() internal view returns (uint256) {
         uint256 shareAmount = _getLpBalance();
-        if (shareAmount != 0) {
-            IERC20 shareToken = IERC20(pair);
-            hasFee = true;
-            uint256 shareTotalSupply = shareToken.totalSupply();
-            uint256 k = uint256(_readState(0));
-            (uint256 reserveA, uint256 reserveB) = _getReserves();
-            feeAmounts[0] = (reserveA * shareAmount) / shareTotalSupply - _sqrt((k / reserveB) * reserveA);
-            feeAmounts[1] = (reserveB * feeAmounts[0]) / reserveA;
+        if (shareAmount == 0) {
+            return 0;
         }
+        uint256 poolShareAmount = IERC20(pair).totalSupply();
+        (uint256 reserveA, uint256 reserveB) = _getReserves();
+        uint256 k = uint256(_readState(K_INDEX));
+        return shareAmount - (_sqrt(k) * poolShareAmount) / _sqrt(reserveA * reserveB);
     }
 
     function _getLpBalance() internal view returns (uint256 shareAmount) {
@@ -203,32 +197,24 @@ contract UniFarmModule is Module {
         view
         returns (uint256 amountA, uint256 amountB)
     {
-        uint256 balance0 = IERC20(tokenA).balanceOf(pair);
-        uint256 balance1 = IERC20(tokenB).balanceOf(pair);
-        amountA = (shareAmount * balance0) / totalSupply;
-        amountB = (shareAmount * balance1) / totalSupply;
-    }
-
-    function _getRedeemingShareAmount(uint256 amountA, uint256 amountB) internal view returns (uint256 shareAmount) {
-        uint256 balance0 = IERC20(tokenA).balanceOf(pair);
-        uint256 balance1 = IERC20(tokenB).balanceOf(pair);
-        uint256 totalSupply = IERC20(pair).totalSupply();
-        uint256 shareAmountA = (amountA * totalSupply) / balance0;
-        uint256 shareAmountB = (amountB * totalSupply) / balance1;
-        shareAmount = shareAmountA >= shareAmountB ? shareAmountA : shareAmountB;
+        (uint256 reserveA, uint256 reserveB) = _getReserves();
+        amountA = (shareAmount * reserveA) / totalSupply;
+        amountB = (shareAmount * reserveB) / totalSupply;
     }
 
     function _getReserves() internal view returns (uint256 reserveA, uint256 reserveB) {
-        (address token0, ) = _sortTokens();
-        (uint256 reserve0, uint256 reserve1, ) = IUniswapV2Pair(pair).getReserves();
-        (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
+        // (address token0, ) = _sortTokens();
+        // (uint256 reserve0, uint256 reserve1, ) = IUniswapV2Pair(pair).getReserves();
+        // (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
+        reserveA = IERC20(tokenA).balanceOf(pair);
+        reserveB = IERC20(tokenB).balanceOf(pair);
     }
 
-    function _sortTokens() internal view returns (address token0, address token1) {
-        require(tokenA != tokenB, "UniswapV2Library: IDENTICAL_ADDRESSES");
-        (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-        require(token0 != address(0), "UniswapV2Library: ZERO_ADDRESS");
-    }
+    // function _sortTokens() internal view returns (address token0, address token1) {
+    //     require(tokenA != tokenB, "UniswapV2Library: IDENTICAL_ADDRESSES");
+    //     (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+    //     require(token0 != address(0), "UniswapV2Library: ZERO_ADDRESS");
+    // }
 
     function _sqrt(uint256 y) internal pure returns (uint256 z) {
         if (y > 3) {
@@ -274,14 +260,16 @@ interface IUniswapV2Router {
 }
 
 interface IUniswapV2Pair {
-    function getReserves()
-        external
-        view
-        returns (
-            uint112 _reserve0,
-            uint112 _reserve1,
-            uint32 _blockTimestampLast
-        );
+    function kLast() external view returns (uint256);
+
+    // function getReserves()
+    //     external
+    //     view
+    //     returns (
+    //         uint112 _reserve0,
+    //         uint112 _reserve1,
+    //         uint32 _blockTimestampLast
+    //     );
 }
 
 interface IStake {

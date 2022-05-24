@@ -125,7 +125,7 @@ describe("LiquidityIntegration", () => {
 
     const lpStake = await createContract("MockLpStake", [curve2pool.address])
     const transferMod = await createContract("TransferModule")
-    const curveMod = await createContract("CurveFarmModule", [curve2pool.address, usdc.address, usdt.address, lpStake.address])
+    const curveMod = await createContract("Curve2PoolFarmModule", [curve2pool.address, usdc.address, usdt.address, lpStake.address])
 
     // curve
     await usdc.connect(lp1).approve(curve2pool.address, toWei("10000"))
@@ -153,8 +153,8 @@ describe("LiquidityIntegration", () => {
       [0, 2], // usdc - usdt
       [1, 1]
     )
-    await liquidityManager.installGenericModule(transferMod.address)
-    await liquidityManager.installDexModule(1, curveMod.address)
+    await liquidityManager.installGenericModule(transferMod.address, false)
+    await liquidityManager.installDexModule(1, curveMod.address, false)
 
     var tx = await liquidityManager.batchModuleCall([
       makeCallContext(

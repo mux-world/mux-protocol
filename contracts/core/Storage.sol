@@ -23,6 +23,14 @@ contract Storage is Initializable, SafeOwnableUpgradeable, Events {
         _;
     }
 
+    modifier updateSequence() {
+        _;
+        unchecked {
+            _storage.sequence += 1;
+        }
+        emit UpdateSequence(_storage.sequence);
+    }
+
     function _blockTimestamp() internal view virtual returns (uint32) {
         return uint32(block.timestamp);
     }

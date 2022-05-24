@@ -124,7 +124,7 @@ describe("LiquidityManager", () => {
     await tokenB.mint(pool.address, toWei("10"))
 
     const transferMod = await createContract("TransferModule")
-    let tx = await lm.installGenericModule(transferMod.address);
+    let tx = await lm.installGenericModule(transferMod.address, false);
     console.log(await lm.getModuleInfo(toBytes32("transfer-mod")))
 
     await lm.moduleCall(
@@ -178,8 +178,8 @@ describe("LiquidityManager", () => {
       0,
       zeroAddress,
     ])
-    await lm.installGenericModule(transferMod.address);
-    await lm.installDexModule(1, univ2Mod.address);
+    await lm.installGenericModule(transferMod.address, false);
+    await lm.installDexModule(1, univ2Mod.address, false);
 
     await expect(lm.batchModuleCall([])).to.be.revertedWith("MTY")
     await expect(lm.connect(user1).batchModuleCall(
@@ -237,13 +237,13 @@ describe("LiquidityManager", () => {
       0,
       zeroAddress,
     ])
-    await lm.installGenericModule(transferMod.address);
+    await lm.installGenericModule(transferMod.address, false);
 
     var result = await dl.callStatic.getDexLiquidity(1)
     expect(result.liquidities).deep.equal([toWei("0"), toWei("0")])
     expect(result.lpBalance).to.equal(0)
 
-    await lm.installDexModule(1, univ2Mod.address);
+    await lm.installDexModule(1, univ2Mod.address, false);
 
     var result = await dl.callStatic.getDexLiquidity(1)
     expect(result.liquidities).deep.equal([toWei("0"), toWei("0")])
@@ -270,46 +270,6 @@ describe("LiquidityManager", () => {
     await expect(dl.removeDexLiquidity(1, toWei("50.5"), [], 99999999999)).to.be.revertedWith("MTY")
   })
 
-  it("accessor2", async () => {
-    const mockUniv2 = await createContract("MockUniV2Pool", [tokenA.address, tokenB.address])
-    await tokenA.mint(pool.address, toWei("1000"))
-    await tokenB.mint(pool.address, toWei("1000"))
-
-    await lm.addDexSpotConfiguration("uniswapV2", 100, [0, 1], [1, 1])
-    await lm.addExternalAccessor(dl.address);
-
-    const transferMod = await createContract("TransferModule")
-    const univ2Mod = await createContract("UniFarmModule", [
-      mockUniv2.address,
-      mockUniv2.address,
-      tokenA.address,
-      tokenB.address,
-      0,
-      zeroAddress,
-    ])
-    await lm.installGenericModule(transferMod.address);
-    await lm.installDexModule(1, univ2Mod.address);
-    await dl.addDexLiquidity(1, [toWei("100"), toWei("1")], 99999999999)
-
-    await tokenA.mint(user0.address, toWei("1000"))
-    await tokenB.mint(user0.address, toWei("1000"))
-    await tokenA.approve(mockUniv2.address, toWei("10000"))
-    await tokenB.approve(mockUniv2.address, toWei("10000"))
-
-    await mockUniv2.swapA4B(toWei("0.1"))
-    console.log(await mockUniv2.getPrice())
-    console.log(await tokenB.balanceOf(user0.address))
-
-    await mockUniv2.swapB4A(toWei("0.000999003993018960"))
-    console.log(await mockUniv2.getPrice())
-
-    var result = U.defaultAbiCoder.decode(
-      ["uint256[]"],
-      await lm.callStatic.moduleCall(makeCallContext2("getFees", "0x", 1))
-    )
-    console.log(result)
-    // await dl.removeDexLiquidity(1, toWei("50.5"), [toWei("100"), toWei("1")], 99999999999)
-  })
 
   it("exceptions", async () => {
     const mockUniv2 = await createContract("MockUniV2Pool", [tokenA.address, tokenB.address])
@@ -332,20 +292,22 @@ describe("LiquidityManager", () => {
       0,
       zeroAddress,
     ])
-    await expect(lm.installGenericModule(user0.address)).to.be.revertedWith("MNC")
-    await expect(lm.installGenericModule(lm.address)).to.be.revertedWith("IMM")
-    await lm.installGenericModule(transferMod.address)
-    await expect(lm.installGenericModule(transferMod.address)).to.be.revertedWith("MHI")
+    await expect(lm.installGenericModule(user0.address, false)).to.be.revertedWith("MNC")
+    await expect(lm.installGenericModule(lm.address, false)).to.be.revertedWith("IMM")
+    await lm.installGenericModule(transferMod.address, false)
+    await expect(lm.installGenericModule(transferMod.address, false)).to.be.revertedWith("MHI")
 
-    const crvMod = await createContract("CurveFarmModule", [
-      mockUniv2.address,
+    const mockCrv = await createContract("MockCurve2Pool", [tokenA.address, tokenB.address])
+
+    const crvMod = await createContract("Curve2PoolFarmModule", [
+      mockCrv.address,
       tokenA.address,
       tokenB.address,
-      mockUniv2.address,
+      mockCrv.address,
     ])
 
-    await lm.installDexModule(1, univ2Mod.address);
-    await expect(lm.installDexModule(1, crvMod.address)).to.revertedWith("MLR")
+    await lm.installDexModule(1, univ2Mod.address, false);
+    await expect(lm.installDexModule(1, crvMod.address, false)).to.revertedWith("MLR")
 
     await expect(dl.addDexLiquidity(1, [toWei("100"), toWei("1")], 99999999999)).to.be.revertedWith("FMS")
     await lm.addExternalAccessor(dl.address);
@@ -356,4 +318,5 @@ describe("LiquidityManager", () => {
     await expect(lm.removeExternalAccessor(dl.address)).to.be.revertedWith("ANE")
     await expect(dl.addDexLiquidity(1, [toWei("100"), toWei("1")], 99999999999)).to.be.revertedWith("FMS")
   })
+
 })

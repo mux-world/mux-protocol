@@ -355,7 +355,7 @@ describe("IntegrationEth", () => {
       {
         await liquidityManager.addDexSpotConfiguration("uniswapV2", 1, [0], [1])
         const transferMod = await createContract("TransferModule")
-        await liquidityManager.installGenericModule(transferMod.address)
+        await liquidityManager.installGenericModule(transferMod.address, false)
         await liquidityManager.moduleCall(makeCallContext1("transferFromPool", ["uint8[]", "uint256[]"], [[0], [toWei("100")]]))
         const collateralInfo = await pool.getAssetInfo(0)
         expect(collateralInfo.spotLiquidity).to.equal(toWei("0"))

@@ -16,6 +16,13 @@ contract Admin is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall {
     event SetDexWeight(uint8 indexed dexId, uint32 dexWeight);
     event InstallModule(bytes32 indexed moduleId, address module, bytes32[] methodIds, bytes4[] selectors);
     event UninstallModule(bytes32 indexed moduleId, address module, bytes32[] methods);
+    event ClearStates(bytes32 indexed moduleId);
+
+    function setVault(address newVault) external onlyOwner {
+        require(newVault != address(0), "ZVA"); // zero vault address
+        require(newVault != _vault, "DVA"); // duplicated vault address
+        _vault = newVault;
+    }
 
     function addExternalAccessor(address accessor) external onlyOwner {
         require(!_externalAccessors[accessor], "DEA"); // duplicated external accessor
@@ -81,8 +88,9 @@ contract Admin is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall {
                the abilities of `LiquidityManager`, eg: transfer funds and transfer across chain.
                The module must implement the `IModule` interface (contracts/interfaces/IModule.sol).
      * @param module The address of the module to install.
+     * @param overwriteStates Overwrite the initial states of module.
      */
-    function installGenericModule(address module) external onlyOwner {
+    function installGenericModule(address module, bool overwriteStates) external onlyOwner {
         require(module.isContract(), "MNC"); // the module is not a contract
         (
             bytes32 moduleId,
@@ -95,7 +103,9 @@ contract Admin is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall {
         for (uint256 i = 0; i < methodIds.length; i++) {
             require(!_hasGenericCall(methodIds[i]), "MLR"); // method is already registered
             _genericRoutes[methodIds[i]] = CallRegistration(module, selectors[i]);
-            _moduleData[moduleId] = initialStates;
+            if (overwriteStates || _moduleData[moduleId].length == 0) {
+                _moduleData[moduleId] = initialStates;
+            }
         }
         _moduleInfos[moduleId] = ModuleInfo({
             id: moduleId,
@@ -111,8 +121,13 @@ contract Admin is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall {
      * @notice Install a dex module. A dex module implements interfaces to operate the dex (add/removeLiquidity or farming).
      * @param dexId The id of the dex.
      * @param module The address of the module to install.
+     * @param overwriteStates Overwrite the initial states of module.
      */
-    function installDexModule(uint8 dexId, address module) external onlyOwner {
+    function installDexModule(
+        uint8 dexId,
+        address module,
+        bool overwriteStates
+    ) external onlyOwner {
         require(dexId != 0 && dexId < _dexSpotConfigs.length, "LST"); // the asset is not LiSTed
         require(module.isContract(), "MNC"); // the module is not a contract
         (
@@ -127,7 +142,9 @@ contract Admin is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall {
             // has dex id as prefix
             require(!_hasDexCall(dexId, methodIds[i]), "MLR"); // method is already registered
             _dexRoutes[dexId][methodIds[i]] = CallRegistration(module, selectors[i]);
-            _moduleData[moduleId] = initialStates;
+            if (overwriteStates || _moduleData[moduleId].length == 0) {
+                _moduleData[moduleId] = initialStates;
+            }
         }
         _moduleInfos[moduleId] = ModuleInfo({
             id: moduleId,
@@ -137,6 +154,24 @@ contract Admin is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall {
             methodIds: methodIds
         });
         emit InstallModule(moduleId, module, methodIds, selectors);
+    }
+
+    /**
+     * @notice Uninstall a generic module or a dex module.
+     * @param moduleId The id of the module to install.
+     */
+    function clearStates(bytes32 moduleId) external onlyOwner {
+        delete _moduleData[moduleId];
+        emit ClearStates(moduleId);
+    }
+
+    /**
+     * @notice Uninstall a generic module or a dex module.
+     * @param moduleId The id of the module to install.
+     */
+    function setStates(bytes32 moduleId, bytes32[] memory states) external onlyOwner {
+        _moduleData[moduleId] = states;
+        emit ClearStates(moduleId);
     }
 
     /**
@@ -154,8 +189,7 @@ contract Admin is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall {
                 delete _genericRoutes[methodIds[i]];
             }
         }
-        ModuleInfo storage module = _moduleInfos[moduleId];
-        emit UninstallModule(moduleId, module.path, methodIds);
+        emit UninstallModule(moduleId, moduleInfo.path, methodIds);
         delete _moduleInfos[moduleId];
     }
 

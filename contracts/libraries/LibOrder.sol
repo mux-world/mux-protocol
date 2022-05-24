@@ -5,9 +5,10 @@ import "../orderbook/Types.sol";
 import "./LibSubAccount.sol";
 
 library LibOrder {
-    uint8 constant POSITION_INCREASING = 0x80; // 1 for openPosition, 0 for closePosition
-    uint8 constant POSITION_MARKET_ORDER = 0x40; // ignore limitPrice
-    uint8 constant POSITION_WITHDRAW_ALL_IF_EMPTY = 0x20; // auto withdraw all if position.size == 0
+    uint8 constant POSITION_OPEN = 0x80; // 0x80 means openPosition; otherwise closePosition
+    uint8 constant POSITION_MARKET_ORDER = 0x40; // 0x40 means ignore limitPrice
+    uint8 constant POSITION_WITHDRAW_ALL_IF_EMPTY = 0x20; // 0x20 means auto withdraw all collateral if position.size == 0
+    uint8 constant POSITION_TRIGGER_ORDER = 0x10; // 0x10 means this is a trigger order (ex: stop-loss order). 0 means this is a limit order (ex: take-profit order)
 
     // order data[1] SHOULD reserve lower 64bits for enumIndex
     bytes32 constant ENUM_INDEX_BITS = bytes32(uint256(0xffffffffffffffff));
@@ -161,8 +162,8 @@ library LibOrder {
         order.isProfit = flags > 0;
     }
 
-    function isIncreasing(PositionOrder memory order) internal pure returns (bool) {
-        return (order.flags & POSITION_INCREASING) != 0;
+    function isOpenPosition(PositionOrder memory order) internal pure returns (bool) {
+        return (order.flags & POSITION_OPEN) != 0;
     }
 
     function isMarketOrder(PositionOrder memory order) internal pure returns (bool) {
@@ -171,5 +172,9 @@ library LibOrder {
 
     function isWithdrawIfEmpty(PositionOrder memory order) internal pure returns (bool) {
         return (order.flags & POSITION_WITHDRAW_ALL_IF_EMPTY) != 0;
+    }
+
+    function isTriggerOrder(PositionOrder memory order) internal pure returns (bool) {
+        return (order.flags & POSITION_TRIGGER_ORDER) != 0;
     }
 }

@@ -36,7 +36,7 @@ contract Account is Storage {
     function depositCollateral(
         bytes32 subAccountId,
         uint256 rawAmount // NOTE: OrderBook SHOULD transfer rawAmount collateral to LiquidityPool
-    ) external onlyOrderBook {
+    ) external onlyOrderBook updateSequence {
         LibSubAccount.DecodedSubAccountId memory decoded = subAccountId.decodeSubAccountId();
         require(decoded.account != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(decoded.collateralId), "LST"); // the asset is not LiSTed
@@ -59,14 +59,12 @@ contract Account is Storage {
         uint256 rawAmount,
         uint96 collateralPrice,
         uint96 assetPrice
-    ) external onlyOrderBook {
+    ) external onlyOrderBook updateSequence {
         require(rawAmount != 0, "A=0"); // Amount Is Zero
         LibSubAccount.DecodedSubAccountId memory decoded = subAccountId.decodeSubAccountId();
         require(decoded.account != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(decoded.collateralId), "LST"); // the asset is not LiSTed
         require(_hasAsset(decoded.assetId), "LST"); // the asset is not LiSTed
-        require(collateralPrice != 0, "P=0"); // Price Is Zero
-        require(assetPrice != 0, "P=0"); // Price Is Zero
 
         Asset storage asset = _storage.assets[decoded.assetId];
         Asset storage collateral = _storage.assets[decoded.collateralId];
@@ -87,6 +85,7 @@ contract Account is Storage {
             subAccount.collateral -= feeCollateral;
             collateral.collectedFee += feeCollateral;
             collateral.spotLiquidity += feeCollateral;
+            emit CollectedFee(decoded.collateralId, feeCollateral);
         }
         // withdraw
         uint96 wadAmount = collateral.toWad(rawAmount);
@@ -98,7 +97,7 @@ contract Account is Storage {
         emit WithdrawCollateral(subAccountId, decoded.account, decoded.collateralId, rawAmount, wadAmount);
     }
 
-    function withdrawAllCollateral(bytes32 subAccountId) external onlyOrderBook {
+    function withdrawAllCollateral(bytes32 subAccountId) external onlyOrderBook updateSequence {
         LibSubAccount.DecodedSubAccountId memory decoded = subAccountId.decodeSubAccountId();
         SubAccount storage subAccount = _storage.accounts[subAccountId];
         require(subAccount.size == 0, "S>0"); // position Size should be Zero
@@ -141,7 +140,7 @@ contract Account is Storage {
         pnlUsd = uint256(priceDelta).wmul(amount).safeUint96();
     }
 
-    // NOTE: settle funding before this function
+    // NOTE: settle funding by modify subAccount.collateral before this function
     function _isAccountImSafe(
         SubAccount storage subAccount,
         uint32 assetId,
@@ -151,10 +150,10 @@ contract Account is Storage {
     ) internal view returns (bool) {
         Asset storage asset = _storage.assets[assetId];
         (bool hasProfit, uint96 pnlUsd) = _positionPnlUsd(asset, subAccount, isLong, subAccount.size, assetPrice);
-        return _isAccountSafe(subAccount, collateralPrice, assetPrice, asset.initialMarginRate, hasProfit, pnlUsd);
+        return _isAccountSafe(subAccount, collateralPrice, assetPrice, asset.initialMarginRate, hasProfit, pnlUsd, 0);
     }
 
-    // NOTE: settle funding before this function
+    // NOTE: settle funding by modify subAccount.collateral before this function
     function _isAccountMmSafe(
         SubAccount storage subAccount,
         uint32 assetId,
@@ -164,21 +163,23 @@ contract Account is Storage {
     ) internal view returns (bool) {
         Asset storage asset = _storage.assets[assetId];
         (bool hasProfit, uint96 pnlUsd) = _positionPnlUsd(asset, subAccount, isLong, subAccount.size, assetPrice);
-        return _isAccountSafe(subAccount, collateralPrice, assetPrice, asset.maintenanceMarginRate, hasProfit, pnlUsd);
+        return
+            _isAccountSafe(subAccount, collateralPrice, assetPrice, asset.maintenanceMarginRate, hasProfit, pnlUsd, 0);
     }
 
-    // NOTE: settle funding before this function
     function _isAccountSafe(
         SubAccount storage subAccount,
         uint96 collateralPrice,
         uint96 assetPrice,
         uint32 marginRate,
         bool hasProfit,
-        uint96 pnlUsd
+        uint96 pnlUsd,
+        uint96 fundingFee // fundingFee = 0 if subAccount.collateral was modified
     ) internal view returns (bool) {
         uint256 thresholdUsd = (uint256(subAccount.size) * uint256(assetPrice) * uint256(marginRate)) / 1e18 / 1e5;
+        thresholdUsd += fundingFee;
         uint256 collateralUsd = uint256(subAccount.collateral).wmul(collateralPrice);
-        // break down "collateral_usd +/- pnl_usd >= threshold_usd>= 0"
+        // break down "collateralUsd +/- pnlUsd >= thresholdUsd >= 0"
         if (hasProfit) {
             return collateralUsd + pnlUsd >= thresholdUsd;
         } else {

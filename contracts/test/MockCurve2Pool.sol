@@ -11,6 +11,16 @@ import "hardhat/console.sol";
 contract MockCurve2Pool is MockUniV2Pool {
     constructor(address tokenA_, address tokenB_) MockUniV2Pool(tokenA_, tokenB_) {}
 
+    function coins(uint256 index) public view returns (address) {
+        if (index == 0) {
+            return _tokenA;
+        } else if (index == 1) {
+            return _tokenB;
+        } else {
+            revert("Index out of range");
+        }
+    }
+
     function balances() external view returns (uint256[2] memory balances_) {
         balances_[0] = reserveA;
         balances_[1] = reserveB;

@@ -90,9 +90,10 @@ contract OrderBook is Storage, Admin {
      * @param profitTokenId      specify the profitable asset.id when closing a position and making a profit.
      *                           take no effect when opening a position or loss.
      * @param flags              a bitset of LibOrder.POSITION_*
-     *                           POSITION_INCREASING               1 for openPosition, 0 for closePosition
-     *                           POSITION_MARKET_ORDER             ignore limitPrice
-     *                           POSITION_WITHDRAW_ALL_IF_EMPTY    auto withdraw all if position.size == 0
+     *                           POSITION_INCREASING               0x80 means openPosition; otherwise closePosition
+     *                           POSITION_MARKET_ORDER             0x40 means ignore limitPrice
+     *                           POSITION_WITHDRAW_ALL_IF_EMPTY    0x20 means auto withdraw all collateral if position.size == 0
+     *                           POSITION_TRIGGER_ORDER            0x10 means this is a trigger order (ex: stop-loss order). 0 means this is a limit order (ex: take-profit order)
      */
     function placePositionOrder(
         bytes32 subAccountId,
@@ -110,7 +111,7 @@ contract OrderBook is Storage, Admin {
         }
         if (profitTokenId > 0) {
             // note: profitTokenId == 0 is also valid, this only partially protects the function from misuse
-            require((flags & LibOrder.POSITION_INCREASING) == 0, "T!0"); // opening position does not need a Token id
+            require((flags & LibOrder.POSITION_OPEN) == 0, "T!0"); // opening position does not need a Token id
         }
         // add order
         uint64 orderId = _nextOrderId++;
@@ -125,7 +126,7 @@ contract OrderBook is Storage, Admin {
         );
         _orders.add(orderId, data);
         // fetch collateral
-        if (collateralAmount > 0 && ((flags & LibOrder.POSITION_INCREASING) != 0)) {
+        if (collateralAmount > 0 && ((flags & LibOrder.POSITION_OPEN) != 0)) {
             address collateralAddress = _pool.getAssetAddress(account.collateralId);
             _transferIn(collateralAddress, address(this), collateralAmount);
         }
@@ -212,19 +213,8 @@ contract OrderBook is Storage, Admin {
         require(orderType == OrderType.PositionOrder, "TYP"); // order TYPe mismatch
 
         PositionOrder memory order = orderData.decodePositionOrder();
-        if (!order.isMarketOrder()) {
-            //             long                        !long
-            // increase    assetPrice <= orderPrice    assetPrice >= orderPrice
-            // !increase   assetPrice >= orderPrice    assetPrice <= orderPrice
-            bool isLimitPriceOk;
-            if (order.subAccountId.isLong() == order.isIncreasing()) {
-                isLimitPriceOk = assetPrice <= order.price;
-            } else {
-                isLimitPriceOk = assetPrice >= order.price;
-            }
-            require(isLimitPriceOk, "LMT"); // LiMiTed by limitPrice
-        }
-        if (order.isIncreasing()) {
+        uint96 tradingPrice;
+        if (order.isOpenPosition()) {
             // auto deposit
             uint96 collateralAmount = order.collateral;
             if (collateralAmount > 0) {
@@ -234,9 +224,9 @@ contract OrderBook is Storage, Admin {
                 collateral.safeTransfer(address(_pool), collateralAmount);
                 _pool.depositCollateral(order.subAccountId, collateralAmount);
             }
-            _pool.openPosition(order.subAccountId, order.size, collateralPrice, assetPrice);
+            tradingPrice = _pool.openPosition(order.subAccountId, order.size, collateralPrice, assetPrice);
         } else {
-            _pool.closePosition(
+            tradingPrice = _pool.closePosition(
                 order.subAccountId,
                 order.size,
                 order.profitTokenId,
@@ -255,6 +245,20 @@ contract OrderBook is Storage, Admin {
                 if (size == 0 && collateral > 0) {
                     _pool.withdrawAllCollateral(order.subAccountId);
                 }
+            }
+        }
+        if (!order.isMarketOrder()) {
+            // open,long      0,0   0,1   1,1   1,0
+            // limitOrder     <=    >=    <=    >=
+            // triggerOrder   >=    <=    >=    <=
+            bool isLess = (order.subAccountId.isLong() == order.isOpenPosition());
+            if (order.isTriggerOrder()) {
+                isLess = !isLess;
+            }
+            if (isLess) {
+                require(tradingPrice <= order.price, "LMT"); // LiMiTed by limitPrice
+            } else {
+                require(tradingPrice >= order.price, "LMT"); // LiMiTed by limitPrice
             }
         }
 
@@ -365,7 +369,7 @@ contract OrderBook is Storage, Admin {
         OrderType orderType = LibOrder.getOrderType(orderData);
         if (orderType == OrderType.PositionOrder) {
             PositionOrder memory order = orderData.decodePositionOrder();
-            if (order.isIncreasing() && order.collateral > 0) {
+            if (order.isOpenPosition() && order.collateral > 0) {
                 address collateralAddress = _pool.getAssetAddress(order.subAccountId.getSubAccountCollateralId());
                 _transferOut(collateralAddress, account, order.collateral);
             }
@@ -429,7 +433,7 @@ contract OrderBook is Storage, Admin {
     ) external onlyBroker {
         _pool.liquidate(subAccountId, profitAssetId, collateralPrice, assetPrice, profitAssetPrice);
         // auto withdraw
-        (uint96 collateral, uint96 size, , , ) = _pool.getSubAccount(subAccountId);
+        (uint96 collateral, , , , ) = _pool.getSubAccount(subAccountId);
         if (collateral > 0) {
             _pool.withdrawAllCollateral(subAccountId);
         }

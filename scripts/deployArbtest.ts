@@ -2,7 +2,7 @@ import hre, { ethers } from "hardhat"
 import { restorableEnviron } from "./deployer/environ"
 import { toWei, toUnit, toBytes32, rate, ensureFinished, ReferenceOracleType } from "../test/deployUtils"
 import { Deployer, DeploymentOptions } from "./deployer/deployer"
-import { LiquidityPool, OrderBook, LiquidityManager, Reader } from "../typechain"
+import { LiquidityPool, OrderBook, LiquidityManager, Reader, NativeUnwrapper } from "../typechain"
 import { MuxToken, MlpToken, MockERC20 } from "../typechain"
 import { Contract, ContractReceipt } from "ethers"
 import { transferThroughDemoBridge } from "./demoBridgeTransfer"
@@ -231,6 +231,7 @@ async function main(deployer: Deployer) {
 
   // deploy
   let proxyAdmin = deployer.addressOf("ProxyAdmin")
+  const weth9: MockERC20 = await deployer.getDeployedContract("MockERC20", "WETH9")
   const mlpToken: MlpToken = await deployer.deployUpgradeableOrSkip("MlpToken", "Mlp", proxyAdmin)
   await deployer.deployUpgradeableOrSkip("LiquidityPoolHop1", "LiquidityPool", proxyAdmin)
   const poolHop2: Contract = await deployer.deployOrSkip("LiquidityPoolHop2", "LiquidityPoolHop2")
@@ -242,25 +243,26 @@ async function main(deployer: Deployer) {
   const reader: Reader = await deployer.deployOrSkip("Reader", "Reader", pool.address, mlpToken.address, dexLiquidity.address, orderBook.address, [
     accounts[0].address, // deployer's mux tokens are not debt
   ])
+  const nativeUnwrapper: NativeUnwrapper = await deployer.deployOrSkip("NativeUnwrapper", "NativeUnwrapper", weth9.address)
   const muxUsd: MuxToken = await deployer.deployOrSkip("MuxToken", "MuxUsd")
   const muxWeth: MuxToken = await deployer.deployOrSkip("MuxToken", "MuxWeth")
 
   // init
   console.log("init")
-  const weth9: MockERC20 = await deployer.getDeployedContract("MockERC20", "WETH9")
   await ensureFinished(mlpToken.initialize("MUX LP", "MUXLP" + TOKEN_POSTFIX))
   await ensureFinished(muxUsd.initialize("MUX Token for USD", "muxUSD" + TOKEN_POSTFIX))
   await ensureFinished(muxWeth.initialize("MUX Token for WETH", "muxWETH" + TOKEN_POSTFIX))
-  await ensureFinished(pool.initialize(poolHop2.address, mlpToken.address, orderBook.address, liquidityManager.address, weth9.address))
-  await ensureFinished(orderBook.initialize(pool.address, mlpToken.address, weth9.address))
+  await ensureFinished(pool.initialize(poolHop2.address, mlpToken.address, orderBook.address, liquidityManager.address, weth9.address, nativeUnwrapper.address))
+  await ensureFinished(orderBook.initialize(pool.address, mlpToken.address, weth9.address, nativeUnwrapper.address))
   await orderBook.addBroker(accounts[1].address)
   await orderBook.addBroker(keeperAddress)
   await orderBook.setLiquidityLockPeriod(5 * 60)
   await ensureFinished(liquidityManager.initialize(vault.address, pool.address))
   // fundingInterval, mlpPrice, mlpPrice, liqBase, liqDyn
   await pool.setNumbers(3600 * 8, toWei("0.9"), toWei("1.1"), rate("0.0025"), rate("0.005"))
-  await liquidityManager.initialize(accounts[0].address, pool.address)
   await liquidityManager.addExternalAccessor(dexLiquidity.address)
+  await ensureFinished(nativeUnwrapper.addWhiteList(pool.address))
+  await ensureFinished(nativeUnwrapper.addWhiteList(orderBook.address))
 
   console.log("transfer mlp")
   await mlpToken.transfer(pool.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)

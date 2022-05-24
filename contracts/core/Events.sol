@@ -2,6 +2,8 @@
 pragma solidity 0.8.10;
 
 contract Events {
+    event UpdateSequence(uint32 sequence);
+
     //////////////////////////////////////////////////////////////////////////////////////
     //                                   trade
     struct OpenPositionArgs {
@@ -11,8 +13,10 @@ contract Events {
         uint96 amount;
         uint96 assetPrice;
         uint96 collateralPrice;
-        uint96 entryPrice;
+        uint96 newEntryPrice;
         uint96 feeUsd;
+        uint96 remainPosition;
+        uint96 remainCollateral;
     }
     event OpenPosition(address indexed trader, uint8 indexed assetId, OpenPositionArgs args);
     struct ClosePositionArgs {
@@ -24,10 +28,11 @@ contract Events {
         uint96 assetPrice;
         uint96 collateralPrice;
         uint96 profitAssetPrice;
-        uint96 entryPrice;
         uint96 feeUsd;
         bool hasProfit;
         uint96 pnlUsd;
+        uint96 remainPosition;
+        uint96 remainCollateral;
     }
     event ClosePosition(address indexed trader, uint8 indexed assetId, ClosePositionArgs args);
     struct LiquidateArgs {
@@ -39,10 +44,10 @@ contract Events {
         uint96 assetPrice;
         uint96 collateralPrice;
         uint96 profitAssetPrice;
-        uint96 entryPrice;
         uint96 feeUsd;
         bool hasProfit;
         uint96 pnlUsd;
+        uint96 remainCollateral;
     }
     event Liquidate(address indexed trader, uint8 indexed assetId, LiquidateArgs args);
     struct WithdrawProfitArgs {
@@ -102,6 +107,7 @@ contract Events {
         address tokenAddress,
         address muxTokenAddress
     );
+    event SetAssetSymbol(uint8 indexed assetId, bytes32 symbol);
     event SetAssetParams(
         uint8 indexed assetId,
         uint32 newInitialMarginRate,
@@ -132,5 +138,6 @@ contract Events {
     event SetFundingInterval(uint32 oldFundingInterval, uint32 newFundingInterval);
     event SetMlpPriceRange(uint96 newLowerBound, uint96 newUpperBound);
     event SetLiquidityFee(uint32 newLiquidityBaseFeeRate, uint32 newLiquidityDynamicFeeRate);
+    event WithdrawCollectedFee(uint8 indexed assetId, uint96 collectedFee);
     event TransferLiquidity(address indexed sender, address indexed recipient, uint8 assetId, uint256 amount);
 }

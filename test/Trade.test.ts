@@ -115,6 +115,7 @@ describe("Trade", () => {
     const current = toWei("29700")
     const target = toWei("29700")
     await asset0.mint(user0.address, toWei("10000"))
+    await asset2.mint(user0.address, toWei("10000"))
     expect(await mlp.balanceOf(pool.address)).to.equal(toWei("1000000000000000000"))
 
     // user 0 +liq
@@ -145,11 +146,19 @@ describe("Trade", () => {
     }
     // user 1 +liq
     {
-      await asset0.transfer(pool.address, toWei("100"))
-      await pool.addLiquidity(user1.address, 0, toWei("100"), toWei("2"), toWei("1"), current, target) // = 200 mlp
-      expect(await asset0.balanceOf(pool.address)).to.equal(toWei("400"))
+      await asset2.transfer(pool.address, toWei("100"))
+      await pool.addLiquidity(user1.address, 2, toWei("100"), toWei("2"), toWei("1"), current, target) // = 200 mlp
+      expect(await asset2.balanceOf(pool.address)).to.equal(toWei("100"))
       expect(await mlp.balanceOf(user1.address)).to.equal(toWei("300"))
       expect(await mlp.balanceOf(pool.address)).to.equal(toWei("999999999999999550"))
+    }
+    // user 1 +liq
+    {
+      await asset0.transfer(pool.address, toWei("100"))
+      await pool.addLiquidity(user1.address, 0, toWei("100"), toWei("2"), toWei("1"), current, target) // = 100 mlp, strict-stable ignores the price
+      expect(await asset0.balanceOf(pool.address)).to.equal(toWei("400"))
+      expect(await mlp.balanceOf(user1.address)).to.equal(toWei("400"))
+      expect(await mlp.balanceOf(pool.address)).to.equal(toWei("999999999999999450"))
     }
   })
 
@@ -167,10 +176,10 @@ describe("Trade", () => {
     // remove liq
     await pool.removeLiquidity(user0.address, toWei("1"), 0, toWei("1"), toWei("1"), current, target)
     expect(await asset0.balanceOf(user0.address)).to.equal(toWei("1"))
-    await pool.removeLiquidity(user0.address, toWei("100"), 0, toWei("2"), toWei("1"), current, target)
-    expect(await asset0.balanceOf(user0.address)).to.equal(toWei("51"))
+    await pool.removeLiquidity(user0.address, toWei("100"), 0, toWei("2"), toWei("1"), current, target) // strict-stable ignores the price
+    expect(await asset0.balanceOf(user0.address)).to.equal(toWei("101"))
     await pool.removeLiquidity(user0.address, toWei("200"), 1, toWei("100"), toWei("1"), current, target)
-    expect(await asset0.balanceOf(user0.address)).to.equal(toWei("51"))
+    expect(await asset0.balanceOf(user0.address)).to.equal(toWei("101"))
     expect(await asset1.balanceOf(user0.address)).to.equal(toWei("2"))
   })
 

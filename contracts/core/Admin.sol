@@ -2,6 +2,8 @@
 pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+
 import "./Storage.sol";
 import "../libraries/LibAsset.sol";
 import "../libraries/LibMath.sol";
@@ -11,6 +13,7 @@ import "../core/Types.sol";
 contract Admin is Storage {
     using LibAsset for Asset;
     using LibMath for uint256;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     function addAsset(
         uint8 assetId,
@@ -19,7 +22,7 @@ contract Admin is Storage {
         bool isStable,
         address tokenAddress,
         address muxTokenAddress
-    ) external onlyOwner {
+    ) external onlyOwner updateSequence {
         require(decimals <= 18, "DCM"); // invalid DeCiMals
         require(assetId == _storage.assets.length, "AID"); // invalid AssetID
         require(assetId < 0xFF, "FLL"); // assets list is FuLL
@@ -36,6 +39,16 @@ contract Admin is Storage {
         emit AddAsset(assetId, symbol, decimals, isStable, tokenAddress, muxTokenAddress);
     }
 
+    function setAssetSymbol(uint8 assetId, bytes32 symbol) external onlyOwner updateSequence {
+        require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
+        require(symbol != "", "SYM"); // invalid SYMbol
+
+        Asset storage asset = _storage.assets[assetId];
+        require(asset.symbol != symbol, "CHG"); // setting is not CHanGed
+        asset.symbol = symbol;
+        emit SetAssetSymbol(assetId, symbol);
+    }
+
     function setAssetParams(
         uint8 assetId,
         uint32 newInitialMarginRate, // 1e5
@@ -46,7 +59,7 @@ contract Admin is Storage {
         uint96 newMaxLongPositionSize,
         uint96 newMaxShortPositionSize,
         uint32 newSpotWeight
-    ) external onlyOwner {
+    ) external onlyOwner updateSequence {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         Asset storage asset = _storage.assets[assetId];
         require(asset.initialMarginRate == 0 || newInitialMarginRate <= asset.initialMarginRate, "IMR"); // Initial Margin Raised
@@ -81,7 +94,7 @@ contract Admin is Storage {
         bool useStableTokenForProfit,
         bool isEnabled,
         bool isStrictStable
-    ) external onlyOwner {
+    ) external onlyOwner updateSequence {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         Asset storage asset = _storage.assets[assetId];
         if (!asset.isStable) {
@@ -104,7 +117,7 @@ contract Admin is Storage {
         );
     }
 
-    function pauseAll() external onlyOwner {
+    function pauseAll() external onlyOwner updateSequence {
         for (uint8 assetId = 0; assetId < _storage.assets.length; assetId++) {
             Asset storage asset = _storage.assets[assetId];
             asset.isEnabled = false;
@@ -124,7 +137,7 @@ contract Admin is Storage {
         uint8 assetId,
         uint32 newBaseRate8H,
         uint32 newLimitRate8H
-    ) external onlyOwner {
+    ) external onlyOwner updateSequence {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         if (_storage.assets[assetId].isStable) {
             _storage.shortFundingBaseRate8H = newBaseRate8H;
@@ -142,7 +155,7 @@ contract Admin is Storage {
         ReferenceOracleType referenceOracleType,
         address referenceOracle,
         uint32 referenceDeviation // 1e5
-    ) external onlyOwner {
+    ) external onlyOwner updateSequence {
         LibReferenceOracle.checkParameters(referenceOracleType, referenceOracle, referenceDeviation);
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         Asset storage asset = _storage.assets[assetId];
@@ -158,7 +171,7 @@ contract Admin is Storage {
         uint96 newMlpPriceUpperBound,
         uint32 newLiquidityBaseFeeRate, // 1e5
         uint32 newLiquidityDynamicFeeRate // 1e5
-    ) external onlyOwner {
+    ) external onlyOwner updateSequence {
         require(newLiquidityBaseFeeRate < 1e5, "F>1"); // %fee > 100%
         require(newLiquidityDynamicFeeRate < 1e5, "F>1"); // %fee > 100%
         if (_storage.fundingInterval != newFundingInterval) {
@@ -182,25 +195,50 @@ contract Admin is Storage {
         }
     }
 
-    function transferLiquidityOut(uint8[] memory assetIds, uint256[] memory amounts) external onlyLiquidityManager {
-        uint256 length = assetIds.length;
-        require(length > 0, "MTY"); // argument array is eMpTY
-        require(assetIds.length == amounts.length, "LEN"); // LENgth of 2 arguments does not match
-        for (uint256 i = 0; i < length; i++) {
-            Asset storage asset = _storage.assets[assetIds[i]];
-            IERC20Upgradeable(asset.tokenAddress).transfer(msg.sender, amounts[i]);
-            asset.spotLiquidity -= amounts[i].safeUint96();
-            emit TransferLiquidity(address(this), msg.sender, assetIds[i], amounts[i]);
+    function withdrawCollectedFee(uint8[] memory assetIds) external onlyOwner updateSequence {
+        for (uint256 i = 0; i < assetIds.length; i++) {
+            uint8 assetId = assetIds[i];
+            Asset storage asset = _storage.assets[assetId];
+            uint96 collectedFee = asset.collectedFee;
+            require(collectedFee <= asset.spotLiquidity, "LIQ"); // insufficient LIQuidity
+            asset.collectedFee = 0;
+            asset.spotLiquidity -= collectedFee;
+            uint256 rawAmount = asset.toRaw(collectedFee);
+            IERC20Upgradeable(asset.tokenAddress).safeTransfer(msg.sender, rawAmount);
+            emit WithdrawCollectedFee(assetId, collectedFee);
         }
     }
 
-    function transferLiquidityIn(uint8[] memory assetIds, uint256[] memory amounts) external onlyLiquidityManager {
+    function transferLiquidityOut(uint8[] memory assetIds, uint256[] memory rawAmounts)
+        external
+        onlyLiquidityManager
+        updateSequence
+    {
         uint256 length = assetIds.length;
         require(length > 0, "MTY"); // argument array is eMpTY
-        require(assetIds.length == amounts.length, "LEN"); // LENgth of 2 arguments does not match
+        require(assetIds.length == rawAmounts.length, "LEN"); // LENgth of 2 arguments does not match
         for (uint256 i = 0; i < length; i++) {
-            _storage.assets[assetIds[i]].spotLiquidity += amounts[i].safeUint96();
-            emit TransferLiquidity(msg.sender, address(this), assetIds[i], amounts[i]);
+            Asset storage asset = _storage.assets[assetIds[i]];
+            IERC20Upgradeable(asset.tokenAddress).transfer(msg.sender, rawAmounts[i]);
+            uint96 wadAmount = asset.toWad(rawAmounts[i]);
+            require(asset.spotLiquidity >= wadAmount, "NLT"); // not enough liquidity
+            asset.spotLiquidity -= wadAmount;
+            emit TransferLiquidity(address(this), msg.sender, assetIds[i], rawAmounts[i]);
+        }
+    }
+
+    function transferLiquidityIn(uint8[] memory assetIds, uint256[] memory rawAmounts)
+        external
+        onlyLiquidityManager
+        updateSequence
+    {
+        uint256 length = assetIds.length;
+        require(length > 0, "MTY"); // argument array is eMpTY
+        require(assetIds.length == rawAmounts.length, "LEN"); // LENgth of 2 arguments does not match
+        for (uint256 i = 0; i < length; i++) {
+            Asset storage asset = _storage.assets[assetIds[i]];
+            asset.spotLiquidity += asset.toWad(rawAmounts[i]);
+            emit TransferLiquidity(msg.sender, address(this), assetIds[i], rawAmounts[i]);
         }
     }
 }

@@ -31,6 +31,14 @@ contract LiquidityManager is Storage, Initializable, SafeOwnableUpgradeable, Mod
         _dexSpotConfigs.push();
     }
 
+    function vault() public view returns (address) {
+        return _vault;
+    }
+
+    function readStates(bytes32 moduleId) external view returns (bytes32[] memory) {
+        return _moduleData[moduleId];
+    }
+
     function hasGenericCall(bytes32 methodId) external view returns (bool) {
         return _hasGenericCall(methodId);
     }
