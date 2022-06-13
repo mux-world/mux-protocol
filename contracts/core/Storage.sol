@@ -23,8 +23,7 @@ contract Storage is Initializable, SafeOwnableUpgradeable, Events {
         _;
     }
 
-    modifier updateSequence() {
-        _;
+    function _updateSequence() internal {
         unchecked {
             _storage.sequence += 1;
         }

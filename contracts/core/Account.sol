@@ -36,7 +36,7 @@ contract Account is Storage {
     function depositCollateral(
         bytes32 subAccountId,
         uint256 rawAmount // NOTE: OrderBook SHOULD transfer rawAmount collateral to LiquidityPool
-    ) external onlyOrderBook updateSequence {
+    ) external onlyOrderBook {
         LibSubAccount.DecodedSubAccountId memory decoded = subAccountId.decodeSubAccountId();
         require(decoded.account != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(decoded.collateralId), "LST"); // the asset is not LiSTed
@@ -52,6 +52,7 @@ contract Account is Storage {
         subAccount.collateral += wadAmount;
 
         emit DepositCollateral(subAccountId, decoded.account, decoded.collateralId, rawAmount, wadAmount);
+        _updateSequence();
     }
 
     function withdrawCollateral(
@@ -59,7 +60,7 @@ contract Account is Storage {
         uint256 rawAmount,
         uint96 collateralPrice,
         uint96 assetPrice
-    ) external onlyOrderBook updateSequence {
+    ) external onlyOrderBook {
         require(rawAmount != 0, "A=0"); // Amount Is Zero
         LibSubAccount.DecodedSubAccountId memory decoded = subAccountId.decodeSubAccountId();
         require(decoded.account != address(0), "T=0"); // Trader address is zero
@@ -71,8 +72,8 @@ contract Account is Storage {
         require(asset.isEnabled, "ENA"); // the token is temporarily not ENAbled
         require(collateral.isEnabled, "ENA"); // the token is temporarily not ENAbled
         SubAccount storage subAccount = _storage.accounts[subAccountId];
-        assetPrice = LibReferenceOracle.checkPrice(asset, assetPrice);
-        collateralPrice = LibReferenceOracle.checkPrice(collateral, collateralPrice);
+        assetPrice = LibReferenceOracle.checkPrice(_storage, asset, assetPrice);
+        collateralPrice = LibReferenceOracle.checkPrice(_storage, collateral, collateralPrice);
 
         // fee & funding
         uint96 feeUsd = _getFundingFeeUsd(subAccount, asset, decoded.isLong, assetPrice);
@@ -95,9 +96,10 @@ contract Account is Storage {
         require(_isAccountImSafe(subAccount, decoded.assetId, decoded.isLong, collateralPrice, assetPrice), "!IM");
 
         emit WithdrawCollateral(subAccountId, decoded.account, decoded.collateralId, rawAmount, wadAmount);
+        _updateSequence();
     }
 
-    function withdrawAllCollateral(bytes32 subAccountId) external onlyOrderBook updateSequence {
+    function withdrawAllCollateral(bytes32 subAccountId) external onlyOrderBook {
         LibSubAccount.DecodedSubAccountId memory decoded = subAccountId.decodeSubAccountId();
         SubAccount storage subAccount = _storage.accounts[subAccountId];
         require(subAccount.size == 0, "S>0"); // position Size should be Zero
@@ -112,6 +114,7 @@ contract Account is Storage {
         subAccount.collateral = 0;
         collateral.transferOut(decoded.account, rawAmount, _storage.weth, _storage.nativeUnwrapper);
         emit WithdrawCollateral(subAccountId, decoded.account, decoded.collateralId, rawAmount, wadAmount);
+        _updateSequence();
     }
 
     function _positionPnlUsd(

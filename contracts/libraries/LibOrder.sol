@@ -5,6 +5,7 @@ import "../orderbook/Types.sol";
 import "./LibSubAccount.sol";
 
 library LibOrder {
+    // position order flags
     uint8 constant POSITION_OPEN = 0x80; // 0x80 means openPosition; otherwise closePosition
     uint8 constant POSITION_MARKET_ORDER = 0x40; // 0x40 means ignore limitPrice
     uint8 constant POSITION_WITHDRAW_ALL_IF_EMPTY = 0x20; // 0x20 means auto withdraw all collateral if position.size == 0
@@ -86,9 +87,9 @@ library LibOrder {
     function encodePositionOrder(
         uint64 orderId,
         bytes32 subAccountId,
-        uint96 collateral,
-        uint96 size,
-        uint96 price,
+        uint96 collateral, // erc20.decimals
+        uint96 size, // 1e18
+        uint96 price, // 1e18
         uint8 profitTokenId,
         uint8 flags
     ) internal pure returns (bytes32[3] memory data) {
@@ -113,7 +114,7 @@ library LibOrder {
         uint64 orderId,
         address account,
         uint8 assetId,
-        uint96 amount,
+        uint96 rawAmount, // erc20.decimals
         bool isAdding,
         uint32 placeOrderTime
     ) internal pure returns (bytes32[3] memory data) {
@@ -122,7 +123,7 @@ library LibOrder {
             (uint256(uint160(account)) << 96) | (uint256(orderId) << 8) | uint256(OrderType.LiquidityOrder)
         );
         data[1] = bytes32(
-            (uint256(amount) << 160) |
+            (uint256(rawAmount) << 160) |
                 (uint256(assetId) << 152) |
                 (uint256(flags) << 144) |
                 (uint256(placeOrderTime) << 64)
@@ -132,7 +133,7 @@ library LibOrder {
     // check Types.LiquidityOrder for schema
     function decodeLiquidityOrder(bytes32[3] memory data) internal pure returns (LiquidityOrder memory order) {
         order.account = address(bytes20(data[0]));
-        order.amount = uint96(bytes12(data[1]));
+        order.rawAmount = uint96(bytes12(data[1]));
         order.assetId = uint8(bytes1(data[1] << 96));
         uint8 flags = uint8(bytes1(data[1] << 104));
         order.isAdding = flags > 0;
@@ -143,23 +144,54 @@ library LibOrder {
     function encodeWithdrawalOrder(
         uint64 orderId,
         bytes32 subAccountId,
-        uint96 amount,
+        uint96 rawAmount, // erc20.decimals
         uint8 profitTokenId,
         bool isProfit
     ) internal pure returns (bytes32[3] memory data) {
         require((subAccountId & LibSubAccount.SUB_ACCOUNT_ID_FORBIDDEN_BITS) == 0, "AID"); // bad subAccount ID
         uint8 flags = isProfit ? 1 : 0;
         data[0] = subAccountId | bytes32(uint256(orderId) << 8) | bytes32(uint256(OrderType.WithdrawalOrder));
-        data[1] = bytes32((uint256(amount) << 160) | (uint256(profitTokenId) << 152) | (uint256(flags) << 144));
+        data[1] = bytes32((uint256(rawAmount) << 160) | (uint256(profitTokenId) << 152) | (uint256(flags) << 144));
     }
 
     // check Types.WithdrawalOrder for schema
     function decodeWithdrawalOrder(bytes32[3] memory data) internal pure returns (WithdrawalOrder memory order) {
         order.subAccountId = bytes32(bytes23(data[0]));
-        order.amount = uint96(bytes12(data[1]));
+        order.rawAmount = uint96(bytes12(data[1]));
         order.profitTokenId = uint8(bytes1(data[1] << 96));
         uint8 flags = uint8(bytes1(data[1] << 104));
         order.isProfit = flags > 0;
+    }
+
+    // check Types.RebalanceOrder for schema
+    function encodeRebalanceOrder(
+        uint64 orderId,
+        address rebalancer,
+        uint8 tokenId0,
+        uint8 tokenId1,
+        uint96 rawAmount0, // erc20.decimals
+        uint96 maxRawAmount1, // erc20.decimals
+        bytes32 userData
+    ) internal pure returns (bytes32[3] memory data) {
+        data[0] = bytes32(
+            (uint256(uint160(rebalancer)) << 96) |
+                (uint256(tokenId0) << 88) |
+                (uint256(tokenId1) << 80) |
+                (uint256(orderId) << 8) |
+                uint256(OrderType.RebalanceOrder)
+        );
+        data[1] = bytes32((uint256(rawAmount0) << 160) | (uint256(maxRawAmount1) << 64));
+        data[2] = userData;
+    }
+
+    // check Types.RebalanceOrder for schema
+    function decodeRebalanceOrder(bytes32[3] memory data) internal pure returns (RebalanceOrder memory order) {
+        order.rebalancer = address(bytes20(data[0]));
+        order.tokenId0 = uint8(bytes1(data[0] << 160));
+        order.tokenId1 = uint8(bytes1(data[0] << 168));
+        order.rawAmount0 = uint96(bytes12(data[1]));
+        order.maxRawAmount1 = uint96(bytes12(data[1] << 96));
+        order.userData = data[2];
     }
 
     function isOpenPosition(PositionOrder memory order) internal pure returns (bool) {

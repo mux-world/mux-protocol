@@ -6,7 +6,7 @@ interface IModule {
 
     function meta()
         external
-        pure
+        view
         returns (
             bytes32[] memory methodIds,
             bytes4[] memory selectors,

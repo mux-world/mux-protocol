@@ -18,9 +18,9 @@ contract OrderBook is Storage, Admin {
     event NewPositionOrder(
         bytes32 indexed subAccountId,
         uint64 indexed orderId,
-        uint96 collateral,
-        uint96 size,
-        uint96 price,
+        uint96 collateral, // erc20.decimals
+        uint96 size, // 1e18
+        uint96 price, // 1e18
         uint8 profitTokenId,
         uint8 flags
     );
@@ -28,15 +28,24 @@ contract OrderBook is Storage, Admin {
         address indexed account,
         uint64 indexed orderId,
         uint8 assetId,
-        uint96 amount,
+        uint96 rawAmount, // erc20.decimals
         bool isAdding
     );
     event NewWithdrawalOrder(
         bytes32 indexed subAccountId,
         uint64 indexed orderId,
-        uint96 amount,
+        uint96 rawAmount, // erc20.decimals
         uint8 profitTokenId,
         bool isProfit
+    );
+    event NewRebalanceOrder(
+        address indexed rebalancer,
+        uint64 indexed orderId,
+        uint8 tokenId0,
+        uint8 tokenId1,
+        uint96 rawAmount0,
+        uint96 maxRawAmount1,
+        bytes32 userData
     );
     event FillOrder(uint64 orderId, OrderType orderType, bytes32[3] orderData);
     event CancelOrder(uint64 orderId, OrderType orderType, bytes32[3] orderData);
@@ -97,9 +106,9 @@ contract OrderBook is Storage, Admin {
      */
     function placePositionOrder(
         bytes32 subAccountId,
-        uint96 collateralAmount,
-        uint96 size,
-        uint96 price,
+        uint96 collateralAmount, // erc20.decimals
+        uint96 size, // 1e18
+        uint96 price, // 1e18
         uint8 profitTokenId,
         uint8 flags
     ) external payable {
@@ -114,7 +123,7 @@ contract OrderBook is Storage, Admin {
             require((flags & LibOrder.POSITION_OPEN) == 0, "T!0"); // opening position does not need a Token id
         }
         // add order
-        uint64 orderId = _nextOrderId++;
+        uint64 orderId = nextOrderId++;
         bytes32[3] memory data = LibOrder.encodePositionOrder(
             orderId,
             subAccountId,
@@ -137,59 +146,98 @@ contract OrderBook is Storage, Admin {
      * @dev   Add/remove liquidity. called by Liquidity Provider
      *
      * @param assetId   asset.id that added/removed to
-     * @param amount    asset token amount. decimals = erc20.decimals
+     * @param rawAmount asset token amount. decimals = erc20.decimals
      * @param isAdding  true for add liquidity, false for remove liquidity
      */
     function placeLiquidityOrder(
         uint8 assetId,
-        uint96 amount,
+        uint96 rawAmount, // erc20.decimals
         bool isAdding
     ) external payable {
-        require(amount != 0, "A=0"); // Amount Is Zero
+        require(rawAmount != 0, "A=0"); // Amount Is Zero
         address account = msg.sender;
         if (isAdding) {
             address collateralAddress = _pool.getAssetAddress(assetId);
-            _transferIn(collateralAddress, address(this), amount);
+            _transferIn(collateralAddress, address(this), rawAmount);
         } else {
-            _mlp.safeTransferFrom(msg.sender, address(this), amount);
+            _mlp.safeTransferFrom(msg.sender, address(this), rawAmount);
         }
-        uint64 orderId = _nextOrderId++;
+        uint64 orderId = nextOrderId++;
         bytes32[3] memory data = LibOrder.encodeLiquidityOrder(
             orderId,
             account,
             assetId,
-            amount,
+            rawAmount,
             isAdding,
             _blockTimestamp()
         );
         _orders.add(orderId, data);
 
-        emit NewLiquidityOrder(account, orderId, assetId, amount, isAdding);
+        emit NewLiquidityOrder(account, orderId, assetId, rawAmount, isAdding);
     }
 
     /**
      * @dev   Withdraw collateral/profit. called by Trader
      *
      * @param subAccountId       sub account id. see LibSubAccount.decodeSubAccountId
-     * @param amount             collateral or profit asset amount. decimals = erc20.decimals
+     * @param rawAmount          collateral or profit asset amount. decimals = erc20.decimals
      * @param profitTokenId      specify the profitable asset.id
      * @param isProfit           true for withdraw profit. false for withdraw collateral
      */
     function placeWithdrawalOrder(
         bytes32 subAccountId,
-        uint96 amount,
+        uint96 rawAmount, // erc20.decimals
         uint8 profitTokenId,
         bool isProfit
     ) external {
         address trader = subAccountId.getSubAccountOwner();
         require(trader == msg.sender, "SND"); // SeNDer is not authorized
-        require(amount != 0, "A=0"); // Amount Is Zero
+        require(rawAmount != 0, "A=0"); // Amount Is Zero
 
-        uint64 orderId = _nextOrderId++;
-        bytes32[3] memory data = LibOrder.encodeWithdrawalOrder(orderId, subAccountId, amount, profitTokenId, isProfit);
+        uint64 orderId = nextOrderId++;
+        bytes32[3] memory data = LibOrder.encodeWithdrawalOrder(
+            orderId,
+            subAccountId,
+            rawAmount,
+            profitTokenId,
+            isProfit
+        );
         _orders.add(orderId, data);
 
-        emit NewWithdrawalOrder(subAccountId, orderId, amount, profitTokenId, isProfit);
+        emit NewWithdrawalOrder(subAccountId, orderId, rawAmount, profitTokenId, isProfit);
+    }
+
+    /**
+     * @dev   Rebalance pool liquidity. Swap token 0 for token 1.
+     *
+     *        msg.sender must implement IMuxRebalancerCallback. rebate rate follows baseFeeRate.
+     * @param tokenId0      asset.id to be swapped out of the pool
+     * @param tokenId1      asset.id to be swapped into the pool
+     * @param rawAmount0    token 0 amount. decimals = erc20.decimals
+     * @param maxRawAmount1 max token 1 that rebalancer is willing to pay. decimals = erc20.decimals
+     * @param userData       max token 1 that rebalancer is willing to pay. decimals = erc20.decimals
+     */
+    function placeRebalanceOrder(
+        uint8 tokenId0,
+        uint8 tokenId1,
+        uint96 rawAmount0, // erc20.decimals
+        uint96 maxRawAmount1, // erc20.decimals
+        bytes32 userData
+    ) external onlyRebalancer {
+        require(rawAmount0 != 0, "A=0"); // Amount Is Zero
+        address rebalancer = msg.sender;
+        uint64 orderId = nextOrderId++;
+        bytes32[3] memory data = LibOrder.encodeRebalanceOrder(
+            orderId,
+            rebalancer,
+            tokenId0,
+            tokenId1,
+            rawAmount0,
+            maxRawAmount1,
+            userData
+        );
+        _orders.add(orderId, data);
+        emit NewRebalanceOrder(rebalancer, orderId, tokenId0, tokenId1, rawAmount0, maxRawAmount1, userData);
     }
 
     /**
@@ -205,7 +253,7 @@ contract OrderBook is Storage, Admin {
         uint96 collateralPrice,
         uint96 assetPrice,
         uint96 profitAssetPrice // only used when !isLong
-    ) external onlyBroker {
+    ) external onlyBroker whenPositionOrderEnabled {
         require(_orders.contains(orderId), "OID"); // can not find this OrderID
         bytes32[3] memory orderData = _orders.get(orderId);
         _orders.remove(orderId);
@@ -281,7 +329,7 @@ contract OrderBook is Storage, Admin {
         uint96 mlpPrice,
         uint96 currentAssetValue,
         uint96 targetAssetValue
-    ) external onlyBroker {
+    ) external onlyBroker whenLiquidityOrderEnabled {
         require(_orders.contains(orderId), "OID"); // can not find this OrderID
         bytes32[3] memory orderData = _orders.get(orderId);
         _orders.remove(orderId);
@@ -290,24 +338,24 @@ contract OrderBook is Storage, Admin {
 
         LiquidityOrder memory order = orderData.decodeLiquidityOrder();
         require(_blockTimestamp() >= order.placeOrderTime + liquidityLockPeriod, "LCK"); // mlp token is LoCKed
-        uint96 amount = order.amount;
+        uint96 rawAmount = order.rawAmount;
         if (order.isAdding) {
             IERC20Upgradeable collateral = IERC20Upgradeable(_pool.getAssetAddress(order.assetId));
-            collateral.safeTransfer(address(_pool), amount);
+            collateral.safeTransfer(address(_pool), rawAmount);
             _pool.addLiquidity(
                 order.account,
                 order.assetId,
-                amount,
+                rawAmount,
                 assetPrice,
                 mlpPrice,
                 currentAssetValue,
                 targetAssetValue
             );
         } else {
-            _mlp.safeTransfer(address(_pool), amount);
+            _mlp.safeTransfer(address(_pool), rawAmount);
             _pool.removeLiquidity(
                 order.account,
-                amount,
+                rawAmount,
                 order.assetId,
                 assetPrice,
                 mlpPrice,
@@ -343,15 +391,48 @@ contract OrderBook is Storage, Admin {
         if (order.isProfit) {
             _pool.withdrawProfit(
                 order.subAccountId,
-                order.amount,
+                order.rawAmount,
                 order.profitTokenId,
                 collateralPrice,
                 assetPrice,
                 profitAssetPrice
             );
         } else {
-            _pool.withdrawCollateral(order.subAccountId, order.amount, collateralPrice, assetPrice);
+            _pool.withdrawCollateral(order.subAccountId, order.rawAmount, collateralPrice, assetPrice);
         }
+
+        emit FillOrder(orderId, orderType, orderData);
+    }
+
+    /**
+     * @dev   Rebalance. called by Broker
+     *
+     * @param orderId  order id
+     * @param price0   price of token 0
+     * @param price1   price of token 1
+     */
+    function fillRebalanceOrder(
+        uint64 orderId,
+        uint96 price0,
+        uint96 price1
+    ) external onlyBroker whenLiquidityOrderEnabled {
+        require(_orders.contains(orderId), "OID"); // can not find this OrderID
+        bytes32[3] memory orderData = _orders.get(orderId);
+        _orders.remove(orderId);
+        OrderType orderType = LibOrder.getOrderType(orderData);
+        require(orderType == OrderType.RebalanceOrder, "TYP"); // order TYPe mismatch
+
+        RebalanceOrder memory order = orderData.decodeRebalanceOrder();
+        _pool.rebalance(
+            order.rebalancer,
+            order.tokenId0,
+            order.tokenId1,
+            order.rawAmount0,
+            order.maxRawAmount1,
+            order.userData,
+            price0,
+            price1
+        );
 
         emit FillOrder(orderId, orderType, orderData);
     }
@@ -377,9 +458,9 @@ contract OrderBook is Storage, Admin {
             LiquidityOrder memory order = orderData.decodeLiquidityOrder();
             if (order.isAdding) {
                 address collateralAddress = _pool.getAssetAddress(order.assetId);
-                _transferOut(collateralAddress, account, order.amount);
+                _transferOut(collateralAddress, account, order.rawAmount);
             } else {
-                _mlp.safeTransfer(account, order.amount);
+                _mlp.safeTransfer(account, order.rawAmount);
             }
         }
         emit CancelOrder(orderId, LibOrder.getOrderType(orderData), orderData);
@@ -414,6 +495,9 @@ contract OrderBook is Storage, Admin {
 
     /**
      * @notice Deposit collateral into a subAccount
+     *
+     * @param  subAccountId       sub account id. see LibSubAccount.decodeSubAccountId
+     * @param  collateralAmount   collateral amount. decimals = erc20.decimals
      */
     function depositCollateral(bytes32 subAccountId, uint256 collateralAmount) external payable {
         LibSubAccount.DecodedSubAccountId memory account = subAccountId.decodeSubAccountId();

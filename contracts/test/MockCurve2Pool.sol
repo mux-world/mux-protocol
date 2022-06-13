@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./MockUniV2Pool.sol";
-import "hardhat/console.sol";
 
 contract MockCurve2Pool is MockUniV2Pool {
     constructor(address tokenA_, address tokenB_) MockUniV2Pool(tokenA_, tokenB_) {}

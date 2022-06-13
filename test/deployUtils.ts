@@ -10,6 +10,7 @@ export enum OrderType {
   Position,
   Liquidity,
   Withdrawal,
+  Rebalance,
 }
 
 export enum PositionOrderFlags {
@@ -96,6 +97,10 @@ export async function ensureFinished(transaction: Promise<Contract> | Promise<Co
     throw new Error(`receipt err: ${receipt.transactionHash}`)
   }
   return receipt
+}
+
+export function hashString(x: string): Buffer {
+  return hash(ethers.utils.toUtf8Bytes(x))
 }
 
 export function hash(x: BytesLike): Buffer {

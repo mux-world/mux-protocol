@@ -20,7 +20,24 @@ contract MockLiquidityPool is ILiquidityPool {
 
     function getAllAssetInfo() external view returns (Asset[] memory) {}
 
-    function getLiquidityPoolStorage() external view returns (uint32[8] memory u32s, uint96[2] memory u96s) {}
+    function getLiquidityPoolStorage()
+        external
+        view
+        returns (
+            // [0] shortFundingBaseRate8H
+            // [1] shortFundingLimitRate8H
+            // [2] lastFundingTime
+            // [3] fundingInterval
+            // [4] liquidityBaseFeeRate
+            // [5] liquidityDynamicFeeRate
+            // [6] sequence. note: will be 0 after 0xffffffff
+            // [7] strictStableDeviation
+            uint32[8] memory u32s,
+            // [0] mlpPriceLowerBound
+            // [1] mlpPriceUpperBound
+            uint96[2] memory u96s
+        )
+    {}
 
     function getSubAccount(bytes32 subAccountId)
         external
@@ -126,5 +143,16 @@ contract MockLiquidityPool is ILiquidityPool {
         address trader,
         uint8 tokenId,
         uint96 muxTokenAmount // NOTE: OrderBook SHOULD transfer muxTokenAmount to LiquidityPool
+    ) external {}
+
+    function rebalance(
+        address rebalancer,
+        uint8 tokenId0,
+        uint8 tokenId1,
+        uint96 rawAmount0,
+        uint96 maxRawAmount1,
+        bytes32 userData,
+        uint96 price0,
+        uint96 price1
     ) external {}
 }

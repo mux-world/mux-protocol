@@ -40,7 +40,7 @@ contract Reader {
         uint32 liquidityDynamicFeeRate; // 1e5
         uint96 mlpPriceLowerBound;
         uint96 mlpPriceUpperBound;
-        uint32 __future_strictStableDeviation__; // 1e5
+        uint32 strictStableDeviation; // 1e5
     }
 
     struct LiquidityPoolState {
@@ -58,7 +58,7 @@ contract Reader {
         uint96 mlpPriceUpperBound;
         uint32 lastFundingTime; // 1e0
         uint32 sequence; // 1e0. note: will be 0 after 0xffffffff
-        uint32 __future_strictStableDeviation__; // 1e5
+        uint32 strictStableDeviation; // 1e5
     }
 
     struct AssetConfig {
@@ -87,7 +87,7 @@ contract Reader {
         uint8 referenceOracleType;
         address referenceOracle;
         uint32 referenceDeviation;
-        uint32 __future_halfSpread__;
+        uint32 halfSpread;
     }
 
     struct AssetState {
@@ -129,7 +129,7 @@ contract Reader {
         uint8 referenceOracleType;
         address referenceOracle;
         uint32 referenceDeviation;
-        uint32 __future_halfSpread__;
+        uint32 halfSpread;
         uint128 longCumulativeFundingRate;
         uint128 shortCumulativeFunding;
         uint96 spotLiquidity;
@@ -142,11 +142,12 @@ contract Reader {
     }
 
     struct DexConfig {
-        string name;
         uint8 dexId;
+        uint8 dexType;
         uint8[] assetIds;
         uint32[] assetWeightInDEX;
         uint32 dexWeight;
+        uint256[] totalSpotInDEX;
     }
 
     struct DexState {
@@ -157,8 +158,10 @@ contract Reader {
 
     struct DexStorage {
         uint8 dexId;
+        uint8 dexType;
         uint8[] assetIds;
         uint32[] assetWeightInDEX;
+        uint256[] totalSpotInDEX;
         uint32 dexWeight;
         uint256 dexLPBalance;
         uint256[] liquidityBalance;
@@ -195,7 +198,7 @@ contract Reader {
         }
     }
 
-    function getChainConfig() public view returns (ChainConfig memory chainConfig) {
+    function getChainConfig() public returns (ChainConfig memory chainConfig) {
         // from pool
         (uint32[8] memory u32s, uint96[2] memory u96s) = pool.getLiquidityPoolStorage();
         chainConfig.poolConfig = _convertPoolConfig(u32s, u96s);
@@ -348,6 +351,9 @@ contract Reader {
         }
     }
 
+    /**
+     * @dev CAUTION: assetsState[i].deduct is NOT calculated. call getChainState instead.
+     */
     function getAssetsState(uint8[] memory assetIds) public view returns (AssetState[] memory assetsState) {
         assetsState = new AssetState[](assetIds.length);
         for (uint256 i = 0; i < assetIds.length; i++) {
@@ -373,7 +379,7 @@ contract Reader {
         c.fundingInterval = u32s[3];
         c.liquidityBaseFeeRate = u32s[4];
         c.liquidityDynamicFeeRate = u32s[5];
-        c.__future_strictStableDeviation__ = u32s[7];
+        c.strictStableDeviation = u32s[7];
         c.mlpPriceLowerBound = u96s[0];
         c.mlpPriceUpperBound = u96s[1];
     }
@@ -399,7 +405,7 @@ contract Reader {
         p.liquidityBaseFeeRate = u32s[4];
         p.liquidityDynamicFeeRate = u32s[5];
         p.sequence = u32s[6];
-        p.__future_strictStableDeviation__ = u32s[7];
+        p.strictStableDeviation = u32s[7];
         p.mlpPriceLowerBound = u96s[0];
         p.mlpPriceUpperBound = u96s[1];
     }
@@ -430,7 +436,7 @@ contract Reader {
         c.referenceOracleType = asset.referenceOracleType;
         c.referenceOracle = asset.referenceOracle;
         c.referenceDeviation = asset.referenceDeviation;
-        c.__future_halfSpread__ = asset.referenceDeviation;
+        c.halfSpread = asset.halfSpread;
     }
 
     function _convertAssetState(Asset memory asset) internal pure returns (AssetState memory s) {
@@ -471,7 +477,7 @@ contract Reader {
         a.referenceOracleType = asset.referenceOracleType;
         a.referenceOracle = asset.referenceOracle;
         a.referenceDeviation = asset.referenceDeviation;
-        a.__future_halfSpread__ = asset.referenceDeviation;
+        a.halfSpread = asset.halfSpread;
 
         a.longCumulativeFundingRate = asset.longCumulativeFundingRate;
         a.shortCumulativeFunding = asset.shortCumulativeFunding;
@@ -488,11 +494,12 @@ contract Reader {
         pure
         returns (DexConfig memory d)
     {
-        d.name = dexSpotConfiguration.name;
         d.dexId = dexSpotConfiguration.dexId;
+        d.dexType = dexSpotConfiguration.dexType;
         d.assetIds = dexSpotConfiguration.assetIds;
         d.assetWeightInDEX = dexSpotConfiguration.assetWeightInDex;
         d.dexWeight = dexSpotConfiguration.dexWeight;
+        d.totalSpotInDEX = dexSpotConfiguration.totalSpotInDex;
     }
 
     function _convertDexStorage(DexSpotConfiguration memory dexSpotConfiguration)
@@ -501,8 +508,10 @@ contract Reader {
         returns (DexStorage memory d)
     {
         d.dexId = dexSpotConfiguration.dexId;
+        d.dexType = dexSpotConfiguration.dexType;
         d.assetIds = dexSpotConfiguration.assetIds;
         d.assetWeightInDEX = dexSpotConfiguration.assetWeightInDex;
         d.dexWeight = dexSpotConfiguration.dexWeight;
+        d.totalSpotInDEX = dexSpotConfiguration.totalSpotInDex;
     }
 }

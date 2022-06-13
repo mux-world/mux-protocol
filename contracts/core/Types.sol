@@ -36,7 +36,7 @@ struct LiquidityPoolStorage {
     address nativeUnwrapper;
     // a sequence number that changes when LiquidityPoolStorage updated. this helps to keep track the state of LiquidityPool.
     uint32 sequence; // 1e0. note: will be 0 after 0xffffffff
-    uint32 __future_strictStableDeviation__;
+    uint32 strictStableDeviation; // 1e5. strictStable price is 1.0 if in this damping range
     bytes32[50] _gap;
 }
 
@@ -71,7 +71,7 @@ struct Asset {
     address referenceOracle;
     uint32 referenceDeviation; // 1e5
     uint8 referenceOracleType;
-    uint32 __future_halfSpread__; // 1e5
+    uint32 halfSpread; // 1e5
     // note: 24 bits remaining
     // slot
     uint128 _reserved1;

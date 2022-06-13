@@ -96,6 +96,15 @@ contract Events {
         uint96 muxTokenAmount
     );
     event RedeemMuxToken(address trader, uint8 tokenId, uint96 muxTokenAmount);
+    event Rebalance(
+        address indexed rebalancer,
+        uint8 tokenId0,
+        uint8 tokenId1,
+        uint96 price0,
+        uint96 price1,
+        uint96 rawAmount0,
+        uint96 rawAmount1
+    );
 
     //////////////////////////////////////////////////////////////////////////////////////
     //                                   admin
@@ -117,7 +126,8 @@ contract Events {
         uint32 newMinProfitTime,
         uint96 newMaxLongPositionSize,
         uint96 newMaxShortPositionSize,
-        uint32 newSpotWeight
+        uint32 newSpotWeight,
+        uint32 newHalfSpread
     );
     event SetAssetFlags(
         uint8 indexed assetId,
@@ -138,6 +148,7 @@ contract Events {
     event SetFundingInterval(uint32 oldFundingInterval, uint32 newFundingInterval);
     event SetMlpPriceRange(uint96 newLowerBound, uint96 newUpperBound);
     event SetLiquidityFee(uint32 newLiquidityBaseFeeRate, uint32 newLiquidityDynamicFeeRate);
+    event SetStrictStableDeviation(uint32 newStrictStableDeviation);
     event WithdrawCollectedFee(uint8 indexed assetId, uint96 collectedFee);
     event TransferLiquidity(address indexed sender, address indexed recipient, uint8 assetId, uint256 amount);
 }

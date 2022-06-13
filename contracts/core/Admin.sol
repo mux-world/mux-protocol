@@ -22,7 +22,7 @@ contract Admin is Storage {
         bool isStable,
         address tokenAddress,
         address muxTokenAddress
-    ) external onlyOwner updateSequence {
+    ) external onlyOwner {
         require(decimals <= 18, "DCM"); // invalid DeCiMals
         require(assetId == _storage.assets.length, "AID"); // invalid AssetID
         require(assetId < 0xFF, "FLL"); // assets list is FuLL
@@ -37,9 +37,10 @@ contract Admin is Storage {
         asset.tokenAddress = tokenAddress;
         asset.muxTokenAddress = muxTokenAddress;
         emit AddAsset(assetId, symbol, decimals, isStable, tokenAddress, muxTokenAddress);
+        _updateSequence();
     }
 
-    function setAssetSymbol(uint8 assetId, bytes32 symbol) external onlyOwner updateSequence {
+    function setAssetSymbol(uint8 assetId, bytes32 symbol) external onlyOwner {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         require(symbol != "", "SYM"); // invalid SYMbol
 
@@ -47,6 +48,7 @@ contract Admin is Storage {
         require(asset.symbol != symbol, "CHG"); // setting is not CHanGed
         asset.symbol = symbol;
         emit SetAssetSymbol(assetId, symbol);
+        _updateSequence();
     }
 
     function setAssetParams(
@@ -58,8 +60,9 @@ contract Admin is Storage {
         uint32 newMinProfitTime, // 1e0
         uint96 newMaxLongPositionSize,
         uint96 newMaxShortPositionSize,
-        uint32 newSpotWeight
-    ) external onlyOwner updateSequence {
+        uint32 newSpotWeight,
+        uint32 newHalfSpread
+    ) external onlyOwner {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         Asset storage asset = _storage.assets[assetId];
         require(asset.initialMarginRate == 0 || newInitialMarginRate <= asset.initialMarginRate, "IMR"); // Initial Margin Raised
@@ -72,7 +75,7 @@ contract Admin is Storage {
         asset.maxLongPositionSize = newMaxLongPositionSize;
         asset.maxShortPositionSize = newMaxShortPositionSize;
         asset.spotWeight = newSpotWeight;
-
+        asset.halfSpread = newHalfSpread;
         emit SetAssetParams(
             assetId,
             newInitialMarginRate,
@@ -82,8 +85,10 @@ contract Admin is Storage {
             newMinProfitTime,
             newMaxLongPositionSize,
             newMaxShortPositionSize,
-            newSpotWeight
+            newSpotWeight,
+            newHalfSpread
         );
+        _updateSequence();
     }
 
     function setAssetFlags(
@@ -94,7 +99,7 @@ contract Admin is Storage {
         bool useStableTokenForProfit,
         bool isEnabled,
         bool isStrictStable
-    ) external onlyOwner updateSequence {
+    ) external onlyOwner {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         Asset storage asset = _storage.assets[assetId];
         if (!asset.isStable) {
@@ -115,9 +120,10 @@ contract Admin is Storage {
             isEnabled,
             isStrictStable
         );
+        _updateSequence();
     }
 
-    function pauseAll() external onlyOwner updateSequence {
+    function pauseAll() external onlyOwner {
         for (uint8 assetId = 0; assetId < _storage.assets.length; assetId++) {
             Asset storage asset = _storage.assets[assetId];
             asset.isEnabled = false;
@@ -131,13 +137,14 @@ contract Admin is Storage {
                 asset.isStrictStable
             );
         }
+        _updateSequence();
     }
 
     function setFundingParams(
         uint8 assetId,
         uint32 newBaseRate8H,
         uint32 newLimitRate8H
-    ) external onlyOwner updateSequence {
+    ) external onlyOwner {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         if (_storage.assets[assetId].isStable) {
             _storage.shortFundingBaseRate8H = newBaseRate8H;
@@ -148,6 +155,7 @@ contract Admin is Storage {
             asset.longFundingLimitRate8H = newLimitRate8H;
         }
         emit SetFundingParams(assetId, newBaseRate8H, newLimitRate8H);
+        _updateSequence();
     }
 
     function setReferenceOracle(
@@ -155,7 +163,7 @@ contract Admin is Storage {
         ReferenceOracleType referenceOracleType,
         address referenceOracle,
         uint32 referenceDeviation // 1e5
-    ) external onlyOwner updateSequence {
+    ) external onlyOwner {
         LibReferenceOracle.checkParameters(referenceOracleType, referenceOracle, referenceDeviation);
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         Asset storage asset = _storage.assets[assetId];
@@ -163,6 +171,7 @@ contract Admin is Storage {
         asset.referenceOracle = referenceOracle;
         asset.referenceDeviation = referenceDeviation;
         emit SetReferenceOracle(assetId, uint8(referenceOracleType), referenceOracle, referenceDeviation);
+        _updateSequence();
     }
 
     function setNumbers(
@@ -170,10 +179,12 @@ contract Admin is Storage {
         uint96 newMlpPriceLowerBound,
         uint96 newMlpPriceUpperBound,
         uint32 newLiquidityBaseFeeRate, // 1e5
-        uint32 newLiquidityDynamicFeeRate // 1e5
-    ) external onlyOwner updateSequence {
+        uint32 newLiquidityDynamicFeeRate, // 1e5
+        uint32 newStrictStableDeviation // 1e5
+    ) external onlyOwner {
         require(newLiquidityBaseFeeRate < 1e5, "F>1"); // %fee > 100%
         require(newLiquidityDynamicFeeRate < 1e5, "F>1"); // %fee > 100%
+        require(newStrictStableDeviation < 1e5, "D>1"); // %deviation > 100%
         if (_storage.fundingInterval != newFundingInterval) {
             emit SetFundingInterval(_storage.fundingInterval, newFundingInterval);
             _storage.fundingInterval = newFundingInterval;
@@ -193,9 +204,14 @@ contract Admin is Storage {
             _storage.liquidityDynamicFeeRate = newLiquidityDynamicFeeRate;
             emit SetLiquidityFee(newLiquidityBaseFeeRate, newLiquidityDynamicFeeRate);
         }
+        if (_storage.strictStableDeviation != newStrictStableDeviation) {
+            _storage.strictStableDeviation = newStrictStableDeviation;
+            emit SetStrictStableDeviation(newStrictStableDeviation);
+        }
+        _updateSequence();
     }
 
-    function withdrawCollectedFee(uint8[] memory assetIds) external onlyOwner updateSequence {
+    function withdrawCollectedFee(uint8[] memory assetIds) external onlyOwner {
         for (uint256 i = 0; i < assetIds.length; i++) {
             uint8 assetId = assetIds[i];
             Asset storage asset = _storage.assets[assetId];
@@ -207,13 +223,10 @@ contract Admin is Storage {
             IERC20Upgradeable(asset.tokenAddress).safeTransfer(msg.sender, rawAmount);
             emit WithdrawCollectedFee(assetId, collectedFee);
         }
+        _updateSequence();
     }
 
-    function transferLiquidityOut(uint8[] memory assetIds, uint256[] memory rawAmounts)
-        external
-        onlyLiquidityManager
-        updateSequence
-    {
+    function transferLiquidityOut(uint8[] memory assetIds, uint256[] memory rawAmounts) external onlyLiquidityManager {
         uint256 length = assetIds.length;
         require(length > 0, "MTY"); // argument array is eMpTY
         require(assetIds.length == rawAmounts.length, "LEN"); // LENgth of 2 arguments does not match
@@ -225,13 +238,10 @@ contract Admin is Storage {
             asset.spotLiquidity -= wadAmount;
             emit TransferLiquidity(address(this), msg.sender, assetIds[i], rawAmounts[i]);
         }
+        _updateSequence();
     }
 
-    function transferLiquidityIn(uint8[] memory assetIds, uint256[] memory rawAmounts)
-        external
-        onlyLiquidityManager
-        updateSequence
-    {
+    function transferLiquidityIn(uint8[] memory assetIds, uint256[] memory rawAmounts) external onlyLiquidityManager {
         uint256 length = assetIds.length;
         require(length > 0, "MTY"); // argument array is eMpTY
         require(assetIds.length == rawAmounts.length, "LEN"); // LENgth of 2 arguments does not match
@@ -240,5 +250,6 @@ contract Admin is Storage {
             asset.spotLiquidity += asset.toWad(rawAmounts[i]);
             emit TransferLiquidity(msg.sender, address(this), assetIds[i], rawAmounts[i]);
         }
+        _updateSequence();
     }
 }

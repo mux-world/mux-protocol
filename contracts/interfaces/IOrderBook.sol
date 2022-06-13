@@ -2,7 +2,82 @@
 pragma solidity 0.8.10;
 
 interface IOrderBook {
+    /**
+     * @notice seconds before a Liquidity Order can be filled
+     */
     function liquidityLockPeriod() external view returns (uint32);
 
     function getOrder(uint64 orderId) external view returns (bytes32[3] memory, bool);
+
+    function cancelOrder(uint64 orderId) external;
+
+    /**
+     * @dev   Open/close position. called by Trader
+     *
+     * @param subAccountId       sub account id. see LibSubAccount.decodeSubAccountId
+     * @param collateralAmount   deposit collateral before open; or withdraw collateral after close. decimals = erc20.decimals
+     * @param size               position size. decimals = 18
+     * @param price              limit price. decimals = 18
+     * @param profitTokenId      specify the profitable asset.id when closing a position and making a profit.
+     *                           take no effect when opening a position or loss.
+     * @param flags              a bitset of LibOrder.POSITION_*
+     *                           POSITION_INCREASING               0x80 means openPosition; otherwise closePosition
+     *                           POSITION_MARKET_ORDER             0x40 means ignore limitPrice
+     *                           POSITION_WITHDRAW_ALL_IF_EMPTY    0x20 means auto withdraw all collateral if position.size == 0
+     *                           POSITION_TRIGGER_ORDER            0x10 means this is a trigger order (ex: stop-loss order). 0 means this is a limit order (ex: take-profit order)
+     */
+    function placePositionOrder(
+        bytes32 subAccountId,
+        uint96 collateralAmount, // erc20.decimals
+        uint96 size, // 1e18
+        uint96 price, // 1e18
+        uint8 profitTokenId,
+        uint8 flags
+    ) external payable;
+
+    /**
+     * @dev   Add/remove liquidity. called by Liquidity Provider
+     *
+     * @param assetId   asset.id that added/removed to
+     * @param rawAmount asset token amount. decimals = erc20.decimals
+     * @param isAdding  true for add liquidity, false for remove liquidity
+     */
+    function placeLiquidityOrder(
+        uint8 assetId,
+        uint96 rawAmount, // erc20.decimals
+        bool isAdding
+    ) external payable;
+
+    /**
+     * @dev   Withdraw collateral/profit. called by Trader
+     *
+     * @param subAccountId       sub account id. see LibSubAccount.decodeSubAccountId
+     * @param rawAmount          collateral or profit asset amount. decimals = erc20.decimals
+     * @param profitTokenId      specify the profitable asset.id
+     * @param isProfit           true for withdraw profit. false for withdraw collateral
+     */
+    function placeWithdrawalOrder(
+        bytes32 subAccountId,
+        uint96 rawAmount, // erc20.decimals
+        uint8 profitTokenId,
+        bool isProfit
+    ) external;
+
+    /**
+     * @dev   Rebalance pool liquidity. Swap token 0 for token 1.
+     *
+     *        msg.sender must implement IMuxRebalancerCallback. rebate rate follows baseFeeRate.
+     * @param tokenId0      asset.id to be swapped out of the pool
+     * @param tokenId1      asset.id to be swapped into the pool
+     * @param rawAmount0    token 0 amount. decimals = erc20.decimals
+     * @param maxRawAmount1 max token 1 that rebalancer is willing to pay. decimals = erc20.decimals
+     * @param userData       max token 1 that rebalancer is willing to pay. decimals = erc20.decimals
+     */
+    function placeRebalanceOrder(
+        uint8 tokenId0,
+        uint8 tokenId1,
+        uint96 rawAmount0, // erc20.decimals
+        uint96 maxRawAmount1, // erc20.decimals
+        bytes32 userData
+    ) external;
 }

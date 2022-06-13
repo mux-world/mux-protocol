@@ -50,8 +50,8 @@ describe("IntegrationEth", () => {
     await liquidityManager.initialize(vault.address, pool.address)
     await liquidityManager.addExternalAccessor(dexLiquidity.address)
     await pool.initialize(poolHop2.address, mlp.address, orderBook.address, liquidityManager.address, weth9.address, nativeUnwrapper.address)
-    // fundingInterval, mlpPrice, mlpPrice, liqBase, liqDyn
-    await pool.setNumbers(3600 * 8, toWei("1"), toWei("2000"), rate("0.0001"), rate("0.0000"))
+    // fundingInterval, mlpPrice, mlpPrice, liqBase, liqDyn, σ_strict
+    await pool.setNumbers(3600 * 8, toWei("1"), toWei("2000"), rate("0.0001"), rate("0.0000"), rate("0.01"))
     await nativeUnwrapper.addWhiteList(pool.address)
     await nativeUnwrapper.addWhiteList(orderBook.address)
     await mlp.transfer(pool.address, toWei(PreMinedTokenTotalSupply))
@@ -63,8 +63,8 @@ describe("IntegrationEth", () => {
     // 0 = ETH
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(0, toBytes32("ETH"), 18, false, weth9.address, muxWeth.address)
-    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight
-    await pool.setAssetParams(0, rate("0.1"), rate("0.05"), rate("0.001"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2)
+    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
+    await pool.setAssetParams(0, rate("0.1"), rate("0.05"), rate("0.001"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
     // id, tradable, openable, shortable, useStable, enabled, strict
     await pool.setAssetFlags(0, true, true, true, false, true, false)
     await pool.setFundingParams(0, rate("0.0003"), rate("0.0009"))
@@ -353,10 +353,10 @@ describe("IntegrationEth", () => {
       }
       // withdraw 100 eth from LiquidityPool to LiquidityManager
       {
-        await liquidityManager.addDexSpotConfiguration("uniswapV2", 1, [0], [1])
+        await liquidityManager.addDexSpotConfiguration(0, 1, [0], [1])
         const transferMod = await createContract("TransferModule")
         await liquidityManager.installGenericModule(transferMod.address, false)
-        await liquidityManager.moduleCall(makeCallContext1("transferFromPool", ["uint8[]", "uint256[]"], [[0], [toWei("100")]]))
+        await liquidityManager.callGenericModule(toBytes32("transferFromPool"), U.defaultAbiCoder.encode(["uint8[]", "uint256[]"], [[0], [toWei("100")]]))
         const collateralInfo = await pool.getAssetInfo(0)
         expect(collateralInfo.spotLiquidity).to.equal(toWei("0"))
         expect(collateralInfo.collectedFee).to.equal(toWei("0.01"))
@@ -411,7 +411,7 @@ describe("IntegrationEth", () => {
       }
       // deposit 1 wbtc from LiquidityManager to LiquidityPool
       {
-        await liquidityManager.moduleCall(makeCallContext1("transferToPool", ["uint8[]", "uint256[]"], [[0], [toWei("1")]]))
+        await liquidityManager.callGenericModule(toBytes32("transferToPool"), U.defaultAbiCoder.encode(["uint8[]", "uint256[]"], [[0], [toWei("1")]]))
         expect(await weth9.balanceOf(pool.address)).to.equal(toWei("1"))
         const collateralInfo = await pool.getAssetInfo(0)
         expect(collateralInfo.spotLiquidity).to.equal(toWei("1"))

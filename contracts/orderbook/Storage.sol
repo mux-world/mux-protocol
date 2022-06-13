@@ -13,11 +13,24 @@ contract Storage is Initializable, SafeOwnableUpgradeable {
     bool private _reserved1;
     mapping(address => bool) public brokers;
     ILiquidityPool internal _pool;
-    uint64 internal _nextOrderId;
+    uint64 public nextOrderId;
     LibOrder.OrderList internal _orders;
     IERC20Upgradeable internal _mlp;
     IWETH internal _weth;
     uint32 public liquidityLockPeriod; // 1e0
     INativeUnwrapper public _nativeUnwrapper;
-    bytes32[50] _gap;
+    mapping(address => bool) public rebalancers;
+    bool public isPositionOrderPaused;
+    bool public isLiquidityOrderPaused;
+    bytes32[47] _gap;
+
+    modifier whenPositionOrderEnabled() {
+        require(!isPositionOrderPaused, "POP"); // Position Order Paused
+        _;
+    }
+
+    modifier whenLiquidityOrderEnabled() {
+        require(!isLiquidityOrderPaused, "LOP"); // Liquidity Order Paused
+        _;
+    }
 }

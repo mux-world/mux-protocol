@@ -8,8 +8,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "../../libraries/LibUtils.sol";
 import "./CurveFarmModule.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @notice A module to provide liquidity to curve then farm on some project with the lpToken.
  */
@@ -34,6 +32,17 @@ contract Curve2PoolFarmModule is CurveFarmModule {
         return LibUtils.toBytes32("crv-2pool-farm-mod");
     }
 
+    function tokens() public view override returns (bool needCheck_, address[] memory tokens_) {
+        needCheck_ = true;
+        tokens_ = new address[](2);
+        tokens_[0] = token0;
+        tokens_[1] = token1;
+    }
+
+    function getValidationData(uint256[] memory amounts) public view override returns (bytes memory data) {
+        return abi.encode(ICurve2Pool(pool).calc_token_amount(_toArray(amounts), true));
+    }
+
     function _approve(address spender, uint256[] memory amounts) internal virtual override {
         require(amounts.length == TOKEN_COUNT, "!L");
         IERC20(token0).approve(spender, amounts[0]);
@@ -45,6 +54,15 @@ contract Curve2PoolFarmModule is CurveFarmModule {
         _amounts[0] = amounts[0];
         _amounts[1] = amounts[1];
         return ICurve2Pool(pool).calc_token_amount(_amounts, isDeposit);
+    }
+
+    function _getTokenIndex(address token) internal view override returns (int128 index) {
+        if (token == token0) {
+            return 0;
+        } else if (token == token1) {
+            return 1;
+        }
+        return -1;
     }
 
     function _getReserves() internal view virtual override returns (uint256[] memory reserves) {
@@ -60,10 +78,8 @@ contract Curve2PoolFarmModule is CurveFarmModule {
         returns (uint256 shareAmount)
     {
         require(maxAmounts.length == TOKEN_COUNT, "!L");
-        uint256[2] memory amounts;
-        amounts[0] = maxAmounts[0];
-        amounts[1] = maxAmounts[1];
-        return ICurve2Pool(pool).add_liquidity(amounts, minShareAmount);
+        uint256[TOKEN_COUNT] memory _maxAmounts = _toArray(maxAmounts);
+        return ICurve2Pool(pool).add_liquidity(_maxAmounts, minShareAmount);
     }
 
     function _removeCurveLiquidity(uint256 shareAmount, uint256[] memory minAmounts)
@@ -73,13 +89,21 @@ contract Curve2PoolFarmModule is CurveFarmModule {
         returns (uint256[] memory removedAmounts)
     {
         require(minAmounts.length == TOKEN_COUNT, "!L");
-        uint256[2] memory _minAmounts;
-        _minAmounts[0] = minAmounts[0];
-        _minAmounts[1] = minAmounts[1];
-        uint256[2] memory _removedAmounts = ICurve2Pool(pool).remove_liquidity(shareAmount, _minAmounts);
-        removedAmounts = new uint256[](2);
-        removedAmounts[0] = _removedAmounts[0];
-        removedAmounts[1] = _removedAmounts[1];
+        uint256[TOKEN_COUNT] memory _minAmounts = _toArray(minAmounts);
+        uint256[TOKEN_COUNT] memory _removedAmounts = ICurve2Pool(pool).remove_liquidity(shareAmount, _minAmounts);
+        removedAmounts = _toSlice(_removedAmounts);
+    }
+
+    function _toArray(uint256[] memory _in) internal pure returns (uint256[TOKEN_COUNT] memory _out) {
+        require(_in.length == TOKEN_COUNT, "LEN");
+        _out[0] = _in[0];
+        _out[1] = _in[1];
+    }
+
+    function _toSlice(uint256[TOKEN_COUNT] memory _in) internal pure returns (uint256[] memory _out) {
+        _out = new uint256[](TOKEN_COUNT);
+        _out[0] = _in[0];
+        _out[1] = _in[1];
     }
 }
 

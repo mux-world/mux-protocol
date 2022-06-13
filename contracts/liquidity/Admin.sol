@@ -3,6 +3,7 @@ pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../interfaces/IModule.sol";
+import "../interfaces/IDexModule.sol";
 
 import "./Storage.sol";
 import "./ModuleCall.sol";
@@ -10,10 +11,13 @@ import "./ModuleCall.sol";
 contract Admin is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall {
     using AddressUpgradeable for address;
 
+    bytes32 constant METHOD_GET_LP_BALANCE = 0x6765744c7042616c616e63650000000000000000000000000000000000000000; // "getLpBalance" to bytes32
+
     event AddExternalAccessor(address indexed accessor);
     event RemoveExternalAccessor(address indexed accessor);
-    event AddDex(uint8 indexed dexId, string name, uint32 dexWeight, uint8[] assetIds, uint32[] assetWeightInDex);
-    event SetDexWeight(uint8 indexed dexId, uint32 dexWeight);
+    event AddDex(uint8 indexed dexId, uint8 dexType, uint32 dexWeight, uint8[] assetIds, uint32[] assetWeightInDex);
+    event SetDexWeight(uint8 indexed dexId, uint32 dexWeight, uint32[] assetWeightInDex);
+    event SetAssetIds(uint8 indexed dexId, uint8[] assetIds);
     event InstallModule(bytes32 indexed moduleId, address module, bytes32[] methodIds, bytes4[] selectors);
     event UninstallModule(bytes32 indexed moduleId, address module, bytes32[] methods);
     event ClearStates(bytes32 indexed moduleId);
@@ -40,13 +44,13 @@ contract Admin is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall {
      * @notice Add a configuration for dex.
      *         Each configuration [dex, assets0, asset1, ...] represents a combination of dex pool address and assets categories.
      *         Once added, the combination cannot be modified except the weights.
-     * @param name The name of dex for user to distinguish between the configurations.
+     * @param dexType The type of dex, 0 = uniswap, 1 = curve
      * @param assetIds The array represents the category of assets to add to the dex.
      * @param assetWeightInDex The array represents the weight of each asset added to the dex as liquidity.
      *
      */
     function addDexSpotConfiguration(
-        string memory name,
+        uint8 dexType,
         uint32 dexWeight,
         uint8[] calldata assetIds,
         uint32[] calldata assetWeightInDex
@@ -57,14 +61,15 @@ contract Admin is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall {
         uint8 dexId = uint8(_dexSpotConfigs.length);
         _dexSpotConfigs.push(
             DexSpotConfiguration({
-                name: name,
                 dexId: dexId,
+                dexType: dexType,
                 dexWeight: dexWeight,
                 assetIds: assetIds,
-                assetWeightInDex: assetWeightInDex
+                assetWeightInDex: assetWeightInDex,
+                totalSpotInDex: new uint256[](assetIds.length)
             })
         );
-        emit AddDex(dexId, name, dexWeight, assetIds, assetWeightInDex);
+        emit AddDex(dexId, dexType, dexWeight, assetIds, assetWeightInDex);
     }
 
     /**
@@ -78,9 +83,24 @@ contract Admin is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall {
         uint32[] memory assetWeightInDex
     ) external onlyOwner {
         require(dexId != 0 && dexId < _dexSpotConfigs.length, "LST"); // the asset is not LiSTed
-        _dexSpotConfigs[dexId].dexWeight = dexWeight;
-        _dexSpotConfigs[dexId].assetWeightInDex = assetWeightInDex;
-        emit SetDexWeight(dexId, dexWeight);
+        DexSpotConfiguration storage config = _dexSpotConfigs[dexId];
+        config.dexWeight = dexWeight;
+        config.assetWeightInDex = assetWeightInDex;
+        emit SetDexWeight(dexId, dexWeight, assetWeightInDex);
+    }
+
+    /**
+     * @notice Modify the weight of a dex configuration. Only can be modified when lp balance is zero or no module.
+     * @param dexId The id of the dex.
+     * @param assetIds The new ids of the dex.
+     */
+    function setAssetIds(uint8 dexId, uint8[] memory assetIds) external onlyOwner {
+        require(dexId != 0 && dexId < _dexSpotConfigs.length, "LST"); // the asset is not LiSTed
+        if (_hasDexCall(dexId, METHOD_GET_LP_BALANCE)) {
+            require(_getLpBalance(dexId) == 0, "LNZ"); // lp-balance is not zero
+        }
+        _dexSpotConfigs[dexId].assetIds = assetIds;
+        emit SetAssetIds(dexId, assetIds);
     }
 
     /**
@@ -91,7 +111,7 @@ contract Admin is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall {
      * @param overwriteStates Overwrite the initial states of module.
      */
     function installGenericModule(address module, bool overwriteStates) external onlyOwner {
-        require(module.isContract(), "MNC"); // the module is not a contract
+        // require(module.isContract(), "MNC"); // the module is not a contract
         (
             bytes32 moduleId,
             bytes32[] memory methodIds,
@@ -129,7 +149,10 @@ contract Admin is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall {
         bool overwriteStates
     ) external onlyOwner {
         require(dexId != 0 && dexId < _dexSpotConfigs.length, "LST"); // the asset is not LiSTed
-        require(module.isContract(), "MNC"); // the module is not a contract
+        // require(module.isContract(), "MNC"); // the module is not a contract
+
+        // todo: +validate before final deployment
+        // IModule(module).validate(_pool, address(this), dexId);
         (
             bytes32 moduleId,
             bytes32[] memory methodIds,
@@ -137,13 +160,22 @@ contract Admin is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall {
             bytes32[] memory initialStates
         ) = _getModuleInfo(module);
         require(!_hasModule(moduleId), "MHI"); // module has been installed
+        require(checkTokenAddresses(dexId, module), "TNM"); // token address not match
+
         uint256 length = methodIds.length;
         for (uint256 i = 0; i < length; i++) {
             // has dex id as prefix
             require(!_hasDexCall(dexId, methodIds[i]), "MLR"); // method is already registered
             _dexRoutes[dexId][methodIds[i]] = CallRegistration(module, selectors[i]);
-            if (overwriteStates || _moduleData[moduleId].length == 0) {
-                _moduleData[moduleId] = initialStates;
+        }
+        // init or override
+        if (overwriteStates || _moduleData[moduleId].length == 0) {
+            _moduleData[moduleId] = initialStates;
+        } else if (_moduleData[moduleId].length < initialStates.length) {
+            // extend to proper size
+            uint256 toExtend = initialStates.length - _moduleData[moduleId].length;
+            for (uint256 i = 0; i < toExtend; i++) {
+                _moduleData[moduleId].push(bytes32(0));
             }
         }
         _moduleInfos[moduleId] = ModuleInfo({
@@ -204,24 +236,55 @@ contract Admin is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall {
         )
     {
         try IModule(module).id() returns (bytes32 moduleId_) {
-            // must not installed
-            require(!_hasModule(moduleId_), "MHI"); // module has installed
-            try IModule(module).meta() returns (
-                bytes32[] memory methodIds_,
-                bytes4[] memory selectors_,
-                bytes32[] memory initialStates_
-            ) {
-                require(methodIds_.length != 0, "MTY"); // empty module
-                require(methodIds_.length == selectors_.length, "IMM"); // invalid module meta info
-                moduleId = moduleId_;
-                methodIds = methodIds_;
-                selectors = selectors_;
-                initialStates = initialStates_;
-            } catch {
-                revert("IMM"); // invalid module meta info
-            }
+            moduleId = moduleId_;
         } catch {
-            revert("IMM"); // invalid module meta info
+            revert("IVI"); // invalid module meta info
         }
+        require(!_hasModule(moduleId), "MHI"); // module has installed
+        // must not installed
+        try IModule(module).meta() returns (
+            bytes32[] memory methodIds_,
+            bytes4[] memory selectors_,
+            bytes32[] memory initialStates_
+        ) {
+            require(methodIds_.length != 0, "MTY"); // empty module
+            require(methodIds_.length == selectors_.length, "IMM"); // invalid module meta info
+            methodIds = methodIds_;
+            selectors = selectors_;
+            initialStates = initialStates_;
+        } catch {
+            revert("IVM"); // invalid module meta info
+        }
+    }
+
+    function checkTokenAddresses(uint8 dexId, address module) public view returns (bool) {
+        address[] memory tokens;
+        try IDexModule(module).tokens() returns (bool needCheck_, address[] memory tokens_) {
+            if (!needCheck_) {
+                return true;
+            }
+            tokens = tokens_;
+        } catch {
+            return false;
+        }
+        require(dexId != 0 && dexId < _dexSpotConfigs.length, "LST"); // the asset is not LiSTed
+        uint256 length = tokens.length;
+        DexSpotConfiguration memory config = _dexSpotConfigs[dexId];
+        for (uint256 i = 0; i < length; i++) {
+            if (_getTokenAddr(config.assetIds[i]) != tokens[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function _getTokenAddr(uint8 assetId) internal view returns (address) {
+        return ILiquidityPool(_pool).getAssetAddress(assetId);
+    }
+
+    function _getLpBalance(uint8 dexId) internal returns (uint256) {
+        bytes memory result = _dexCall(dexId, METHOD_GET_LP_BALANCE, "");
+        require(result.length == 32, "ILR"); // invalid length of return data
+        return abi.decode(result, (uint256));
     }
 }

@@ -21,7 +21,7 @@ contract MuxTimelockController is TimelockController {
     function addQuickPath(address path) external {
         require(!quickPaths[path], "QPE");
         require(msg.sender == address(this), "S!T");
-        require(path.isContract(), "P!C");
+        // require(path.isContract(), "P!C");
         quickPaths[path] = true;
         emit AddQuickPath(path);
     }

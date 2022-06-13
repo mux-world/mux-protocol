@@ -51,6 +51,11 @@ interface IChainlinkV3 {
 
 interface IChainlinkV2V3 is IChainlink, IChainlinkV3 {}
 
+enum SpreadType {
+    Ask,
+    Bid
+}
+
 library LibReferenceOracle {
     using LibMath for uint256;
     using LibMath for uint96;
@@ -74,15 +79,50 @@ library LibReferenceOracle {
         }
     }
 
-    function checkPrice(Asset storage asset, uint96 price) internal returns (uint96) {
+    /**
+     * @dev Truncate price if the error is too large
+     */
+    function checkPrice(
+        LiquidityPoolStorage storage pool,
+        Asset storage asset,
+        uint96 price
+    ) internal returns (uint96) {
         require(price != 0, "P=0"); // broker price = 0
-        if (asset.isStrictStable) {
-            return 1e18;
-        } else if (ReferenceOracleType(asset.referenceOracleType) == ReferenceOracleType.Chainlink) {
+
+        // truncate price if the error is too large
+        if (ReferenceOracleType(asset.referenceOracleType) == ReferenceOracleType.Chainlink) {
             uint96 ref = _readChainlink(asset.referenceOracle);
             price = _truncatePrice(asset, price, ref);
         }
 
+        // strict stable dampener
+        if (asset.isStrictStable) {
+            uint256 delta = price > 1e18 ? price - 1e18 : 1e18 - price;
+            uint256 dampener = uint256(pool.strictStableDeviation) * 1e13; // 1e5 => 1e18
+            if (delta <= dampener) {
+                price = 1e18;
+            }
+        }
+
+        return price;
+    }
+
+    /**
+     * @dev check price and add spread, where spreadType should be:
+     *
+     *      subAccount.isLong   openPosition   closePosition   addLiquidity   removeLiquidity
+     *      long                ask            bid
+     *      short               bid            ask
+     *      N/A                                                bid            ask
+     */
+    function checkPriceWithSpread(
+        LiquidityPoolStorage storage pool,
+        Asset storage asset,
+        uint96 price,
+        SpreadType spreadType
+    ) internal returns (uint96) {
+        price = checkPrice(pool, asset, price);
+        price = _addSpread(asset, price, spreadType);
         return price;
     }
 
@@ -113,5 +153,22 @@ library LibReferenceOracle {
             price = bound;
         }
         return price;
+    }
+
+    function _addSpread(
+        Asset storage asset,
+        uint96 price,
+        SpreadType spreadType
+    ) private view returns (uint96) {
+        if (asset.halfSpread == 0) {
+            return price;
+        }
+        uint96 halfSpread = uint256(price).rmul(asset.halfSpread).safeUint96();
+        if (spreadType == SpreadType.Bid) {
+            require(price > halfSpread, "P=0"); // Price - halfSpread = 0. impossible
+            return price - halfSpread;
+        } else {
+            return price + halfSpread;
+        }
     }
 }

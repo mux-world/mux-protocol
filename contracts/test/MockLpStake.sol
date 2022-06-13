@@ -23,4 +23,22 @@ contract MockLpStake {
         balances[msg.sender] -= amount;
         IERC20(stakeToken).transfer(msg.sender, amount);
     }
+
+    function deposit(
+        uint256 _value,
+        address _user,
+        bool _claim_rewards
+    ) external {
+        IERC20(stakeToken).transferFrom(msg.sender, address(this), _value);
+        balances[_user] += _value;
+    }
+
+    function withdraw(
+        uint256 _value,
+        address _user,
+        bool _claim_rewards
+    ) external {
+        balances[_user] -= _value;
+        IERC20(stakeToken).transfer(_user, _value);
+    }
 }

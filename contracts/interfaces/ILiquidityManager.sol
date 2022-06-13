@@ -8,15 +8,19 @@ interface ILiquidityManager {
 
     function hasDexCall(uint8 dexId, bytes32 methodId) external view returns (bool);
 
-    function getDexSpotConfiguration(uint8 dexId) external view returns (DexSpotConfiguration memory);
+    function getDexSpotConfiguration(uint8 dexId) external returns (DexSpotConfiguration memory);
 
-    function getAllDexSpotConfiguration() external view returns (DexSpotConfiguration[] memory);
+    function getAllDexSpotConfiguration() external returns (DexSpotConfiguration[] memory);
 
     function getDexLiquidity(uint8 dexId) external returns (uint256[] memory liquidities, uint256 lpBalance);
 
     function getModuleInfo(bytes32 moduleId) external view returns (ModuleInfo memory);
 
-    function moduleCall(CallContext memory context) external returns (bytes memory);
+    function callGenericModule(bytes32 methodId, bytes memory params) external returns (bytes memory);
 
-    function batchModuleCall(CallContext[] memory contexts) external returns (bytes[] memory results);
+    function callDexModule(
+        uint8 dexId,
+        bytes32 methodId,
+        bytes memory params
+    ) external returns (bytes memory);
 }

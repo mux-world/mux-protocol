@@ -2,7 +2,6 @@
 pragma solidity 0.8.10;
 
 import "../interfaces/ILiquidityPool.sol";
-import "../interfaces/IConnector.sol";
 import "../components/SafeOwnableUpgradeable.sol";
 import "./Types.sol";
 

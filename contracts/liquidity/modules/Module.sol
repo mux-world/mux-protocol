@@ -15,18 +15,13 @@ abstract contract Module is CrossStorage, IModule {
 
     function meta()
         public
-        pure
+        view
         virtual
         returns (
             bytes32[] memory methodIds,
             bytes4[] memory selectors,
             bytes32[] memory initialStates
         );
-
-    function _getDexSpotConfig(uint8 dexId) internal view returns (DexSpotConfiguration memory) {
-        require(dexId != 0 && dexId < _dexSpotConfigs.length, "LST"); // the asset is not LiSTed
-        return _dexSpotConfigs[dexId];
-    }
 
     /**
      * @dev Using this method to access state storage to ensure the state array exists.
@@ -44,5 +39,14 @@ abstract contract Module is CrossStorage, IModule {
         bytes32 oldVal = _moduleData[id()][index];
         _moduleData[id()][index] = newVal;
         return oldVal;
+    }
+
+    function _getDexSpotConfig(uint8 dexId_) internal view returns (DexSpotConfiguration memory) {
+        require(dexId_ != 0 && dexId_ < _dexSpotConfigs.length, "LST"); // the asset is not LiSTed
+        return _dexSpotConfigs[dexId_];
+    }
+
+    function _getTokenAddr(uint8 assetId) internal view returns (address) {
+        return ILiquidityPool(_pool).getAssetAddress(assetId);
     }
 }

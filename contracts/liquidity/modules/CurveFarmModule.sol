@@ -6,14 +6,13 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../../libraries/LibUtils.sol";
-import "./Module.sol";
-
-import "hardhat/console.sol";
+import "../../interfaces/IDexLiquidityModule.sol";
+import "./DexModule.sol";
 
 /**
  * @notice A module to provide liquidity to curve then farm on some project with the lpToken.
  */
-abstract contract CurveFarmModule is Module {
+abstract contract CurveFarmModule is DexModule, IDexLiquidityModule {
     using Address for address;
     using SafeERC20 for IERC20;
 
@@ -44,38 +43,61 @@ abstract contract CurveFarmModule is Module {
 
     function meta()
         public
-        pure
+        view
+        virtual
         override
         returns (
-            bytes32[] memory ids,
+            bytes32[] memory methodIds,
             bytes4[] memory selectors,
             bytes32[] memory initialStates
         )
     {
-        ids = new bytes32[](5);
-        ids[0] = LibUtils.toBytes32("getLpBalance");
-        ids[1] = LibUtils.toBytes32("getFees");
-        ids[2] = LibUtils.toBytes32("getSpotAmounts");
-        ids[3] = LibUtils.toBytes32("addLiquidity");
-        ids[4] = LibUtils.toBytes32("removeLiquidity");
-        selectors = new bytes4[](5);
+        methodIds = new bytes32[](8);
+        methodIds[0] = LibUtils.toBytes32("getLpBalance");
+        methodIds[1] = LibUtils.toBytes32("getFees");
+        methodIds[2] = LibUtils.toBytes32("getSpotAmounts");
+        methodIds[3] = LibUtils.toBytes32("addLiquidity");
+        methodIds[4] = LibUtils.toBytes32("removeLiquidity");
+        methodIds[5] = LibUtils.toBytes32("getValidationData");
+        methodIds[6] = LibUtils.toBytes32("getAmountOut");
+        methodIds[7] = LibUtils.toBytes32("getTotalSpotAmounts");
+        selectors = new bytes4[](8);
         selectors[0] = this.getLpBalance.selector;
         selectors[1] = this.getFees.selector;
         selectors[2] = this.getSpotAmounts.selector;
         selectors[3] = this.addLiquidity.selector;
         selectors[4] = this.removeLiquidity.selector;
+        selectors[5] = this.getValidationData.selector;
+        selectors[6] = this.getAmountOut.selector;
+        selectors[7] = this.getTotalSpotAmounts.selector;
         initialStates = new bytes32[](1);
     }
 
-    function getLpBalance() public view returns (uint256) {
+    function getLpBalance() public view override returns (uint256) {
         return _getLpBalance();
     }
 
-    function getFees() public view returns (uint256[] memory feeAmounts) {
-        feeAmounts = new uint256[](tokenCount);
+    function getFees()
+        public
+        view
+        override
+        returns (
+            address[] memory rewardTokens,
+            uint256[] memory collectedFeeAmounts,
+            uint256[] memory pendingFeeAmounts
+        )
+    {
+        rewardTokens = new address[](tokenCount);
+        (, rewardTokens) = tokens();
+        collectedFeeAmounts = new uint256[](tokenCount);
+        pendingFeeAmounts = new uint256[](tokenCount);
     }
 
-    function getSpotAmounts(uint256 shareAmount) public view returns (uint256[] memory amounts) {
+    function getTotalSpotAmounts() public view returns (uint256[] memory amounts) {
+        amounts = _getReserves();
+    }
+
+    function getSpotAmounts(uint256 shareAmount) public view override returns (uint256[] memory amounts) {
         uint256 totalSupply = IERC20(pool).totalSupply();
         amounts = _getReserves();
         for (uint256 i = 0; i < tokenCount; i++) {
@@ -83,20 +105,38 @@ abstract contract CurveFarmModule is Module {
         }
     }
 
+    function getAmountOut(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn
+    ) public view override returns (uint256 amountOut) {
+        int128 indexIn = _getTokenIndex(tokenIn);
+        int128 indexOut = _getTokenIndex(tokenOut);
+        require(indexIn >= 0 && indexOut >= 0, "Unknown token");
+        require(indexIn != indexOut, "In & out are same token");
+        return ICurvePool(pool).get_dy_underlying(indexIn, indexOut, amountIn);
+    }
+
     function addLiquidity(
         uint256[] calldata maxAmounts,
-        uint256[] calldata minAmounts,
-        uint256
-    ) public returns (uint256[] memory addedAmounts, uint256 liquidityAmount) {
+        uint256,
+        bytes memory validationData
+    ) public override returns (uint256[] memory addedAmounts, uint256 liquidityAmount) {
         require(maxAmounts.length == tokenCount, "!L");
-        require(maxAmounts.length == minAmounts.length, "L!L");
+        uint256 minShareAmount;
+        if (validationData.length > 0) {
+            minShareAmount = abi.decode(validationData, (uint256));
+        }
         _approve(pool, maxAmounts);
-        uint256 minShareAmount = _calcLpAmount(minAmounts, true);
         liquidityAmount = _addCurveLiquidity(maxAmounts, minShareAmount);
         addedAmounts = maxAmounts;
         if (stake != address(0)) {
-            IERC20(pool).approve(stake, liquidityAmount);
-            IStake(stake).stake(liquidityAmount);
+            try IERC20(pool).approve(stake, liquidityAmount) {} catch {
+                revert("Fail to call approve on pool");
+            }
+            try IStake(stake).deposit(liquidityAmount, address(this), false) {} catch {
+                revert("Fail to call deposit on stake");
+            }
         }
     }
 
@@ -104,14 +144,13 @@ abstract contract CurveFarmModule is Module {
         uint256 shareAmount,
         uint256[] calldata minAmounts,
         uint256
-    ) public returns (uint256[] memory removedAmounts, uint256[] memory feeAmounts) {
+    ) public override returns (uint256[] memory removedAmounts) {
         require(minAmounts.length == tokenCount, "!L");
         if (stake != address(0)) {
             // NOTE: if the stake need approve, add it below
-            IStake(stake).redeem(shareAmount);
+            IStake(stake).withdraw(shareAmount, address(this), false);
         }
         removedAmounts = _removeCurveLiquidity(shareAmount, minAmounts);
-        feeAmounts = new uint256[](tokenCount); // 0
     }
 
     function _getLpBalance() internal view returns (uint256) {
@@ -121,6 +160,8 @@ abstract contract CurveFarmModule is Module {
             return IERC20(pool).balanceOf(address(this));
         }
     }
+
+    function _getTokenIndex(address token) internal view virtual returns (int128 index);
 
     function _approve(address spender, uint256[] memory amounts) internal virtual;
 
@@ -140,15 +181,25 @@ abstract contract CurveFarmModule is Module {
 }
 
 interface ICurvePool {
-    function balances(uint256 index) external view returns (uint256);
-
-    function calc_token_amount(uint256[2] memory _amounts, bool _is_deposit) external view returns (uint256);
+    function get_dy_underlying(
+        int128 i,
+        int128 j,
+        uint256 dx
+    ) external view returns (uint256 dy);
 }
 
 interface IStake {
-    function stake(uint256 amount) external;
+    function deposit(
+        uint256 _value,
+        address _user,
+        bool _claim_rewards
+    ) external;
 
-    function redeem(uint256 amount) external;
+    function withdraw(
+        uint256 _value,
+        address _user,
+        bool _claim_rewards
+    ) external;
 
     function balanceOf(address account) external view returns (uint256);
 }

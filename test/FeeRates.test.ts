@@ -47,8 +47,8 @@ describe("FeeRates", () => {
     mlp = await createContract("MockERC20", ["MLP", "MLP", 18])
     await mlp.mint(pool.address, toWei(PreMinedTokenTotalSupply))
     await pool.initialize(poolHop2.address, mlp.address, user0.address /* test only */, user0.address /* test only */, weth9, weth9)
-    // fundingInterval, mlpPrice, mlpPrice, liqBase, liqDyn
-    await pool.setNumbers(3600 * 8, toWei("1"), toWei("2"), rate("0.0001"), rate("0.0000"))
+    // fundingInterval, mlpPrice, mlpPrice, liqBase, liqDyn, σ_strict
+    await pool.setNumbers(3600 * 8, toWei("1"), toWei("2"), rate("0.0001"), rate("0.0000"), rate("0.01"))
   })
 
   it("getFundingRate", async () => {

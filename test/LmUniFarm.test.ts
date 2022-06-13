@@ -7,7 +7,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 const U = ethers.utils
 const B = ethers.BigNumber
 
-describe("LiquidityManager", () => {
+describe("LmUniFarm", () => {
   let pool: Contract
   let tokenA: Contract
   let tokenB: Contract
@@ -70,7 +70,7 @@ describe("LiquidityManager", () => {
     await tokenA.approve(univ2.address, toWei("1000"))
     await tokenB.approve(univ2.address, toWei("1000"))
 
-    await lm.addDexSpotConfiguration("uniswapV2", 100, [0, 1], [1, 1]) // tokenA/tokenB
+    await lm.addDexSpotConfiguration(0, 100, [0, 1], [1, 1]) // tokenA/tokenB
     const transferMod = await createContract("TransferModule")
     const univ2Mod = await createContract("UniFarmModule", [
       univ2.address,
@@ -94,15 +94,24 @@ describe("LiquidityManager", () => {
       999999999999,
     )
     expect(await univ2.balanceOf(user0.address)).to.equal(toWei("45.45"))
-    await dl.addDexLiquidity(1, [toWei("10"), toWei("0.1")], 999999999999)
-    expect(await dl.callStatic.getDexFees(1)).to.deep.equal([toWei("0"), toWei("0")])
+
+    const val = await dl.callStatic.getDexValidationData(1, [toWei("10"), toWei("0.1")])
+    console.log(val)
+    const pval = U.defaultAbiCoder.decode(["uint256", "uint256"], val);
+    expect(pval[0]).to.equal(toWei("10"))
+    expect(pval[1]).to.equal(toWei("0.1"))
+
+    await dl.addDexLiquidity(1, [toWei("10"), toWei("0.1")], 999999999999, val)
+    expect(await dl.callStatic.getDexFees(1)).to.deep.equal([[tokenA.address, tokenB.address], [toWei("0"), toWei("0")], [toWei("0"), toWei("0")]])
     expect(await dl.callStatic.getDexLpBalance(1)).to.equal(toWei("5.05"))
 
     await univ2.swapA4B(toWei("0.1"))
     await univ2.swapB4A(toWei("0.000999003993018960"))
-    const fees = await dl.callStatic.getDexFees(1)
-    expect(fees[0]).to.be.closeTo(toWei("0.000029970119790568"), 10000)
-    expect(fees[1]).to.be.closeTo(toWei("0.000000299701197905"), 10000)
+    var { collectedFeeAmounts, pendingFeeAmounts } = await dl.callStatic.getDexFees(1)
+    expect(collectedFeeAmounts[0]).to.be.closeTo(toWei("0"), 10000)
+    expect(collectedFeeAmounts[1]).to.be.closeTo(toWei("0"), 10000)
+    expect(pendingFeeAmounts[0]).to.be.closeTo(toWei("0.000029970119790568"), 10000)
+    expect(pendingFeeAmounts[1]).to.be.closeTo(toWei("0.000000299701197905"), 10000)
 
     await dl.removeDexLiquidity(
       1,
@@ -110,6 +119,20 @@ describe("LiquidityManager", () => {
       [toWei("0"), toWei("0")],
       999999999999
     )
-    console.log(await dl.callStatic.getDexLiquidity(1))
+    expect(await dl.callStatic.getDexLpBalance(1)).to.equal(toWei("0"))
+    var { collectedFeeAmounts, pendingFeeAmounts } = await dl.callStatic.getDexFees(1)
+    expect(collectedFeeAmounts[0]).to.be.closeTo(toWei("0.000029970119790568"), 10000)
+    expect(collectedFeeAmounts[1]).to.be.closeTo(toWei("0.000000299701197905"), 10000)
+    expect(pendingFeeAmounts[0]).to.be.closeTo(toWei("0"), 10000)
+    expect(pendingFeeAmounts[1]).to.be.closeTo(toWei("0"), 10000)
+
+    await dl.addDexLiquidity(1, [toWei("10"), toWei("0.1")], 999999999999, val)
+    await univ2.swapA4B(toWei("0.1"))
+    await univ2.swapB4A(toWei("0.000999003993018960"))
+    var { collectedFeeAmounts, pendingFeeAmounts } = await dl.callStatic.getDexFees(1)
+    expect(collectedFeeAmounts[0]).to.be.closeTo(toWei("0.000029970119790568"), 10000)
+    expect(collectedFeeAmounts[1]).to.be.closeTo(toWei("0.000000299701197905"), 10000)
+    expect(pendingFeeAmounts[0]).to.be.closeTo(toWei("0.000029970038992498"), 10000)
+    expect(pendingFeeAmounts[1]).to.be.closeTo(toWei("0.000000299700389923"), 10000)
   })
 })

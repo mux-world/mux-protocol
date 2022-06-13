@@ -6,12 +6,12 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../../libraries/LibUtils.sol";
-import "./Module.sol";
+import "./DexModule.sol";
 
 /**
  * @notice A module to provide liquidity to uniswap-v2-like dex then farm on some project with the lpToken.
  */
-contract UniFarmRewardModule is Module {
+contract UniFarmRewardModule is DexModule {
     using Address for address;
     using SafeERC20 for IERC20;
 
@@ -51,6 +51,8 @@ contract UniFarmRewardModule is Module {
         selectors[1] = this.claimReward.selector;
         initialStates = new bytes32[](0);
     }
+
+    function tokens() public view override returns (bool needCheck, address[] memory tokens_) {}
 
     function getReward() public view returns (uint256) {
         return IStake(stake).pendingReward(poolId, address(this));

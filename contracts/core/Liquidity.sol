@@ -4,7 +4,7 @@ pragma solidity 0.8.10;
 import "../libraries/LibAsset.sol";
 import "../libraries/LibSubAccount.sol";
 import "../libraries/LibMath.sol";
-
+import "../interfaces/IMuxRebalancerCallback.sol";
 import "./Account.sol";
 import "./Storage.sol";
 
@@ -12,6 +12,7 @@ contract Liquidity is Storage, Account {
     using LibAsset for Asset;
     using LibMath for uint256;
     using LibSubAccount for bytes32;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /**
      * @dev   Add liquidity
@@ -32,7 +33,7 @@ contract Liquidity is Storage, Account {
         uint96 mlpPrice,
         uint96 currentAssetValue,
         uint96 targetAssetValue
-    ) external onlyOrderBook updateSequence {
+    ) external onlyOrderBook {
         require(trader != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(tokenId), "LST"); // the asset is not LiSTed
         require(rawAmount != 0, "A=0"); // Amount Is Zero
@@ -40,7 +41,7 @@ contract Liquidity is Storage, Account {
         require(mlpPrice <= _storage.mlpPriceUpperBound, "MPO"); // Mlp Price is Out of range
         require(mlpPrice >= _storage.mlpPriceLowerBound, "MPO"); // Mlp Price is Out of range
         Asset storage token = _storage.assets[tokenId];
-        tokenPrice = LibReferenceOracle.checkPrice(token, tokenPrice);
+        tokenPrice = LibReferenceOracle.checkPriceWithSpread(_storage, token, tokenPrice, SpreadType.Bid);
 
         // token amount
         require(token.isEnabled, "ENA"); // the token is temporarily not ENAbled
@@ -63,6 +64,7 @@ contract Liquidity is Storage, Account {
         uint96 mlpAmount = ((uint256(wadAmount) * uint256(tokenPrice)) / uint256(mlpPrice)).safeUint96();
         IERC20Upgradeable(_storage.mlp).transfer(trader, mlpAmount);
         emit AddLiquidity(trader, tokenId, tokenPrice, mlpPrice, mlpAmount, feeCollateral);
+        _updateSequence();
     }
 
     /**
@@ -84,7 +86,7 @@ contract Liquidity is Storage, Account {
         uint96 mlpPrice,
         uint96 currentAssetValue,
         uint96 targetAssetValue
-    ) external onlyOrderBook updateSequence {
+    ) external onlyOrderBook {
         require(trader != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(tokenId), "LST"); // the asset is not LiSTed
         require(mlpPrice != 0, "P=0"); // Price Is Zero
@@ -92,7 +94,7 @@ contract Liquidity is Storage, Account {
         require(mlpPrice >= _storage.mlpPriceLowerBound, "MPO"); // Mlp Price is Out of range
         require(mlpAmount != 0, "A=0"); // Amount Is Zero
         Asset storage token = _storage.assets[tokenId];
-        tokenPrice = LibReferenceOracle.checkPrice(token, tokenPrice);
+        tokenPrice = LibReferenceOracle.checkPriceWithSpread(_storage, token, tokenPrice, SpreadType.Ask);
 
         // amount
         require(token.isEnabled, "ENA"); // the token is temporarily not ENAbled
@@ -119,6 +121,7 @@ contract Liquidity is Storage, Account {
         uint256 rawAmount = token.toRaw(wadAmount);
         token.transferOut(trader, rawAmount, _storage.weth, _storage.nativeUnwrapper);
         emit RemoveLiquidity(trader, tokenId, tokenPrice, mlpPrice, mlpAmount, feeCollateral);
+        _updateSequence();
     }
 
     /**
@@ -130,7 +133,7 @@ contract Liquidity is Storage, Account {
         address trader,
         uint8 tokenId,
         uint96 muxTokenAmount // NOTE: OrderBook SHOULD transfer muxTokenAmount to LiquidityPool
-    ) external onlyOrderBook updateSequence {
+    ) external onlyOrderBook {
         require(trader != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(tokenId), "LST"); // the asset is not LiSTed
         require(muxTokenAmount != 0, "A=0"); // Amount Is Zero
@@ -144,6 +147,7 @@ contract Liquidity is Storage, Account {
         token.spotLiquidity -= muxTokenAmount;
         token.transferOut(trader, rawAmount, _storage.weth, _storage.nativeUnwrapper);
         emit RedeemMuxToken(trader, tokenId, muxTokenAmount);
+        _updateSequence();
     }
 
     /**
@@ -160,7 +164,7 @@ contract Liquidity is Storage, Account {
         uint8[] calldata unstableTokenIds,
         uint32[] calldata unstableUtilizations, // 1e5
         uint96[] calldata unstablePrices
-    ) external onlyOrderBook updateSequence {
+    ) external onlyOrderBook {
         uint32 nextFundingTime = (_blockTimestamp() / _storage.fundingInterval) * _storage.fundingInterval;
         if (_storage.lastFundingTime == 0) {
             // init state. just update lastFundingTime
@@ -172,6 +176,68 @@ contract Liquidity is Storage, Account {
             _updateFundingState(stableUtilization, unstableTokenIds, unstableUtilizations, unstablePrices, timeSpan);
             _storage.lastFundingTime = nextFundingTime;
         }
+        _updateSequence();
+    }
+
+    /**
+     * @dev  Rebalance pool liquidity. Swap token 0 for token 1.
+     *
+     *       rebalancer must implement IMuxRebalancerCallback. rebate rate follows baseFeeRate.
+     */
+    function rebalance(
+        address rebalancer,
+        uint8 tokenId0,
+        uint8 tokenId1,
+        uint96 rawAmount0,
+        uint96 maxRawAmount1,
+        bytes32 userData,
+        uint96 price0,
+        uint96 price1
+    ) external onlyOrderBook {
+        require(rebalancer != address(0), "R=0"); // Rebalancer address is zero
+        require(_hasAsset(tokenId0), "LST"); // the asset is not LiSTed
+        require(_hasAsset(tokenId1), "LST"); // the asset is not LiSTed
+        require(rawAmount0 != 0, "A=0"); // Amount Is Zero
+        Asset storage token0 = _storage.assets[tokenId0];
+        Asset storage token1 = _storage.assets[tokenId1];
+        price0 = LibReferenceOracle.checkPrice(_storage, token0, price0);
+        price1 = LibReferenceOracle.checkPrice(_storage, token1, price1);
+        require(token0.isEnabled, "ENA"); // the token is temporarily not ENAbled
+        require(token1.isEnabled, "ENA"); // the token is temporarily not ENAbled
+        // send token 0. get amount 1
+        uint256 expectedRawAmount1;
+        {
+            uint96 amount0 = token0.toWad(rawAmount0);
+            require(token0.spotLiquidity >= amount0, "LIQ"); // insufficient LIQuidity
+            token0.spotLiquidity -= amount0;
+
+            uint96 expectedAmount1 = ((uint256(amount0) * uint256(price0)) / uint256(price1)).safeUint96();
+            uint96 rebate = uint256(expectedAmount1).rmul(_storage.liquidityBaseFeeRate).safeUint96();
+            expectedAmount1 -= rebate;
+            expectedRawAmount1 = token1.toRaw(expectedAmount1);
+        }
+        require(expectedRawAmount1 <= maxRawAmount1, "LMT"); // LiMiTed by limitPrice
+        // swap. check amount 1
+        uint96 rawAmount1;
+        {
+            IERC20Upgradeable(token0.tokenAddress).safeTransfer(rebalancer, rawAmount0);
+            uint256 rawAmount1Old = IERC20Upgradeable(token1.tokenAddress).balanceOf(address(this));
+            IMuxRebalancerCallback(rebalancer).muxRebalanceCallback(
+                token0.tokenAddress,
+                token1.tokenAddress,
+                rawAmount0,
+                expectedRawAmount1,
+                userData
+            );
+            uint256 rawAmount1New = IERC20Upgradeable(token1.tokenAddress).balanceOf(address(this));
+            require(rawAmount1Old <= rawAmount1New, "T1A"); // Token 1 Amount mismatched
+            rawAmount1 = (rawAmount1New - rawAmount1Old).safeUint96();
+        }
+        require(rawAmount1 >= expectedRawAmount1, "T1A"); // Token 1 Amount mismatched
+        token1.spotLiquidity += token1.toWad(rawAmount1);
+
+        emit Rebalance(rebalancer, tokenId0, tokenId1, price0, price1, rawAmount0, rawAmount1);
+        _updateSequence();
     }
 
     function _updateFundingState(
@@ -210,7 +276,7 @@ contract Liquidity is Storage, Account {
             );
             asset.longCumulativeFundingRate += longCumulativeFundingRate;
             {
-                uint96 price = LibReferenceOracle.checkPrice(asset, unstablePrices[i]);
+                uint96 price = LibReferenceOracle.checkPrice(_storage, asset, unstablePrices[i]);
                 asset.shortCumulativeFunding += uint256(shortCumulativeFundingRate).wmul(price).safeUint128();
             }
             emit UpdateFundingRate(

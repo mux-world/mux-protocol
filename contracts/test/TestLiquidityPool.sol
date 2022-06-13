@@ -71,11 +71,12 @@ contract TestLiquidityPoolHop2 is LiquidityPoolHop2, TestLiquidityPoolInject {
         uint8 assetId,
         uint32 newInitialMarginRate, // 1e5
         uint32 newMaintenanceMarginRate // 1e5
-    ) external onlyOwner updateSequence {
+    ) external onlyOwner {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         Asset storage asset = _storage.assets[assetId];
         asset.initialMarginRate = newInitialMarginRate;
         asset.maintenanceMarginRate = newMaintenanceMarginRate;
+        _updateSequence();
     }
 }
 

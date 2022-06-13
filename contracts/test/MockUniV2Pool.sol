@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./MockERC20.sol";
-import "hardhat/console.sol";
 
 contract MockUniV2Pool is ERC20 {
     using Address for address;
@@ -19,6 +18,14 @@ contract MockUniV2Pool is ERC20 {
     constructor(address tokenA_, address tokenB_) ERC20("MockUniPool", "MUP") {
         _tokenA = tokenA_;
         _tokenB = tokenB_;
+    }
+
+    function token0() external view returns (address) {
+        return _tokenA;
+    }
+
+    function token1() external view returns (address) {
+        return _tokenB;
     }
 
     function getPrice() public view returns (uint256) {

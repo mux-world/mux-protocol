@@ -19,6 +19,8 @@ contract LiquidityManager is Storage, Initializable, SafeOwnableUpgradeable, Mod
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     event CallMethod(uint8 dexId, bytes32 methodId, bytes params);
+    bytes32 constant GET_TOTAL_SPOT_AMOUNTS_METHOD_ID =
+        0x676574546f74616c53706f74416d6f756e747300000000000000000000000000; // toBytes32("getDynamicWeights")
 
     /**
      * @notice Initialize the LiquidityManager.
@@ -47,44 +49,45 @@ contract LiquidityManager is Storage, Initializable, SafeOwnableUpgradeable, Mod
         return _hasDexCall(dexId, methodId);
     }
 
-    function getDexSpotConfiguration(uint8 dexId) external view returns (DexSpotConfiguration memory) {
+    function getDexSpotConfiguration(uint8 dexId) external returns (DexSpotConfiguration memory) {
         require(dexId != 0 && dexId < _dexSpotConfigs.length, "LST"); // the asset is not LiSTed
-        return _dexSpotConfigs[dexId];
+        return _getDexSpotConfiguration(dexId);
     }
 
-    function getAllDexSpotConfiguration() external view returns (DexSpotConfiguration[] memory) {
-        DexSpotConfiguration[] memory configs = new DexSpotConfiguration[](_dexSpotConfigs.length - 1);
+    function getAllDexSpotConfiguration() external returns (DexSpotConfiguration[] memory) {
+        DexSpotConfiguration[] memory results = new DexSpotConfiguration[](_dexSpotConfigs.length - 1);
         for (uint256 i = 0; i < _dexSpotConfigs.length - 1; i++) {
-            configs[i] = _dexSpotConfigs[i + 1];
+            uint8 dexId = uint8(i + 1);
+            results[i] = _getDexSpotConfiguration(dexId);
         }
-        return configs;
+        return results;
+    }
+
+    function _getDexSpotConfiguration(uint8 dexId) internal returns (DexSpotConfiguration memory) {
+        DexSpotConfiguration memory result = _dexSpotConfigs[dexId];
+        if (result.dexType == DEX_CURVE) {
+            result.totalSpotInDex = abi.decode(_dexCall(dexId, GET_TOTAL_SPOT_AMOUNTS_METHOD_ID, ""), (uint256[]));
+        }
+        return result;
     }
 
     function getModuleInfo(bytes32 moduleId) external view returns (ModuleInfo memory) {
         return _moduleInfos[moduleId];
     }
 
-    function moduleCall(CallContext memory context) external returns (bytes memory) {
+    function callGenericModule(bytes32 methodId, bytes memory params) external returns (bytes memory) {
         require(msg.sender == owner() || _externalAccessors[msg.sender], "FMS"); // forbidden message sender
-        return _moduleCall(context);
+        emit CallMethod(0, methodId, params);
+        return _genericCall(methodId, params);
     }
 
-    function batchModuleCall(CallContext[] memory contexts) external returns (bytes[] memory results) {
+    function callDexModule(
+        uint8 dexId,
+        bytes32 methodId,
+        bytes memory params
+    ) external returns (bytes memory) {
         require(msg.sender == owner() || _externalAccessors[msg.sender], "FMS"); // forbidden message sender
-        uint256 length = contexts.length;
-        require(length > 0, "MTY"); // argument array is eMpTY
-        results = new bytes[](length);
-        for (uint256 i = 0; i < length; i++) {
-            results[i] = _moduleCall(contexts[i]);
-        }
-    }
-
-    function _moduleCall(CallContext memory context) internal returns (bytes memory) {
-        emit CallMethod(context.dexId, context.methodId, context.params);
-        if (context.dexId != 0) {
-            return _dexCall(context.dexId, context.methodId, context.params);
-        } else {
-            return _genericCall(context.methodId, context.params);
-        }
+        emit CallMethod(dexId, methodId, params);
+        return _dexCall(dexId, methodId, params);
     }
 }

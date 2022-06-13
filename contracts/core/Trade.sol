@@ -18,7 +18,7 @@ contract Trade is Storage, Account {
         uint96 amount,
         uint96 collateralPrice,
         uint96 assetPrice
-    ) external onlyOrderBook updateSequence returns (uint96) {
+    ) external onlyOrderBook returns (uint96) {
         LibSubAccount.DecodedSubAccountId memory decoded = subAccountId.decodeSubAccountId();
         require(decoded.account != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(decoded.collateralId), "LST"); // the asset is not LiSTed
@@ -34,8 +34,13 @@ contract Trade is Storage, Account {
         require(asset.isEnabled, "ENA"); // the token is temporarily not ENAbled
         require(collateral.isEnabled, "ENA"); // the token is temporarily not ENAbled
         require(decoded.isLong || asset.isShortable, "SHT"); // can not SHorT this asset
-        assetPrice = LibReferenceOracle.checkPrice(asset, assetPrice);
-        collateralPrice = LibReferenceOracle.checkPrice(collateral, collateralPrice);
+        assetPrice = LibReferenceOracle.checkPriceWithSpread(
+            _storage,
+            asset,
+            assetPrice,
+            decoded.isLong ? SpreadType.Ask : SpreadType.Bid
+        );
+        collateralPrice = LibReferenceOracle.checkPrice(_storage, collateral, collateralPrice);
 
         // fee & funding
         uint96 feeUsd = _getFeeUsd(subAccount, asset, decoded.isLong, amount, assetPrice);
@@ -83,6 +88,7 @@ contract Trade is Storage, Account {
         _increaseTotalSize(asset, decoded.isLong, amount, assetPrice);
         // post check
         require(_isAccountImSafe(subAccount, decoded.assetId, decoded.isLong, collateralPrice, assetPrice), "!IM");
+        _updateSequence();
         return assetPrice;
     }
 
@@ -110,7 +116,7 @@ contract Trade is Storage, Account {
         uint96 collateralPrice,
         uint96 assetPrice,
         uint96 profitAssetPrice // only used when !isLong
-    ) external onlyOrderBook updateSequence returns (uint96) {
+    ) external onlyOrderBook returns (uint96) {
         ClosePositionContext memory ctx;
         ctx.id = subAccountId.decodeSubAccountId();
         require(ctx.id.account != address(0), "T=0"); // Trader address is zero
@@ -127,14 +133,23 @@ contract Trade is Storage, Account {
         require(collateral.isEnabled, "ENA"); // the token is temporarily not ENAbled
         require(ctx.id.isLong || asset.isShortable, "SHT"); // can not SHorT this asset
         require(amount <= subAccount.size, "A>S"); // close Amount is Larger than position Size
-        assetPrice = LibReferenceOracle.checkPrice(asset, assetPrice);
-        collateralPrice = LibReferenceOracle.checkPrice(collateral, collateralPrice);
+        assetPrice = LibReferenceOracle.checkPriceWithSpread(
+            _storage,
+            asset,
+            assetPrice,
+            ctx.id.isLong ? SpreadType.Bid : SpreadType.Ask
+        );
+        collateralPrice = LibReferenceOracle.checkPrice(_storage, collateral, collateralPrice);
         if (ctx.id.isLong && !asset.useStableTokenForProfit) {
             profitAssetId = ctx.id.assetId;
             profitAssetPrice = assetPrice;
         } else {
             require(_isStable(profitAssetId), "STB"); // profit asset should be a STaBle coin
-            profitAssetPrice = LibReferenceOracle.checkPrice(_storage.assets[profitAssetId], profitAssetPrice);
+            profitAssetPrice = LibReferenceOracle.checkPrice(
+                _storage,
+                _storage.assets[profitAssetId],
+                profitAssetPrice
+            );
         }
         require(_storage.assets[profitAssetId].isEnabled, "ENA"); // the token is temporarily not ENAbled
 
@@ -192,6 +207,7 @@ contract Trade is Storage, Account {
         }
         // post check
         require(_isAccountMmSafe(subAccount, ctx.id.assetId, ctx.id.isLong, collateralPrice, assetPrice), "!MM");
+        _updateSequence();
         return assetPrice;
     }
 
@@ -208,7 +224,7 @@ contract Trade is Storage, Account {
         uint96 collateralPrice,
         uint96 assetPrice,
         uint96 profitAssetPrice // only used when !isLong
-    ) external onlyOrderBook updateSequence returns (uint96) {
+    ) external onlyOrderBook returns (uint96) {
         LiquidateContext memory ctx;
         ctx.id = subAccountId.decodeSubAccountId();
         require(ctx.id.account != address(0), "T=0"); // Trader address is zero
@@ -224,14 +240,23 @@ contract Trade is Storage, Account {
         require(collateral.isEnabled, "ENA"); // the token is temporarily not ENAbled
         require(ctx.id.isLong || asset.isShortable, "SHT"); // can not SHorT this asset
         require(subAccount.size > 0, "S=0"); // position Size Is Zero
-        assetPrice = LibReferenceOracle.checkPrice(asset, assetPrice);
-        collateralPrice = LibReferenceOracle.checkPrice(collateral, collateralPrice);
+        assetPrice = LibReferenceOracle.checkPriceWithSpread(
+            _storage,
+            asset,
+            assetPrice,
+            ctx.id.isLong ? SpreadType.Bid : SpreadType.Ask
+        );
+        collateralPrice = LibReferenceOracle.checkPrice(_storage, collateral, collateralPrice);
         if (ctx.id.isLong && !asset.useStableTokenForProfit) {
             profitAssetId = ctx.id.assetId;
             profitAssetPrice = assetPrice;
         } else {
             require(_isStable(profitAssetId), "STB"); // profit asset should be a STaBle coin
-            profitAssetPrice = LibReferenceOracle.checkPrice(_storage.assets[profitAssetId], profitAssetPrice);
+            profitAssetPrice = LibReferenceOracle.checkPrice(
+                _storage,
+                _storage.assets[profitAssetId],
+                profitAssetPrice
+            );
         }
         require(_storage.assets[profitAssetId].isEnabled, "ENA"); // the token is temporarily not ENAbled
 
@@ -306,6 +331,7 @@ contract Trade is Storage, Account {
             });
             emit Liquidate(ctx.id.account, ctx.id.assetId, args);
         }
+        _updateSequence();
         return assetPrice;
     }
 
@@ -324,7 +350,7 @@ contract Trade is Storage, Account {
         uint96 collateralPrice,
         uint96 assetPrice,
         uint96 profitAssetPrice // only used when !isLong
-    ) external onlyOrderBook updateSequence {
+    ) external onlyOrderBook {
         require(rawAmount != 0, "A=0"); // Amount Is Zero
         WithdrawProfitContext memory ctx;
         ctx.id = subAccountId.decodeSubAccountId();
@@ -341,14 +367,23 @@ contract Trade is Storage, Account {
         require(collateral.isEnabled, "ENA"); // the token is temporarily not ENAbled
         require(ctx.id.isLong || asset.isShortable, "SHT"); // can not SHorT this asset
         require(subAccount.size > 0, "S=0"); // position Size Is Zero
-        assetPrice = LibReferenceOracle.checkPrice(asset, assetPrice);
-        collateralPrice = LibReferenceOracle.checkPrice(collateral, collateralPrice);
+        assetPrice = LibReferenceOracle.checkPriceWithSpread(
+            _storage,
+            asset,
+            assetPrice,
+            ctx.id.isLong ? SpreadType.Bid : SpreadType.Ask
+        );
+        collateralPrice = LibReferenceOracle.checkPrice(_storage, collateral, collateralPrice);
         if (ctx.id.isLong && !asset.useStableTokenForProfit) {
             profitAssetId = ctx.id.assetId;
             profitAssetPrice = assetPrice;
         } else {
             require(_isStable(profitAssetId), "STB"); // profit asset should be a STaBle coin
-            profitAssetPrice = LibReferenceOracle.checkPrice(_storage.assets[profitAssetId], profitAssetPrice);
+            profitAssetPrice = LibReferenceOracle.checkPrice(
+                _storage,
+                _storage.assets[profitAssetId],
+                profitAssetPrice
+            );
         }
         require(_storage.assets[profitAssetId].isEnabled, "ENA"); // the token is temporarily not ENAbled
 
@@ -396,6 +431,7 @@ contract Trade is Storage, Account {
             });
             emit WithdrawProfit(ctx.id.account, ctx.id.assetId, args);
         }
+        _updateSequence();
     }
 
     function _increaseTotalSize(

@@ -12,24 +12,13 @@ import "../Types.sol";
  *        It has limited privileges.
  */
 contract DexLiquidity is SafeOwnable {
-    uint32 public slippage = 500;
     address public manager;
     mapping(address => bool) public brokers;
 
     event SetBroker(address indexed broker, bool enable);
-    event SetSlippage(uint32 slippage);
 
     constructor(address liquidityManager_) SafeOwnable() {
         manager = liquidityManager_;
-    }
-
-    /**
-     * @notice Set the slippage when adding liquidity. Slippage is a protection against the chain congestion.
-     */
-    function setSlippage(uint32 newSlippage) external onlyOwner {
-        require(slippage != newSlippage, "SNC"); // slippage is not changed
-        slippage = newSlippage;
-        emit SetSlippage(newSlippage);
     }
 
     /**
@@ -45,7 +34,7 @@ contract DexLiquidity is SafeOwnable {
      * @notice This method is a wrapper for the method of `LiquidityManager` with the same name.
      *         Return all the dex configurations.
      */
-    function getAllDexSpotConfiguration() external view returns (DexSpotConfiguration[] memory) {
+    function getAllDexSpotConfiguration() external returns (DexSpotConfiguration[] memory) {
         return ILiquidityManager(manager).getAllDexSpotConfiguration();
     }
 
@@ -53,7 +42,7 @@ contract DexLiquidity is SafeOwnable {
      * @notice This method is a wrapper for the method of `LiquidityManager` with the same name.
      *         Return the specified dex configurations.
      */
-    function getDexSpotConfiguration(uint8 dexId) external view returns (DexSpotConfiguration memory) {
+    function getDexSpotConfiguration(uint8 dexId) external returns (DexSpotConfiguration memory) {
         return ILiquidityManager(manager).getDexSpotConfiguration(dexId);
     }
 
@@ -69,12 +58,8 @@ contract DexLiquidity is SafeOwnable {
         bytes32 getLpBalanceId = LibUtils.toBytes32("getLpBalance");
         bytes32 getSpotAmountsId = LibUtils.toBytes32("getSpotAmounts");
         if (_manager.hasDexCall(dexId, getLpBalanceId) && _manager.hasDexCall(dexId, getSpotAmountsId)) {
-            bytes memory lpBalanceRaw = _manager.moduleCall(
-                CallContext({ dexId: dexId, methodId: getLpBalanceId, params: "" })
-            );
-            bytes memory liquiditiesRaw = _manager.moduleCall(
-                CallContext({ dexId: dexId, methodId: getSpotAmountsId, params: lpBalanceRaw })
-            );
+            bytes memory lpBalanceRaw = _manager.callDexModule(dexId, getLpBalanceId, "");
+            bytes memory liquiditiesRaw = _manager.callDexModule(dexId, getSpotAmountsId, lpBalanceRaw);
             lpBalance = abi.decode(lpBalanceRaw, (uint256));
             liquidities = abi.decode(liquiditiesRaw, (uint256[]));
         } else {
@@ -87,26 +72,34 @@ contract DexLiquidity is SafeOwnable {
         ILiquidityManager _manager = ILiquidityManager(manager);
         bytes32 getLpBalanceId = LibUtils.toBytes32("getLpBalance");
         if (_manager.hasDexCall(dexId, getLpBalanceId)) {
-            bytes memory lpBalanceRaw = _manager.moduleCall(
-                CallContext({ dexId: dexId, methodId: getLpBalanceId, params: "" })
-            );
+            bytes memory lpBalanceRaw = _manager.callDexModule(dexId, getLpBalanceId, "");
             lpBalance = abi.decode(lpBalanceRaw, (uint256));
         } else {
             lpBalance = 0;
         }
     }
 
-    function getDexFees(uint8 dexId) external returns (uint256[] memory fees) {
+    function getDexFees(uint8 dexId)
+        external
+        returns (
+            address[] memory rewardTokens,
+            uint256[] memory collectedFeeAmounts,
+            uint256[] memory pendingFeeAmounts
+        )
+    {
         ILiquidityManager _manager = ILiquidityManager(manager);
         bytes32 getFeesId = LibUtils.toBytes32("getFees");
         if (_manager.hasDexCall(dexId, getFeesId)) {
-            bytes memory lpBalanceRaw = _manager.moduleCall(
-                CallContext({ dexId: dexId, methodId: getFeesId, params: "" })
+            bytes memory lpBalanceRaw = _manager.callDexModule(dexId, getFeesId, "");
+            (rewardTokens, collectedFeeAmounts, pendingFeeAmounts) = abi.decode(
+                lpBalanceRaw,
+                (address[], uint256[], uint256[])
             );
-            fees = abi.decode(lpBalanceRaw, (uint256[]));
         } else {
             uint256 length = ILiquidityManager(manager).getDexSpotConfiguration(dexId).assetIds.length;
-            fees = new uint256[](length);
+            rewardTokens = new address[](length);
+            collectedFeeAmounts = new uint256[](length);
+            pendingFeeAmounts = new uint256[](length);
         }
     }
 
@@ -114,9 +107,7 @@ contract DexLiquidity is SafeOwnable {
         ILiquidityManager _manager = ILiquidityManager(manager);
         bytes32 getRewardsId = LibUtils.toBytes32("getRewards");
         if (_manager.hasDexCall(dexId, getRewardsId)) {
-            bytes memory result = _manager.moduleCall(
-                CallContext({ dexId: dexId, methodId: getRewardsId, params: "" })
-            );
+            bytes memory result = _manager.callDexModule(dexId, getRewardsId, "");
             (tokens, rewardAmounts) = abi.decode(result, (address[], uint256[]));
         }
     }
@@ -124,7 +115,32 @@ contract DexLiquidity is SafeOwnable {
     function claimDexRewards(uint8 dexId) external {
         ILiquidityManager _manager = ILiquidityManager(manager);
         bytes32 claimRewardsId = LibUtils.toBytes32("claimRewards");
-        _manager.moduleCall(CallContext({ dexId: dexId, methodId: claimRewardsId, params: "" }));
+        if (_manager.hasDexCall(dexId, claimRewardsId)) {
+            _manager.callDexModule(dexId, claimRewardsId, "");
+        }
+    }
+
+    function getDexValidationData(uint8 dexId, uint256[] memory minAmounts) public virtual returns (bytes memory data) {
+        ILiquidityManager _manager = ILiquidityManager(manager);
+        bytes32 getValidationDataId = LibUtils.toBytes32("getValidationData");
+        if (_manager.hasDexCall(dexId, getValidationDataId)) {
+            bytes memory result = _manager.callDexModule(dexId, getValidationDataId, abi.encode(minAmounts));
+            data = abi.decode(result, (bytes));
+        }
+    }
+
+    function getDexPrice(
+        uint8 dexId,
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn
+    ) public virtual returns (uint256 price) {
+        ILiquidityManager _manager = ILiquidityManager(manager);
+        bytes32 getPriceId = LibUtils.toBytes32("getPrice");
+        if (_manager.hasDexCall(dexId, getPriceId)) {
+            bytes memory result = _manager.callDexModule(dexId, getPriceId, abi.encode(tokenIn, tokenOut, amountIn));
+            price = abi.decode(result, (uint256));
+        }
     }
 
     /**
@@ -139,28 +155,19 @@ contract DexLiquidity is SafeOwnable {
     function addDexLiquidity(
         uint8 dexId,
         uint256[] calldata maxAmounts,
-        uint256 deadline
+        uint256 deadline,
+        bytes memory validationData
     ) external returns (uint256[] memory addedAmounts, uint256 shareAmount) {
         require(msg.sender == owner() || brokers[msg.sender], "SND");
         require(maxAmounts.length > 0, "MTY"); // argument array is eMpTY
-        ILiquidityManager(manager).moduleCall(
-            CallContext({
-                dexId: 0,
-                methodId: LibUtils.toBytes32("transferFromPoolByDex"),
-                params: abi.encode(dexId, maxAmounts)
-            })
+        ILiquidityManager(manager).callGenericModule(
+            LibUtils.toBytes32("transferFromPoolByDex"),
+            abi.encode(dexId, maxAmounts)
         );
-        uint256 length = maxAmounts.length;
-        uint256[] memory minAmounts = new uint256[](length);
-        for (uint256 i = 0; i < length; i++) {
-            minAmounts[i] = (maxAmounts[i] * (100000 - slippage)) / 100000;
-        }
-        bytes memory result = ILiquidityManager(manager).moduleCall(
-            CallContext({
-                dexId: dexId,
-                methodId: LibUtils.toBytes32("addLiquidity"),
-                params: abi.encode(maxAmounts, minAmounts, deadline)
-            })
+        bytes memory result = ILiquidityManager(manager).callDexModule(
+            dexId,
+            LibUtils.toBytes32("addLiquidity"),
+            abi.encode(maxAmounts, deadline, validationData)
         );
         (addedAmounts, shareAmount) = abi.decode(result, (uint256[], uint256));
     }
@@ -183,20 +190,15 @@ contract DexLiquidity is SafeOwnable {
         require(msg.sender == owner() || brokers[msg.sender], "SND");
         require(shareAmount > 0, "A=0"); // Amount Is Zero
         require(minAmounts.length > 0, "MTY"); // argument array is eMpTY
-        bytes memory result = ILiquidityManager(manager).moduleCall(
-            CallContext({
-                dexId: dexId,
-                methodId: LibUtils.toBytes32("removeLiquidity"),
-                params: abi.encode(shareAmount, minAmounts, deadline)
-            })
+        bytes memory result = ILiquidityManager(manager).callDexModule(
+            dexId,
+            LibUtils.toBytes32("removeLiquidity"),
+            abi.encode(shareAmount, minAmounts, deadline)
         );
         (removedAmounts) = abi.decode(result, (uint256[]));
-        ILiquidityManager(manager).moduleCall(
-            CallContext({
-                dexId: 0,
-                methodId: LibUtils.toBytes32("transferToPoolByDex"),
-                params: abi.encode(dexId, removedAmounts)
-            })
+        ILiquidityManager(manager).callGenericModule(
+            LibUtils.toBytes32("transferToPoolByDex"),
+            abi.encode(dexId, removedAmounts)
         );
     }
 }

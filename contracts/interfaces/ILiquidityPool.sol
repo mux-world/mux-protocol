@@ -24,7 +24,7 @@ interface ILiquidityPool {
             // [4] liquidityBaseFeeRate
             // [5] liquidityDynamicFeeRate
             // [6] sequence. note: will be 0 after 0xffffffff
-            // [7] __future_strictStableDeviation__
+            // [7] strictStableDeviation
             uint32[8] memory u32s,
             // [0] mlpPriceLowerBound
             // [1] mlpPriceUpperBound
@@ -72,7 +72,8 @@ interface ILiquidityPool {
     ) external;
 
     /**
-     * @dev add liquidity
+     * @dev   Add liquidity
+     *
      * @param trader            liquidity provider address
      * @param tokenId           asset.id that added
      * @param rawAmount         asset token amount. decimals = erc20.decimals
@@ -92,7 +93,8 @@ interface ILiquidityPool {
     ) external;
 
     /**
-     * @dev remove liquidity
+     * @dev   Remove liquidity
+     *
      * @param trader            liquidity provider address
      * @param mlpAmount         mlp amount
      * @param tokenId           asset.id that removed to
@@ -165,6 +167,17 @@ interface ILiquidityPool {
         address trader,
         uint8 tokenId,
         uint96 muxTokenAmount // NOTE: OrderBook SHOULD transfer muxTokenAmount to LiquidityPool
+    ) external;
+
+    function rebalance(
+        address rebalancer,
+        uint8 tokenId0,
+        uint8 tokenId1,
+        uint96 rawAmount0,
+        uint96 maxRawAmount1,
+        bytes32 userData,
+        uint96 price0,
+        uint96 price1
     ) external;
 
     /////////////////////////////////////////////////////////////////////////////////

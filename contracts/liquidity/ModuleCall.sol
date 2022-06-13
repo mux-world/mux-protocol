@@ -3,7 +3,6 @@ pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 
-import "../interfaces/IConnector.sol";
 import "./Storage.sol";
 
 contract ModuleCall is Storage {
@@ -35,7 +34,7 @@ contract ModuleCall is Storage {
 
     function _call(CallRegistration storage registration, bytes memory params) internal returns (bytes memory) {
         require(registration.callee != address(0), "MNV");
-        require(registration.callee.isContract(), "T!C");
+        // require(registration.callee.isContract(), "T!C");
         (bool success, bytes memory returnData) = registration.callee.delegatecall(
             abi.encodePacked(registration.selector, params)
         );

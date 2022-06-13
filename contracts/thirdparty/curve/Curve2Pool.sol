@@ -91,15 +91,15 @@ contract Curve2Pool {
 
     constructor(
         address[N_COINS] memory _coins,
-        uint256 _A,
+        uint256 __A,
         uint256 _fee,
         uint256 _admin_fee,
         string memory _name,
         string memory _symbol
     ) {
         coins = _coins;
-        initial_A = _A * A_PRECISION;
-        future_A = _A * A_PRECISION;
+        initial_A = __A * A_PRECISION;
+        future_A = __A * A_PRECISION;
         fee = _fee;
         admin_fee = _admin_fee;
         owner = msg.sender;
@@ -203,7 +203,7 @@ contract Curve2Pool {
         uint256 D = S;
         uint256 Ann = _amp * _N_COINS_U256();
         for (int128 i = 0; i < 255; i++) {
-            uint256 D_P = (((D * D) / _xp[0]) * D) / _xp[1] / (_N_COINS_U256())**2;
+            uint256 D_P = (((D * D) / _xp[0]) * D) / _xp[1] / (_N_COINS_U256()**2);
             uint256 Dprev = D;
             D =
                 (((Ann * S) / A_PRECISION + D_P * _N_COINS_U256()) * D) /
@@ -224,7 +224,7 @@ contract Curve2Pool {
         revert();
     }
 
-    function get_D_mem(uint256[N_COINS] memory _balances, uint256 _amp) internal view returns (uint256) {
+    function get_D_mem(uint256[N_COINS] memory _balances, uint256 _amp) internal pure returns (uint256) {
         uint256[N_COINS] memory xp = _xp_mem(_balances);
         return get_D(xp, _amp);
     }
@@ -383,8 +383,8 @@ contract Curve2Pool {
                     return y;
                 }
             }
-            revert();
         }
+        revert();
     }
 
     function get_dy(
@@ -653,22 +653,22 @@ contract Curve2Pool {
         require(block.timestamp >= initial_A_time + MIN_RAMP_TIME);
         require(_future_time >= block.timestamp + MIN_RAMP_TIME); // dev: insufficient time
 
-        uint256 initial_A = _A();
-        uint256 future_A_p = _future_A * A_PRECISION;
+        uint256 _initial_A = _A();
+        uint256 _future_A_p = _future_A * A_PRECISION;
 
         require(_future_A > 0 && _future_A < MAX_A);
-        if (future_A_p < initial_A) {
-            require(future_A_p * MAX_A_CHANGE >= initial_A);
+        if (_future_A_p < _initial_A) {
+            require(_future_A_p * MAX_A_CHANGE >= _initial_A);
         } else {
-            require(future_A_p <= initial_A * MAX_A_CHANGE);
+            require(_future_A_p <= _initial_A * MAX_A_CHANGE);
         }
 
-        initial_A = initial_A;
-        future_A = future_A_p;
+        initial_A = _initial_A;
+        future_A = _future_A_p;
         initial_A_time = block.timestamp;
         future_A_time = _future_time;
 
-        emit RampA(initial_A, future_A_p, block.timestamp, _future_time);
+        emit RampA(_initial_A, _future_A_p, block.timestamp, _future_time);
     }
 
     function stop_ramp_A() external {

@@ -8,8 +8,6 @@ import "../../interfaces/ILiquidityPool.sol";
 import "../../libraries/LibUtils.sol";
 import "./Module.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @notice This a a system module which defines how to move fund between `LiquidityPool` and `LiquidityManager`
  */
@@ -95,9 +93,5 @@ contract TransferModule is Module {
                 IERC20(assets[i]).safeTransfer(recipient, amounts[i]);
             }
         }
-    }
-
-    function _getTokenAddr(uint8 assetId) internal view returns (address) {
-        return ILiquidityPool(_pool).getAssetAddress(assetId);
     }
 }

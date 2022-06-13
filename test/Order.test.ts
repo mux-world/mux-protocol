@@ -1,7 +1,7 @@
 import { ethers } from "hardhat"
 import "@nomiclabs/hardhat-waffle"
 import { expect } from "chai"
-import { toWei, createContract, OrderType, assembleSubAccountId, PositionOrderFlags, rate } from "./deployUtils"
+import { toWei, createContract, OrderType, assembleSubAccountId, PositionOrderFlags, hashString } from "./deployUtils"
 import { Contract } from "ethers"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { BigNumber } from "@ethersproject/bignumber"
@@ -35,7 +35,7 @@ function parseLiquidityOrder(orderData: string[]) {
   return {
     id: BigNumber.from(arr[0].slice(23, 31)).toNumber(),
     account: U.hexlify(arr[0].slice(0, 20)),
-    amount: BigNumber.from(arr[1].slice(0, 12)),
+    rawAmount: BigNumber.from(arr[1].slice(0, 12)),
     assetId: BigNumber.from(arr[1].slice(12, 13)).toNumber(),
     isAdding: flags > 0,
     addLiquidityTime: BigNumber.from(arr[1].slice(20, 24)).toNumber(),
@@ -48,9 +48,22 @@ function parseWithdrawalOrder(orderData: string[]) {
   return {
     id: BigNumber.from(arr[0].slice(23, 31)).toNumber(),
     subAccountId: U.hexlify(U.concat([arr[0].slice(0, 23), U.zeroPad([], 9)])),
-    amount: BigNumber.from(arr[1].slice(0, 12)),
+    rawAmount: BigNumber.from(arr[1].slice(0, 12)),
     profitTokenId: BigNumber.from(arr[1].slice(12, 13)).toNumber(),
     isProfit: flags > 0,
+  }
+}
+
+function parseRebalanceOrder(orderData: string[]) {
+  const arr = orderData.map((x: any) => U.arrayify(x))
+  return {
+    id: BigNumber.from(arr[0].slice(23, 31)).toNumber(),
+    rebalancer: U.hexlify(arr[0].slice(0, 20)),
+    tokenId0: BigNumber.from(arr[0].slice(20, 21)).toNumber(),
+    tokenId1: BigNumber.from(arr[0].slice(21, 22)).toNumber(),
+    rawAmount0: BigNumber.from(arr[1].slice(0, 12)),
+    maxRawAmount1: BigNumber.from(arr[1].slice(12, 24)),
+    userData: Buffer.from(arr[2]),
   }
 }
 
@@ -142,7 +155,7 @@ describe("Order", () => {
       const order = parseLiquidityOrder(result[0])
       expect(order.id).to.equal(1)
       expect(order.account).to.equal(user0.address.toLowerCase())
-      expect(order.amount).to.equal(toWei("40"))
+      expect(order.rawAmount).to.equal(toWei("40"))
       expect(order.assetId).to.equal(1)
       expect(order.isAdding).to.equal(true)
     }
@@ -161,9 +174,31 @@ describe("Order", () => {
       const order = parseWithdrawalOrder(result[0])
       expect(order.id).to.equal(2)
       expect(order.subAccountId).to.equal(assembleSubAccountId(user0.address, 0, 1, true))
-      expect(order.amount).to.equal(toWei("500"))
+      expect(order.rawAmount).to.equal(toWei("500"))
       expect(order.profitTokenId).to.equal(1)
       expect(order.isProfit).to.equal(true)
+    }
+    {
+      await orderBook.addRebalancer(user0.address)
+      await orderBook.placeRebalanceOrder(0, 1, toWei("2"), toWei("500"), hashString("random"))
+      expect(await orderBook.getOrderCount()).to.equal(4)
+      {
+        const orders = await orderBook.getOrders(0, 100)
+        expect(orders.totalCount).to.equal(4)
+        expect(orders.orderArray.length).to.equal(4)
+      }
+      const result = await orderBook.getOrder(3)
+      expect(result[1]).to.equal(true)
+
+      expect(getOrderType(result[0])).to.equal(OrderType.Rebalance)
+      const order = parseRebalanceOrder(result[0])
+      expect(order.id).to.equal(3)
+      expect(order.rebalancer.toLowerCase()).to.equal(user0.address.toLowerCase())
+      expect(order.tokenId0).to.equal(0)
+      expect(order.tokenId1).to.equal(1)
+      expect(order.rawAmount0).to.equal(toWei("2"))
+      expect(order.maxRawAmount1).to.equal(toWei("500"))
+      expect(order.userData.toString("hex")).to.equal(hashString("random").toString("hex"))
     }
   })
 
