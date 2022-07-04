@@ -237,25 +237,27 @@ contract Curve2Pool {
     }
 
     function calc_token_amount(uint256[N_COINS] memory _amounts, bool _is_deposit) external view returns (uint256) {
-        uint256 amp = _A();
-        uint256[N_COINS] memory _balances = balances;
-        uint256 D0 = get_D_mem(balances, amp);
-        for (uint256 i = 0; i < _N_COINS_U256(); i++) {
-            uint256 amount = _amounts[i];
-            if (_is_deposit) {
-                _balances[i] += amount;
-            } else {
-                _balances[i] -= amount;
-            }
-        }
-        uint256 D1 = get_D_mem(_balances, amp);
-        uint256 diff = 0;
-        if (_is_deposit) {
-            diff = D1 - D0;
-        } else {
-            diff = D0 - D1;
-        }
-        return (diff * totalSupply) / D0;
+        // uint256 amp = _A();
+        // uint256[N_COINS] memory _balances = balances;
+        // uint256 D0 = get_D_mem(balances, amp);
+        // for (uint256 i = 0; i < _N_COINS_U256(); i++) {
+        //     uint256 amount = _amounts[i];
+        //     if (_is_deposit) {
+        //         _balances[i] += amount;
+        //     } else {
+        //         _balances[i] -= amount;
+        //     }
+        // }
+        // uint256 D1 = get_D_mem(_balances, amp);
+        // uint256 diff = 0;
+        // if (_is_deposit) {
+        //     diff = D1 - D0;
+        // } else {
+        //     diff = D0 - D1;
+        // }
+        // return (diff * totalSupply) / D0;
+
+        return _amounts[0] + _amounts[1];
     }
 
     function add_liquidity(uint256[N_COINS] memory _amounts, uint256 _min_mint_amount) public returns (uint256) {
@@ -392,12 +394,14 @@ contract Curve2Pool {
         int128 j,
         uint256 dx
     ) external view returns (uint256) {
-        uint256[N_COINS] memory xp = _xp_mem(balances);
-        uint256 x = xp[uint256(int256(i))] + ((dx * RATE_MULTIPLIER) / PRECISION);
-        uint256 y = get_y(i, j, x, xp);
-        uint256 dy = xp[uint256(int256(j))] - y - 1;
-        uint256 _fee = (fee * dy) / FEE_DENOMINATOR;
-        return ((dy - _fee) * PRECISION) / RATE_MULTIPLIER;
+        // uint256[N_COINS] memory xp = _xp_mem(balances);
+        // uint256 x = xp[uint256(int256(i))] + ((dx * RATE_MULTIPLIER) / PRECISION);
+        // uint256 y = get_y(i, j, x, xp);
+        // uint256 dy = xp[uint256(int256(j))] - y - 1;
+        // uint256 _fee = (fee * dy) / FEE_DENOMINATOR;
+        // return ((dy - _fee) * PRECISION) / RATE_MULTIPLIER;
+
+        return uint128(j);
     }
 
     // @nonreentrant('lock')

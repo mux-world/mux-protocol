@@ -65,6 +65,7 @@ contract Liquidity is Storage, Account {
         IERC20Upgradeable(_storage.mlp).transfer(trader, mlpAmount);
         emit AddLiquidity(trader, tokenId, tokenPrice, mlpPrice, mlpAmount, feeCollateral);
         _updateSequence();
+        _updateBrokerTransactions();
     }
 
     /**
@@ -122,6 +123,7 @@ contract Liquidity is Storage, Account {
         token.transferOut(trader, rawAmount, _storage.weth, _storage.nativeUnwrapper);
         emit RemoveLiquidity(trader, tokenId, tokenPrice, mlpPrice, mlpAmount, feeCollateral);
         _updateSequence();
+        _updateBrokerTransactions();
     }
 
     /**
@@ -238,6 +240,47 @@ contract Liquidity is Storage, Account {
 
         emit Rebalance(rebalancer, tokenId0, tokenId1, price0, price1, rawAmount0, rawAmount1);
         _updateSequence();
+    }
+
+    /**
+     * @dev Anyone can withdraw collectedFee into Vault
+     */
+    function withdrawCollectedFee(uint8[] memory assetIds) external {
+        require(_storage.vault != address(0), "VLT"); // bad VauLT
+        for (uint256 i = 0; i < assetIds.length; i++) {
+            uint8 assetId = assetIds[i];
+            Asset storage asset = _storage.assets[assetId];
+            uint96 collectedFee = asset.collectedFee;
+            require(collectedFee <= asset.spotLiquidity, "LIQ"); // insufficient LIQuidity
+            asset.collectedFee = 0;
+            asset.spotLiquidity -= collectedFee;
+            uint256 rawAmount = asset.toRaw(collectedFee);
+            IERC20Upgradeable(asset.tokenAddress).safeTransfer(_storage.vault, rawAmount);
+            emit WithdrawCollectedFee(assetId, collectedFee);
+        }
+        _updateSequence();
+    }
+
+    /**
+     * @dev Broker can withdraw brokerGasRebate
+     */
+    function claimBrokerGasRebate(address receiver) external onlyOrderBook returns (uint256 rawAmount) {
+        require(receiver != address(0), "RCV"); // bad ReCeiVer
+        uint256 assetCount = _storage.assets.length;
+        for (uint256 assetId = 0; assetId < assetCount; assetId++) {
+            Asset storage asset = _storage.assets[assetId];
+            if (asset.tokenAddress == _storage.weth) {
+                uint96 rebate = (uint256(_storage.brokerGasRebate) * uint256(_storage.brokerTransactions)).safeUint96();
+                require(asset.spotLiquidity >= rebate, "LIQ"); // insufficient LIQuidity
+                asset.spotLiquidity -= rebate;
+                rawAmount = asset.toRaw(rebate);
+                emit ClaimBrokerGasRebate(receiver, _storage.brokerTransactions, rawAmount);
+                _storage.brokerTransactions = 0;
+                asset.transferOut(receiver, rawAmount, _storage.weth, _storage.nativeUnwrapper);
+                _updateSequence();
+                return rawAmount;
+            }
+        }
     }
 
     function _updateFundingState(

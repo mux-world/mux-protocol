@@ -5,7 +5,7 @@ import { toWei, createContract, OrderType, assembleSubAccountId, PositionOrderFl
 import { Contract } from "ethers"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { BigNumber } from "@ethersproject/bignumber"
-import { OrderBook } from "../typechain"
+import { TestOrderBook } from "../typechain"
 const U = ethers.utils
 
 function getOrderType(orderData: string[]): number {
@@ -26,6 +26,8 @@ function parsePositionOrder(orderData: string[]) {
     isMarketOrder: (flags & 0x40) > 0,
     isWithdrawAllIfEmpty: (flags & 0x20) > 0,
     isTriggerOrder: (flags & 0x10) > 0,
+    placeOrderTime: BigNumber.from(arr[1].slice(20, 24)).toNumber(),
+    expire10s: BigNumber.from(arr[1].slice(17, 20)).toNumber(),
   }
 }
 
@@ -38,7 +40,7 @@ function parseLiquidityOrder(orderData: string[]) {
     rawAmount: BigNumber.from(arr[1].slice(0, 12)),
     assetId: BigNumber.from(arr[1].slice(12, 13)).toNumber(),
     isAdding: flags > 0,
-    addLiquidityTime: BigNumber.from(arr[1].slice(20, 24)).toNumber(),
+    placeOrderTime: BigNumber.from(arr[1].slice(20, 24)).toNumber(),
   }
 }
 
@@ -51,6 +53,7 @@ function parseWithdrawalOrder(orderData: string[]) {
     rawAmount: BigNumber.from(arr[1].slice(0, 12)),
     profitTokenId: BigNumber.from(arr[1].slice(12, 13)).toNumber(),
     isProfit: flags > 0,
+    placeOrderTime: BigNumber.from(arr[1].slice(20, 24)).toNumber(),
   }
 }
 
@@ -69,23 +72,19 @@ function parseRebalanceOrder(orderData: string[]) {
 
 describe("Order", () => {
   const weth9 = "0x0000000000000000000000000000000000000000" // this test file will not use weth
-  let orderBook: OrderBook
+  let orderBook: TestOrderBook
   let pool: Contract
   let mlp: Contract
   let atk: Contract
   let ctk: Contract
 
   let user0: SignerWithAddress
-  let user1: SignerWithAddress
-  let user2: SignerWithAddress
-  let user3: SignerWithAddress
+  let broker: SignerWithAddress
 
   before(async () => {
     const accounts = await ethers.getSigners()
     user0 = accounts[0]
-    user1 = accounts[1]
-    user2 = accounts[2]
-    user3 = accounts[3]
+    broker = accounts[1]
   })
 
   beforeEach(async () => {
@@ -94,9 +93,11 @@ describe("Order", () => {
     mlp = await createContract("MockERC20", ["MLP", "MLP", 18])
 
     pool = await createContract("MockLiquidityPool")
-    orderBook = (await createContract("OrderBook")) as OrderBook
+    orderBook = (await createContract("TestOrderBook")) as TestOrderBook
     await orderBook.initialize(pool.address, mlp.address, weth9, weth9)
-    await orderBook.addBroker(user0.address)
+    await orderBook.addBroker(broker.address)
+    await orderBook.setBlockTimestamp(1000)
+    await orderBook.setOrderTimeout(300, 86400 * 365)
 
     await pool.setAssetAddress(0, ctk.address)
     await pool.setAssetAddress(1, atk.address)
@@ -112,7 +113,8 @@ describe("Order", () => {
         toWei("0.2"),
         toWei("3000"),
         0,
-        PositionOrderFlags.OpenPosition
+        PositionOrderFlags.OpenPosition,
+        1000 + 86400 * 30
       )
       expect(await orderBook.getOrderCount()).to.equal(1)
       {
@@ -135,6 +137,8 @@ describe("Order", () => {
       expect(order.isMarketOrder).to.equal(false)
       expect(order.isWithdrawAllIfEmpty).to.equal(false)
       expect(order.isTriggerOrder).to.equal(false)
+      expect(order.placeOrderTime).to.equal(1000)
+      expect(order.expire10s).to.equal((86400 * 30) / 10)
       expect(await ctk.balanceOf(user0.address)).to.equal(0)
       expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("1"))
     }
@@ -158,6 +162,7 @@ describe("Order", () => {
       expect(order.rawAmount).to.equal(toWei("40"))
       expect(order.assetId).to.equal(1)
       expect(order.isAdding).to.equal(true)
+      expect(order.placeOrderTime).to.equal(1000)
     }
     {
       await orderBook.placeWithdrawalOrder(assembleSubAccountId(user0.address, 0, 1, true), toWei("500"), 1, true)
@@ -177,6 +182,7 @@ describe("Order", () => {
       expect(order.rawAmount).to.equal(toWei("500"))
       expect(order.profitTokenId).to.equal(1)
       expect(order.isProfit).to.equal(true)
+      expect(order.placeOrderTime).to.equal(1000)
     }
     {
       await orderBook.addRebalancer(user0.address)
@@ -213,7 +219,8 @@ describe("Order", () => {
         toWei("0.1"),
         toWei("1000"),
         0,
-        PositionOrderFlags.OpenPosition
+        PositionOrderFlags.OpenPosition,
+        1000 + 86400
       )
       expect(await ctk.balanceOf(user0.address)).to.equal(toWei("900"))
       expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("100"))
@@ -242,7 +249,8 @@ describe("Order", () => {
         toWei("0.1"),
         toWei("1000"),
         0,
-        PositionOrderFlags.OpenPosition
+        PositionOrderFlags.OpenPosition,
+        1000 + 86400
       )
       expect(await ctk.balanceOf(user0.address)).to.equal(toWei("900"))
       expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("100"))
@@ -251,8 +259,7 @@ describe("Order", () => {
         expect(orders.totalCount).to.equal(1)
         expect(orders.orderArray.length).to.equal(1)
       }
-
-      await orderBook.fillPositionOrder(1, toWei("2000"), toWei("1000"), toWei("1"))
+      await orderBook.connect(broker).fillPositionOrder(1, toWei("2000"), toWei("1000"), toWei("1"))
       {
         const orders = await orderBook.getOrders(0, 100)
         expect(orders.totalCount).to.equal(0)
@@ -305,7 +312,7 @@ describe("Order", () => {
 
       const current = toWei("29700")
       const target = toWei("29700")
-      await orderBook.fillLiquidityOrder(1, toWei("2000"), toWei("1000"), current, target)
+      await orderBook.connect(broker).fillLiquidityOrder(1, toWei("2000"), toWei("1000"), current, target)
       {
         const orders = await orderBook.getOrders(0, 100)
         expect(orders.totalCount).to.equal(0)
@@ -328,7 +335,7 @@ describe("Order", () => {
       await orderBook.placeLiquidityOrder(0, toWei("150"), true)
       const current = toWei("29700")
       const target = toWei("29700")
-      await orderBook.fillLiquidityOrder(0, toWei("2000"), toWei("1000"), current, target)
+      await orderBook.connect(broker).fillLiquidityOrder(0, toWei("2000"), toWei("1000"), current, target)
     }
     expect(await mlp.balanceOf(user0.address)).to.equal(toWei("0")) // because this test uses a mocked liquidity pool
     await mlp.mint(user0.address, toWei("2"))
@@ -366,7 +373,7 @@ describe("Order", () => {
 
       const current = toWei("29700")
       const target = toWei("29700")
-      await orderBook.fillLiquidityOrder(2, toWei("2000"), toWei("1000"), current, target)
+      await orderBook.connect(broker).fillLiquidityOrder(2, toWei("2000"), toWei("1000"), current, target)
       {
         const orders = await orderBook.getOrders(0, 100)
         expect(orders.totalCount).to.equal(0)
@@ -388,17 +395,107 @@ describe("Order", () => {
     const target = toWei("29700")
 
     await orderBook.placeLiquidityOrder(0, toWei("150"), true)
-    await orderBook.removeBroker(user0.address)
-    await expect(orderBook.fillLiquidityOrder(0, toWei("2000"), toWei("1000"), current, target)).to.revertedWith("BKR")
+    await orderBook.removeBroker(broker.address)
+    await expect(orderBook.connect(broker).fillLiquidityOrder(0, toWei("2000"), toWei("1000"), current, target)).to.revertedWith("BKR")
 
-    await orderBook.addBroker(user0.address)
-    await orderBook.fillLiquidityOrder(0, toWei("2000"), toWei("1000"), current, target)
+    await orderBook.addBroker(broker.address)
+    await orderBook.connect(broker).fillLiquidityOrder(0, toWei("2000"), toWei("1000"), current, target)
 
     await orderBook.placeLiquidityOrder(0, toWei("150"), true)
-    await orderBook.renounceBroker()
-    await expect(orderBook.fillLiquidityOrder(1, toWei("2000"), toWei("1000"), current, target)).to.revertedWith("BKR")
+    await orderBook.connect(broker).renounceBroker()
+    await expect(orderBook.connect(broker).fillLiquidityOrder(1, toWei("2000"), toWei("1000"), current, target)).to.revertedWith("BKR")
 
-    await orderBook.addBroker(user0.address)
-    await orderBook.fillLiquidityOrder(1, toWei("2000"), toWei("1000"), current, target)
+    await orderBook.addBroker(broker.address)
+    await orderBook.connect(broker).fillLiquidityOrder(1, toWei("2000"), toWei("1000"), current, target)
+  })
+
+  it("broker can cancel orders", async () => {
+    await ctk.approve(orderBook.address, toWei("1000000"))
+    await ctk.mint(user0.address, toWei("1000"))
+    // limit order
+    {
+      const subAccountId = assembleSubAccountId(user0.address, 0, 1, true)
+      await expect(
+        orderBook.placePositionOrder(subAccountId, toWei("100"), toWei("0.1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 1000 + 167772160)
+      ).revertedWith("DTL")
+      await expect(orderBook.placePositionOrder(subAccountId, toWei("100"), toWei("0.1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 1000 + 86400))
+        .to.emit(orderBook, "NewPositionOrder")
+        .withArgs(subAccountId, 0, toWei("100"), toWei("0.1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 1000 + 86400)
+      expect(await ctk.balanceOf(user0.address)).to.equal(toWei("900"))
+      expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("100"))
+
+      await orderBook.setBlockTimestamp(1000 + 86400)
+      await expect(orderBook.connect(broker).cancelOrder(0)).revertedWith("EXP")
+      await orderBook.setBlockTimestamp(1000 + 86410)
+      await orderBook.connect(broker).cancelOrder(0)
+      expect(await ctk.balanceOf(user0.address)).to.equal(toWei("1000"))
+      expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("0"))
+      {
+        const orders = await orderBook.getOrders(0, 100)
+        expect(orders.totalCount).to.equal(0)
+        expect(orders.orderArray.length).to.equal(0)
+      }
+      const result = await orderBook.getOrder(0)
+      expect(result[1]).to.equal(false)
+    }
+    // withdraw order
+    {
+      await orderBook.placeWithdrawalOrder(assembleSubAccountId(user0.address, 0, 1, true), toWei("500"), 1, true)
+      await orderBook.setBlockTimestamp(1000 + 86410 + 300)
+      await expect(orderBook.connect(broker).cancelOrder(1)).revertedWith("EXP")
+      await orderBook.setBlockTimestamp(1000 + 86410 + 310)
+      await orderBook.connect(broker).cancelOrder(1)
+      {
+        const orders = await orderBook.getOrders(0, 100)
+        expect(orders.totalCount).to.equal(0)
+        expect(orders.orderArray.length).to.equal(0)
+      }
+      const result = await orderBook.getOrder(0)
+      expect(result[1]).to.equal(false)
+    }
+    // market order
+    {
+      const subAccountId = assembleSubAccountId(user0.address, 0, 1, true)
+      await expect(
+        orderBook.placePositionOrder(
+          subAccountId,
+          toWei("100"),
+          toWei("0.1"),
+          toWei("0"),
+          0,
+          PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder,
+          1000 + 167772160
+        )
+      ).revertedWith("D!0")
+      await expect(
+        orderBook.placePositionOrder(
+          subAccountId,
+          toWei("100"),
+          toWei("0.1"),
+          toWei("0"),
+          0,
+          PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder,
+          0
+        )
+      )
+        .to.emit(orderBook, "NewPositionOrder")
+        .withArgs(subAccountId, 2, toWei("100"), toWei("0.1"), toWei("0"), 0, PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder, 0)
+      expect(await ctk.balanceOf(user0.address)).to.equal(toWei("900"))
+      expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("100"))
+
+      await orderBook.setBlockTimestamp(1000 + 86410 + 310 + 300)
+      await expect(orderBook.connect(broker).cancelOrder(2)).revertedWith("EXP")
+      await orderBook.setBlockTimestamp(1000 + 86410 + 310 + 310)
+      await orderBook.connect(broker).cancelOrder(2)
+      expect(await ctk.balanceOf(user0.address)).to.equal(toWei("1000"))
+      expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("0"))
+      {
+        const orders = await orderBook.getOrders(0, 100)
+        expect(orders.totalCount).to.equal(0)
+        expect(orders.orderArray.length).to.equal(0)
+      }
+      const result = await orderBook.getOrder(0)
+      expect(result[1]).to.equal(false)
+    }
   })
 })

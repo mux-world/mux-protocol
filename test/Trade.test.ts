@@ -47,9 +47,9 @@ describe("Trade", () => {
     pool = (await createFactory("TestLiquidityPool")).attach(poolHop1.address)
     mlp = await createContract("MockERC20", ["MLP", "MLP", 18])
     await mlp.mint(pool.address, toWei(PreMinedTokenTotalSupply))
-    await pool.initialize(poolHop2.address, mlp.address, user0.address /* test only */, user0.address /* test only */, weth9, weth9)
-    // fundingInterval, mlpPrice, mlpPrice, liqBase, liqDyn, σ_strict
-    await pool.setNumbers(3600 * 8, toWei("1"), toWei("2"), rate("0.000"), rate("0.000"), rate("0.01"))
+    await pool.initialize(poolHop2.address, mlp.address, user0.address /* test only */, user0.address /* test only */, weth9, weth9, user0.address /* vault */)
+    // fundingInterval, mlpPrice, mlpPrice, liqBase, liqDyn, σ_strict, brokerGas
+    await pool.setNumbers(3600 * 8, toWei("1"), toWei("2"), rate("0.000"), rate("0.000"), rate("0.01"), toWei("0"))
 
     asset0 = await createContract("MockERC20", ["AST0", "AST0", 18])
     asset1 = await createContract("MockERC20", ["AST1", "AST1", 18])
@@ -99,7 +99,7 @@ describe("Trade", () => {
   })
 
   it("invalid admin parameters", async () => {
-    await expect(pool.setNumbers(3600 * 8, toWei("1"), toWei("2"), rate("1"), rate("0.000"), rate("0.01"))).to.revertedWith("F>1")
+    await expect(pool.setNumbers(3600 * 8, toWei("1"), toWei("2"), rate("1"), rate("0.000"), rate("0.01"), toWei("0"))).to.revertedWith("F>1")
     await expect(
       pool.setAssetParams(100, rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
     ).to.revertedWith("LST")

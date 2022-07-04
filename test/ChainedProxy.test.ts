@@ -45,6 +45,7 @@ describe("ChainedProxy", () => {
       user0.address /* test only */,
       user0.address /* test only */,
       user0.address /* test only */,
+      user0.address /* test only */,
       user0.address /* test only */
     )
 

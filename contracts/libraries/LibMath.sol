@@ -6,6 +6,10 @@ library LibMath {
         return a <= b ? a : b;
     }
 
+    function min32(uint32 a, uint32 b) internal pure returns (uint32) {
+        return a <= b ? a : b;
+    }
+
     function max32(uint32 a, uint32 b) internal pure returns (uint32) {
         return a >= b ? a : b;
     }

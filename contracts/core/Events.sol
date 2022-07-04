@@ -64,6 +64,7 @@ contract Events {
     }
     event WithdrawProfit(address indexed trader, uint8 indexed assetId, WithdrawProfitArgs args);
     event CollectedFee(uint8 tokenId, uint96 fee);
+    event ClaimBrokerGasRebate(address indexed receiver, uint32 transactions, uint256 rawAmount);
 
     //////////////////////////////////////////////////////////////////////////////////////
     //                                   liquidity
@@ -149,6 +150,7 @@ contract Events {
     event SetMlpPriceRange(uint96 newLowerBound, uint96 newUpperBound);
     event SetLiquidityFee(uint32 newLiquidityBaseFeeRate, uint32 newLiquidityDynamicFeeRate);
     event SetStrictStableDeviation(uint32 newStrictStableDeviation);
+    event SetBrokerGasRebate(uint96 newBrokerGasRebate);
     event WithdrawCollectedFee(uint8 indexed assetId, uint96 collectedFee);
     event TransferLiquidity(address indexed sender, address indexed recipient, uint8 assetId, uint256 amount);
 }

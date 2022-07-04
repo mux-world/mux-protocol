@@ -123,23 +123,6 @@ contract Admin is Storage {
         _updateSequence();
     }
 
-    function pauseAll() external onlyOwner {
-        for (uint8 assetId = 0; assetId < _storage.assets.length; assetId++) {
-            Asset storage asset = _storage.assets[assetId];
-            asset.isEnabled = false;
-            emit SetAssetFlags(
-                assetId,
-                asset.isTradable,
-                asset.isOpenable,
-                asset.isShortable,
-                asset.useStableTokenForProfit,
-                asset.isEnabled,
-                asset.isStrictStable
-            );
-        }
-        _updateSequence();
-    }
-
     function setFundingParams(
         uint8 assetId,
         uint32 newBaseRate8H,
@@ -180,7 +163,8 @@ contract Admin is Storage {
         uint96 newMlpPriceUpperBound,
         uint32 newLiquidityBaseFeeRate, // 1e5
         uint32 newLiquidityDynamicFeeRate, // 1e5
-        uint32 newStrictStableDeviation // 1e5
+        uint32 newStrictStableDeviation, // 1e5
+        uint96 newBrokerGasRebate
     ) external onlyOwner {
         require(newLiquidityBaseFeeRate < 1e5, "F>1"); // %fee > 100%
         require(newLiquidityDynamicFeeRate < 1e5, "F>1"); // %fee > 100%
@@ -208,20 +192,9 @@ contract Admin is Storage {
             _storage.strictStableDeviation = newStrictStableDeviation;
             emit SetStrictStableDeviation(newStrictStableDeviation);
         }
-        _updateSequence();
-    }
-
-    function withdrawCollectedFee(uint8[] memory assetIds) external onlyOwner {
-        for (uint256 i = 0; i < assetIds.length; i++) {
-            uint8 assetId = assetIds[i];
-            Asset storage asset = _storage.assets[assetId];
-            uint96 collectedFee = asset.collectedFee;
-            require(collectedFee <= asset.spotLiquidity, "LIQ"); // insufficient LIQuidity
-            asset.collectedFee = 0;
-            asset.spotLiquidity -= collectedFee;
-            uint256 rawAmount = asset.toRaw(collectedFee);
-            IERC20Upgradeable(asset.tokenAddress).safeTransfer(msg.sender, rawAmount);
-            emit WithdrawCollectedFee(assetId, collectedFee);
+        if (_storage.brokerGasRebate != newBrokerGasRebate) {
+            _storage.brokerGasRebate = newBrokerGasRebate;
+            emit SetBrokerGasRebate(newBrokerGasRebate);
         }
         _updateSequence();
     }

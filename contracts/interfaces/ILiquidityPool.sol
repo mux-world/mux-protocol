@@ -180,6 +180,11 @@ interface ILiquidityPool {
         uint96 price1
     ) external;
 
+    /**
+     * @dev Broker can withdraw brokerGasRebate
+     */
+    function claimBrokerGasRebate(address receiver) external returns (uint256 rawAmount);
+
     /////////////////////////////////////////////////////////////////////////////////
     //                            only LiquidityManager
 

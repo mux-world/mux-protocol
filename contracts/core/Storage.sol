@@ -30,6 +30,12 @@ contract Storage is Initializable, SafeOwnableUpgradeable, Events {
         emit UpdateSequence(_storage.sequence);
     }
 
+    function _updateBrokerTransactions() internal {
+        unchecked {
+            _storage.brokerTransactions += 1;
+        }
+    }
+
     function _blockTimestamp() internal view virtual returns (uint32) {
         return uint32(block.timestamp);
     }

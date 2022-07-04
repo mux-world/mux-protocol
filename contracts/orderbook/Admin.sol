@@ -9,6 +9,7 @@ contract Admin is Storage {
     event AddRebalancer(address indexed newRebalancer);
     event RemoveRebalancer(address indexed rebalancer);
     event SetLiquidityLockPeriod(uint32 oldLockPeriod, uint32 newLockPeriod);
+    event SetOrderTimeout(uint32 marketOrderTimeout, uint32 maxLimitOrderTimeout);
     event PausePositionOrder(bool isPaused);
     event PauseLiquidityOrder(bool isPaused);
 
@@ -55,6 +56,17 @@ contract Admin is Storage {
         require(liquidityLockPeriod != newLiquidityLockPeriod, "CHG"); // setting is not CHanGed
         emit SetLiquidityLockPeriod(liquidityLockPeriod, newLiquidityLockPeriod);
         liquidityLockPeriod = newLiquidityLockPeriod;
+    }
+
+    function setOrderTimeout(uint32 marketOrderTimeout_, uint32 maxLimitOrderTimeout_) external onlyOwner {
+        require(marketOrderTimeout_ != 0, "T=0"); // Timeout Is Zero
+        require(marketOrderTimeout_ / 10 <= type(uint24).max, "T>M"); // Timeout is Larger than Max
+        require(maxLimitOrderTimeout_ != 0, "T=0"); // Timeout Is Zero
+        require(maxLimitOrderTimeout_ / 10 <= type(uint24).max, "T>M"); // Timeout is Larger than Max
+        require(marketOrderTimeout != marketOrderTimeout_ || maxLimitOrderTimeout != maxLimitOrderTimeout_, "CHG"); // setting is not CHanGed
+        marketOrderTimeout = marketOrderTimeout_;
+        maxLimitOrderTimeout = maxLimitOrderTimeout_;
+        emit SetOrderTimeout(marketOrderTimeout_, maxLimitOrderTimeout_);
     }
 
     function pause(bool isPositionOrderPaused_, bool isLiquidityOrderPaused_) external onlyOwner {

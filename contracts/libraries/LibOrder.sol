@@ -91,11 +91,19 @@ library LibOrder {
         uint96 size, // 1e18
         uint96 price, // 1e18
         uint8 profitTokenId,
-        uint8 flags
+        uint8 flags,
+        uint32 placeOrderTime,
+        uint24 expire10s
     ) internal pure returns (bytes32[3] memory data) {
         require((subAccountId & LibSubAccount.SUB_ACCOUNT_ID_FORBIDDEN_BITS) == 0, "AID"); // bad subAccount ID
         data[0] = subAccountId | bytes32(uint256(orderId) << 8) | bytes32(uint256(OrderType.PositionOrder));
-        data[1] = bytes32((uint256(size) << 160) | (uint256(profitTokenId) << 152) | (uint256(flags) << 144));
+        data[1] = bytes32(
+            (uint256(size) << 160) |
+                (uint256(profitTokenId) << 152) |
+                (uint256(flags) << 144) |
+                (uint256(expire10s) << 96) |
+                (uint256(placeOrderTime) << 64)
+        );
         data[2] = bytes32((uint256(price) << 160) | (uint256(collateral) << 64));
     }
 
@@ -107,6 +115,8 @@ library LibOrder {
         order.flags = uint8(bytes1(data[1] << 104));
         order.price = uint96(bytes12(data[2]));
         order.profitTokenId = uint8(bytes1(data[1] << 96));
+        order.expire10s = uint24(bytes3(data[1] << 136));
+        order.placeOrderTime = uint32(bytes4(data[1] << 160));
     }
 
     // check Types.LiquidityOrder for schema
@@ -146,12 +156,18 @@ library LibOrder {
         bytes32 subAccountId,
         uint96 rawAmount, // erc20.decimals
         uint8 profitTokenId,
-        bool isProfit
+        bool isProfit,
+        uint32 placeOrderTime
     ) internal pure returns (bytes32[3] memory data) {
         require((subAccountId & LibSubAccount.SUB_ACCOUNT_ID_FORBIDDEN_BITS) == 0, "AID"); // bad subAccount ID
         uint8 flags = isProfit ? 1 : 0;
         data[0] = subAccountId | bytes32(uint256(orderId) << 8) | bytes32(uint256(OrderType.WithdrawalOrder));
-        data[1] = bytes32((uint256(rawAmount) << 160) | (uint256(profitTokenId) << 152) | (uint256(flags) << 144));
+        data[1] = bytes32(
+            (uint256(rawAmount) << 160) |
+                (uint256(profitTokenId) << 152) |
+                (uint256(flags) << 144) |
+                (uint256(placeOrderTime) << 64)
+        );
     }
 
     // check Types.WithdrawalOrder for schema
@@ -161,6 +177,7 @@ library LibOrder {
         order.profitTokenId = uint8(bytes1(data[1] << 96));
         uint8 flags = uint8(bytes1(data[1] << 104));
         order.isProfit = flags > 0;
+        order.placeOrderTime = uint32(bytes4(data[1] << 160));
     }
 
     // check Types.RebalanceOrder for schema

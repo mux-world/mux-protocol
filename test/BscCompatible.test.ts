@@ -16,12 +16,14 @@ describe("BscCompatible - this test should be tested on bscTestnet", () => {
   let trader1: SignerWithAddress
   let lp1: SignerWithAddress
   let broker: SignerWithAddress
+  let vault: SignerWithAddress
 
   before(async () => {
     const accounts = await ethers.getSigners()
     if (accounts.length < 3) {
       throw new Error("BscCompatible test requires 3 addresses")
     }
+    vault = accounts[0]
     trader1 = accounts[0]
     lp1 = accounts[1]
     broker = accounts[2]
@@ -40,7 +42,9 @@ describe("BscCompatible - this test should be tested on bscTestnet", () => {
     const mlp = "0x0000000000000000000000000000000000000000"
     await ensureFinished(orderBook.initialize(pool.address, mlp, wbnb.address, nativeUnwrapper.address))
     await ensureFinished(orderBook.addBroker(broker.address))
-    await ensureFinished(pool.initialize(poolHop2.address, mlp, orderBook.address, broker.address /* test only */, wbnb.address, nativeUnwrapper.address))
+    await ensureFinished(
+      pool.initialize(poolHop2.address, mlp, orderBook.address, broker.address /* test only */, wbnb.address, nativeUnwrapper.address, vault.address)
+    )
     await ensureFinished(nativeUnwrapper.addWhiteList(pool.address))
     await ensureFinished(nativeUnwrapper.addWhiteList(orderBook.address))
     console.log("bscTestnet contracts initialized")

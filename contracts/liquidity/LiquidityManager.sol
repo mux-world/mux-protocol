@@ -1,26 +1,20 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.10;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-
 import "../interfaces/ILiquidityPool.sol";
 import "../libraries/LibUtils.sol";
+
 import "./Types.sol";
 import "./Storage.sol";
-import "./ModuleCall.sol";
+import "./AssetManager.sol";
 import "./Admin.sol";
+import "./ExtensionProxy.sol";
 
 /**
  * @title LiquidityManager provides funds management and bridging services.
  */
-contract LiquidityManager is Storage, Initializable, SafeOwnableUpgradeable, ModuleCall, Admin {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    event CallMethod(uint8 dexId, bytes32 methodId, bytes params);
-    bytes32 constant GET_TOTAL_SPOT_AMOUNTS_METHOD_ID =
-        0x676574546f74616c53706f74416d6f756e747300000000000000000000000000; // toBytes32("getDynamicWeights")
+contract LiquidityManager is Storage, AssetManager, DexWrapper, Admin, ExtensionProxy {
+    receive() external payable {}
 
     /**
      * @notice Initialize the LiquidityManager.
@@ -33,61 +27,61 @@ contract LiquidityManager is Storage, Initializable, SafeOwnableUpgradeable, Mod
         _dexSpotConfigs.push();
     }
 
-    function vault() public view returns (address) {
+    function getPool() public view returns (address) {
+        return _pool;
+    }
+
+    function getVault() public view returns (address) {
         return _vault;
     }
 
-    function readStates(bytes32 moduleId) external view returns (bytes32[] memory) {
-        return _moduleData[moduleId];
+    function getAssetBroker() public view returns (address) {
+        return _assetBroker;
     }
 
-    function hasGenericCall(bytes32 methodId) external view returns (bool) {
-        return _hasGenericCall(methodId);
+    function isHandler(address handler) public view returns (bool) {
+        return _handlers[handler];
     }
 
-    function hasDexCall(uint8 dexId, bytes32 methodId) external view returns (bool) {
-        return _hasDexCall(dexId, methodId);
+    function getAllDexSpotConfiguration() external returns (DexSpotConfiguration[] memory configs) {
+        uint256 n = _dexSpotConfigs.length - 1;
+        if (n == 0) {
+            return configs;
+        }
+        configs = new DexSpotConfiguration[](n);
+        for (uint8 dexId = 1; dexId <= n; dexId++) {
+            configs[dexId - 1] = _getDexSpotConfiguration(dexId);
+        }
+        return configs;
     }
 
-    function getDexSpotConfiguration(uint8 dexId) external returns (DexSpotConfiguration memory) {
+    function getDexSpotConfiguration(uint8 dexId) external returns (DexSpotConfiguration memory config) {
         require(dexId != 0 && dexId < _dexSpotConfigs.length, "LST"); // the asset is not LiSTed
-        return _getDexSpotConfiguration(dexId);
+        config = _getDexSpotConfiguration(dexId);
     }
 
-    function getAllDexSpotConfiguration() external returns (DexSpotConfiguration[] memory) {
-        DexSpotConfiguration[] memory results = new DexSpotConfiguration[](_dexSpotConfigs.length - 1);
-        for (uint256 i = 0; i < _dexSpotConfigs.length - 1; i++) {
-            uint8 dexId = uint8(i + 1);
-            results[i] = _getDexSpotConfiguration(dexId);
+    function getDexLiquidity(uint8 dexId) external returns (uint256[] memory liquidities, uint256 lpBalance) {
+        lpBalance = getDexLpBalance(dexId);
+        liquidities = getDexSpotAmounts(dexId, lpBalance);
+    }
+
+    function getDexAdapterConfig(uint8 dexId) external view returns (bytes memory config) {
+        config = _dexData[dexId].config;
+    }
+
+    function getDexAdapterState(uint8 dexId, bytes32 key) external view returns (bytes32 state) {
+        state = _dexData[dexId].states[key];
+    }
+
+    function getDexAdapter(uint8 dexId) external view returns (DexRegistration memory registration) {
+        registration = _dexAdapters[dexId];
+    }
+
+    function _getDexSpotConfiguration(uint8 dexId) internal returns (DexSpotConfiguration memory config) {
+        config = _dexSpotConfigs[dexId];
+        if (config.dexType == DEX_CURVE) {
+            uint256[] memory amounts = getDexTotalSpotAmounts(dexId);
+            config.totalSpotInDex = amounts;
         }
-        return results;
-    }
-
-    function _getDexSpotConfiguration(uint8 dexId) internal returns (DexSpotConfiguration memory) {
-        DexSpotConfiguration memory result = _dexSpotConfigs[dexId];
-        if (result.dexType == DEX_CURVE) {
-            result.totalSpotInDex = abi.decode(_dexCall(dexId, GET_TOTAL_SPOT_AMOUNTS_METHOD_ID, ""), (uint256[]));
-        }
-        return result;
-    }
-
-    function getModuleInfo(bytes32 moduleId) external view returns (ModuleInfo memory) {
-        return _moduleInfos[moduleId];
-    }
-
-    function callGenericModule(bytes32 methodId, bytes memory params) external returns (bytes memory) {
-        require(msg.sender == owner() || _externalAccessors[msg.sender], "FMS"); // forbidden message sender
-        emit CallMethod(0, methodId, params);
-        return _genericCall(methodId, params);
-    }
-
-    function callDexModule(
-        uint8 dexId,
-        bytes32 methodId,
-        bytes memory params
-    ) external returns (bytes memory) {
-        require(msg.sender == owner() || _externalAccessors[msg.sender], "FMS"); // forbidden message sender
-        emit CallMethod(dexId, methodId, params);
-        return _dexCall(dexId, methodId, params);
     }
 }

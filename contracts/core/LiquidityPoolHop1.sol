@@ -16,7 +16,8 @@ contract LiquidityPoolHop1 is Storage, Trade, Getter, Proxy {
         address orderBook,
         address liquidityManager,
         address weth,
-        address nativeUnwrapper
+        address nativeUnwrapper,
+        address vault
     ) external initializer {
         __SafeOwnable_init();
 
@@ -26,6 +27,7 @@ contract LiquidityPoolHop1 is Storage, Trade, Getter, Proxy {
         _storage.liquidityManager = liquidityManager;
         _storage.weth = weth;
         _storage.nativeUnwrapper = nativeUnwrapper;
+        _storage.vault = vault;
     }
 
     /**

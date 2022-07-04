@@ -20,7 +20,6 @@ describe("Integration", () => {
   let muxUsd: Contract
   let muxWbtc: Contract
   let reader: Reader
-  let dexLiquidity: Contract
 
   let trader1: SignerWithAddress
   let lp1: SignerWithAddress
@@ -42,17 +41,16 @@ describe("Integration", () => {
     mlp = (await createContract("MlpToken")) as MlpToken
     orderBook = (await createContract("TestOrderBook")) as TestOrderBook
     liquidityManager = (await createContract("LiquidityManager")) as LiquidityManager
-    dexLiquidity = await createContract("DexLiquidity", [liquidityManager.address])
-    reader = (await createContract("Reader", [pool.address, mlp.address, dexLiquidity.address, orderBook.address, []])) as Reader
+    reader = (await createContract("Reader", [pool.address, mlp.address, liquidityManager.address, orderBook.address, []])) as Reader
     await mlp.initialize("MLP", "MLP")
     await orderBook.initialize(pool.address, mlp.address, weth9, weth9)
     await orderBook.addBroker(broker.address)
     await orderBook.setLiquidityLockPeriod(5 * 60)
+    await orderBook.setOrderTimeout(300, 86400 * 365)
     await liquidityManager.initialize(vault.address, pool.address)
-    await liquidityManager.addExternalAccessor(dexLiquidity.address)
-    await pool.initialize(poolHop2.address, mlp.address, orderBook.address, liquidityManager.address, weth9, weth9)
-    // fundingInterval, mlpPrice, mlpPrice, liqBase, liqDyn, σ_strict
-    await pool.setNumbers(3600 * 8, toWei("1"), toWei("2000"), rate("0.0001"), rate("0.0000"), rate("0.01"))
+    await pool.initialize(poolHop2.address, mlp.address, orderBook.address, liquidityManager.address, weth9, weth9, vault.address)
+    // fundingInterval, mlpPrice, mlpPrice, liqBase, liqDyn, σ_strict, brokerGas
+    await pool.setNumbers(3600 * 8, toWei("1"), toWei("2000"), rate("0.0001"), rate("0.0000"), rate("0.01"), toWei("0"))
     await mlp.transfer(pool.address, toWei(PreMinedTokenTotalSupply))
 
     usdc = await createContract("MockERC20", ["Usdc", "Usdc", 6])
@@ -181,7 +179,7 @@ describe("Integration", () => {
       expect(await mlp.balanceOf(pool.address)).to.equal(toWei("1000000000000000000"))
       const result = await orderBook.getOrder(0)
       expect(result[1]).to.equal(true)
-      const readerState = await reader.callStatic.getChainState()
+      const readerState = await reader.callStatic.getChainStorage()
       expect(readerState.lpDeduct).to.eq(toWei("1000000000000000000"))
       expect(readerState.stableDeduct).to.eq(toWei("1000000000000000000"))
     }
@@ -201,7 +199,7 @@ describe("Integration", () => {
       expect(await mlp.balanceOf(lp1.address)).to.equal(toWei("999.9")) // fee = 100, (1000000 - fee) / 1000
       expect(await mlp.balanceOf(orderBook.address)).to.equal(toWei("0"))
       expect(await mlp.balanceOf(pool.address)).to.equal(toWei("999999999999999000.1"))
-      const readerState = await reader.callStatic.getChainState()
+      const readerState = await reader.callStatic.getChainStorage()
       expect(readerState.lpDeduct).to.eq(toWei("999999999999999000.1"))
       expect(readerState.stableDeduct).to.eq(toWei("1000000000000000000"))
       const collateralInfo = await pool.getAssetInfo(0)
@@ -220,7 +218,7 @@ describe("Integration", () => {
       expect(await mlp.balanceOf(lp1.address)).to.equal(toWei("998.9"))
       expect(await mlp.balanceOf(orderBook.address)).to.equal(toWei("1"))
       expect(await mlp.balanceOf(pool.address)).to.equal(toWei("999999999999999000.1"))
-      const readerState = await reader.callStatic.getChainState()
+      const readerState = await reader.callStatic.getChainStorage()
       expect(readerState.lpDeduct).to.eq(toWei("999999999999999000.1"))
       expect(readerState.stableDeduct).to.eq(toWei("1000000000000000000"))
     }
@@ -240,7 +238,7 @@ describe("Integration", () => {
       const collateralInfo = await pool.getAssetInfo(0)
       expect(collateralInfo.spotLiquidity).to.equal(toWei("998000.2"))
       expect(collateralInfo.collectedFee).to.equal(toWei("100.2"))
-      const readerState = await reader.callStatic.getChainState()
+      const readerState = await reader.callStatic.getChainStorage()
       expect(readerState.lpDeduct).to.eq(toWei("999999999999999001.1"))
       expect(readerState.stableDeduct).to.eq(toWei("1000000000000000000"))
     }
@@ -276,19 +274,21 @@ describe("Integration", () => {
     {
       await expect(pool.connect(trader1).openPosition(shortAccountId, toWei("1"), toWei("1000"), toWei("1"))).to.revertedWith("BOK")
       await expect(
-        orderBook.connect(lp1).placePositionOrder(shortAccountId, toUnit("1000", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition)
+        orderBook.connect(lp1).placePositionOrder(shortAccountId, toUnit("1000", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
       ).to.revertedWith("SND")
       await expect(
-        orderBook.connect(trader1).placePositionOrder(shortAccountId, toUnit("1000", 6), toWei("0"), toWei("1000"), 0, PositionOrderFlags.OpenPosition)
+        orderBook
+          .connect(trader1)
+          .placePositionOrder(shortAccountId, toUnit("1000", 6), toWei("0"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
       ).to.revertedWith("S=0")
       const tx1 = await orderBook
         .connect(trader1)
-        .placePositionOrder(shortAccountId, toUnit("1000", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition)
+        .placePositionOrder(shortAccountId, toUnit("1000", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
       const receipt1 = await tx1.wait()
       console.log("GAS +sht order", receipt1.gasUsed.toString(), tx1.hash)
       await expect(tx1)
         .to.emit(orderBook, "NewPositionOrder")
-        .withArgs(shortAccountId, 3, toUnit("1000", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition)
+        .withArgs(shortAccountId, 3, toUnit("1000", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("99000", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("1000", 6))
       const collateralInfo = await pool.getAssetInfo(0)
@@ -324,12 +324,14 @@ describe("Integration", () => {
     const longAccountId = assembleSubAccountId(trader1.address, 1, 1, true)
     await wbtc.connect(trader1).approve(orderBook.address, toWei("10"))
     {
-      const tx1 = await orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("10"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition)
+      const tx1 = await orderBook
+        .connect(trader1)
+        .placePositionOrder(longAccountId, toWei("10"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
       const receipt1 = await tx1.wait()
       console.log("GAS +lng order", receipt1.gasUsed.toString(), tx1.hash)
       await expect(tx1)
         .to.emit(orderBook, "NewPositionOrder")
-        .withArgs(longAccountId, 4, toWei("10"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition)
+        .withArgs(longAccountId, 4, toWei("10"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
       expect(await wbtc.balanceOf(trader1.address)).to.equal(toWei("90"))
       expect(await wbtc.balanceOf(orderBook.address)).to.equal(toWei("10"))
     }
@@ -367,16 +369,18 @@ describe("Integration", () => {
     {
       await expect(pool.connect(trader1).closePosition(shortAccountId, toWei("1"), 0, toWei("1"), toWei("1900"), toWei("1"))).to.revertedWith("BOK")
       await expect(
-        orderBook.connect(lp1).placePositionOrder(shortAccountId, toUnit("0", 6), toWei("1"), toWei("1950"), 0, PositionOrderFlags.WithdrawAllIfEmpty)
+        orderBook
+          .connect(lp1)
+          .placePositionOrder(shortAccountId, toUnit("0", 6), toWei("1"), toWei("1950"), 0, PositionOrderFlags.WithdrawAllIfEmpty, 86400 * 100)
       ).to.revertedWith("SND")
       const tx1 = await orderBook
         .connect(trader1)
-        .placePositionOrder(shortAccountId, toUnit("0", 6), toWei("1"), toWei("1950"), 0, PositionOrderFlags.WithdrawAllIfEmpty)
+        .placePositionOrder(shortAccountId, toUnit("0", 6), toWei("1"), toWei("1950"), 0, PositionOrderFlags.WithdrawAllIfEmpty, 86400 * 100)
       const receipt1 = await tx1.wait()
       console.log("GAS -sht order", receipt1.gasUsed.toString(), tx1.hash)
       await expect(tx1)
         .to.emit(orderBook, "NewPositionOrder")
-        .withArgs(shortAccountId, 5, toUnit("0", 6), toWei("1"), toWei("1950"), 0, PositionOrderFlags.WithdrawAllIfEmpty)
+        .withArgs(shortAccountId, 5, toUnit("0", 6), toWei("1"), toWei("1950"), 0, PositionOrderFlags.WithdrawAllIfEmpty, 86400 * 100)
       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("99000", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("0", 6))
       expect(await usdc.balanceOf(pool.address)).to.equal(toUnit("999000.2", 6))
@@ -405,10 +409,12 @@ describe("Integration", () => {
     }
     // close long, profit in wbtc, partial withdraw
     {
-      const tx1 = await orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("1"), toWei("1"), toWei("1000"), 0, 0)
+      const tx1 = await orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("1"), toWei("1"), toWei("1000"), 0, 0, 86400 * 100)
       const receipt1 = await tx1.wait()
       console.log("GAS -lng order", receipt1.gasUsed.toString(), tx1.hash)
-      await expect(tx1).to.emit(orderBook, "NewPositionOrder").withArgs(longAccountId, 6, toWei("1"), toWei("1"), toWei("1000"), 0, 0)
+      await expect(tx1)
+        .to.emit(orderBook, "NewPositionOrder")
+        .withArgs(longAccountId, 6, toWei("1"), toWei("1"), toWei("1000"), 0, 0, 86400 * 100)
       expect(await wbtc.balanceOf(trader1.address)).to.equal(toWei("90"))
       expect(await wbtc.balanceOf(orderBook.address)).to.equal(toWei("0"))
       expect(await wbtc.balanceOf(pool.address)).to.equal(toWei("110"))
@@ -442,10 +448,12 @@ describe("Integration", () => {
     await wbtc.connect(trader1).approve(orderBook.address, toWei("10"))
     {
       await expect(
-        await orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("10"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition)
+        await orderBook
+          .connect(trader1)
+          .placePositionOrder(longAccountId, toWei("10"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
       )
         .to.emit(orderBook, "NewPositionOrder")
-        .withArgs(longAccountId, 0, toWei("10"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition)
+        .withArgs(longAccountId, 0, toWei("10"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
       expect(await wbtc.balanceOf(trader1.address)).to.equal(toWei("90"))
       expect(await wbtc.balanceOf(orderBook.address)).to.equal(toWei("10"))
     }
@@ -466,9 +474,11 @@ describe("Integration", () => {
     }
     // close long, profit in wbtc
     {
-      await expect(orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("0"), toWei("1"), toWei("1999"), 0, PositionOrderFlags.TriggerOrder))
+      await expect(
+        orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("0"), toWei("1"), toWei("1999"), 0, PositionOrderFlags.TriggerOrder, 86400 * 100)
+      )
         .to.emit(orderBook, "NewPositionOrder")
-        .withArgs(longAccountId, 1, toWei("0"), toWei("1"), toWei("1999"), 0, PositionOrderFlags.TriggerOrder)
+        .withArgs(longAccountId, 1, toWei("0"), toWei("1"), toWei("1999"), 0, PositionOrderFlags.TriggerOrder, 86400 * 100)
     }
     {
       await expect(orderBook.connect(broker).fillPositionOrder(1, toWei("2000"), toWei("2000"), toWei("2000"))).to.revertedWith("LMT")
@@ -497,10 +507,12 @@ describe("Integration", () => {
     await usdc.connect(trader1).approve(orderBook.address, toUnit("1000", 6))
     {
       await expect(
-        orderBook.connect(trader1).placePositionOrder(shortAccountId, toUnit("1000", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition)
+        orderBook
+          .connect(trader1)
+          .placePositionOrder(shortAccountId, toUnit("1000", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
       )
         .to.emit(orderBook, "NewPositionOrder")
-        .withArgs(shortAccountId, 0, toUnit("1000", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition)
+        .withArgs(shortAccountId, 0, toUnit("1000", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
       await orderBook.connect(broker).fillPositionOrder(0, toWei("1"), toWei("2000"), toWei("0"))
       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("99000", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("0", 6))
@@ -523,9 +535,11 @@ describe("Integration", () => {
     const longAccountId = assembleSubAccountId(trader1.address, 1, 1, true)
     await wbtc.connect(trader1).approve(orderBook.address, toWei("10"))
     {
-      await expect(orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("0.5"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition))
+      await expect(
+        orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("0.5"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
+      )
         .to.emit(orderBook, "NewPositionOrder")
-        .withArgs(longAccountId, 1, toWei("0.5"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition)
+        .withArgs(longAccountId, 1, toWei("0.5"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
       await orderBook.connect(broker).fillPositionOrder(1, toWei("2000"), toWei("2000"), toWei("0"))
       expect(await wbtc.balanceOf(trader1.address)).to.equal(toWei("99.5"))
       expect(await wbtc.balanceOf(orderBook.address)).to.equal(toWei("0"))
@@ -598,9 +612,11 @@ describe("Integration", () => {
     const longAccountId = assembleSubAccountId(trader1.address, 1, 1, true)
     await wbtc.connect(trader1).approve(orderBook.address, toWei("10"))
     {
-      await expect(orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("0.5"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition))
+      await expect(
+        orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("0.5"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
+      )
         .to.emit(orderBook, "NewPositionOrder")
-        .withArgs(longAccountId, 0, toWei("0.5"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition)
+        .withArgs(longAccountId, 0, toWei("0.5"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
       await orderBook.connect(broker).fillPositionOrder(0, toWei("2000"), toWei("2000"), toWei("0"))
       expect(await wbtc.balanceOf(trader1.address)).to.equal(toWei("99.5"))
       expect(await wbtc.balanceOf(orderBook.address)).to.equal(toWei("0"))
@@ -656,10 +672,12 @@ describe("Integration", () => {
     await usdc.connect(trader1).approve(orderBook.address, toUnit("1000", 6))
     {
       await expect(
-        orderBook.connect(trader1).placePositionOrder(shortAccountId, toUnit("1000", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition)
+        orderBook
+          .connect(trader1)
+          .placePositionOrder(shortAccountId, toUnit("1000", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
       )
         .to.emit(orderBook, "NewPositionOrder")
-        .withArgs(shortAccountId, 0, toUnit("1000", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition)
+        .withArgs(shortAccountId, 0, toUnit("1000", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
       await orderBook.connect(broker).fillPositionOrder(0, toWei("1"), toWei("2000"), toWei("0"))
       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("99000", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("0", 6))
@@ -730,9 +748,11 @@ describe("Integration", () => {
     }
     // open long
     {
-      await expect(orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("0"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition))
+      await expect(
+        orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("0"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
+      )
         .to.emit(orderBook, "NewPositionOrder")
-        .withArgs(longAccountId, 0, toWei("0"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition)
+        .withArgs(longAccountId, 0, toWei("0"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("99000", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("0", 6))
     }
@@ -890,16 +910,18 @@ describe("Integration", () => {
       }
       // withdraw 100 wbtc from LiquidityPool to LiquidityManager
       {
-        await liquidityManager.addDexSpotConfiguration(0, 1, [1], [1])
-        const transferMod = await createContract("TransferModule")
-        await liquidityManager.installGenericModule(transferMod.address, false)
-        await liquidityManager.callGenericModule(toBytes32("transferFromPool"), U.defaultAbiCoder.encode(["uint8[]", "uint256[]"], [[1], [toWei("100")]]))
+        await liquidityManager.addDexSpotConfiguration(1, 0, 100, [1], [1])
+        const testPlugin = await createContract("TestPlugin")
+        await liquidityManager.setPlugin(testPlugin.address, true)
+        const tmp = await ethers.getContractAt("TestPlugin", liquidityManager.address)
+        await tmp.pullAssets([1], [toWei("100")])
+
         const collateralInfo = await pool.getAssetInfo(1)
         expect(collateralInfo.spotLiquidity).to.equal(toWei("0"))
         expect(collateralInfo.collectedFee).to.equal(toWei("0.01"))
-        const readerState = await reader.callStatic.getChainState()
+        const readerState = await reader.callStatic.getChainStorage()
         expect(readerState.lpDeduct).to.eq(toWei("999999999999800020")) // lp supply = 199980
-        expect(readerState.assetStates[1].deduct).to.eq(toWei("1000000000000000000")) // muxBTC supply = 0
+        expect(readerState.assets[1].deduct).to.eq(toWei("1000000000000000000")) // muxBTC supply = 0
         expect(readerState.stableDeduct).to.eq(toWei("1000000000000000000")) // muxUSD supply = 0
       }
     })
@@ -909,7 +931,9 @@ describe("Integration", () => {
       const longAccountId = assembleSubAccountId(trader1.address, 0, 1, true)
       await usdc.connect(trader1).approve(orderBook.address, toUnit("1000", 6))
       {
-        await orderBook.connect(trader1).placePositionOrder(longAccountId, toUnit("1000", 6), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition)
+        await orderBook
+          .connect(trader1)
+          .placePositionOrder(longAccountId, toUnit("1000", 6), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
         expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("99000", 6))
         expect(await wbtc.balanceOf(trader1.address)).to.equal(toWei("100"))
         await orderBook.connect(broker).fillPositionOrder(1, toWei("1"), toWei("2000"), toWei("0"))
@@ -927,7 +951,9 @@ describe("Integration", () => {
       }
       // close long, profit in muxBtc, auto withdraw all
       {
-        await orderBook.connect(trader1).placePositionOrder(longAccountId, toUnit("0", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.WithdrawAllIfEmpty)
+        await orderBook
+          .connect(trader1)
+          .placePositionOrder(longAccountId, toUnit("0", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.WithdrawAllIfEmpty, 86400 * 100)
         await orderBook.connect(broker).fillPositionOrder(2, toWei("1"), toWei("2100"), toWei("1")) // pnl = 100, funding fee = 0, pos fee = 0.001
         expect(await wbtc.balanceOf(trader1.address)).to.equal(toWei("100")) // collateral + [1].spotLiquidity
         expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("99998", 6)) // 99000 + 998
@@ -943,21 +969,25 @@ describe("Integration", () => {
         const assetInfo = await pool.getAssetInfo(1)
         expect(assetInfo.spotLiquidity).to.equal(toWei("0"))
         expect(assetInfo.collectedFee).to.equal(toWei("0.011")) // += fee
-        const readerState = await reader.callStatic.getChainState()
+        const readerState = await reader.callStatic.getChainStorage()
         expect(readerState.lpDeduct).to.eq(toWei("999999999999800020")) // lp supply = 199980
-        expect(readerState.assetStates[1].deduct).to.eq(toWei("999999999999999999.953380952380952381")) // muxWbtc supply = 0.046619047619047619
+        expect(readerState.assets[1].deduct).to.eq(toWei("999999999999999999.953380952380952381")) // muxWbtc supply = 0.046619047619047619
         expect(readerState.stableDeduct).to.eq(toWei("1000000000000000000")) // muxUsd supply = 0
       }
       // deposit 1 wbtc from LiquidityManager to LiquidityPool
       {
-        await liquidityManager.callGenericModule(toBytes32("transferToPool"), U.defaultAbiCoder.encode(["uint8[]", "uint256[]"], [[1], [toWei("1")]]))
+        // const testPlugin = await createContract("TestPlugin")
+        // await liquidityManager.setPlugin(testPlugin.address, true)
+        const tmp = await ethers.getContractAt("TestPlugin", liquidityManager.address)
+        await tmp.pushAssets([1], [toWei("1")])
+
         expect(await wbtc.balanceOf(pool.address)).to.equal(toWei("1"))
         const assetInfo = await pool.getAssetInfo(1)
         expect(assetInfo.spotLiquidity).to.equal(toWei("1"))
         expect(assetInfo.collectedFee).to.equal(toWei("0.011")) // += fee
-        const readerState = await reader.callStatic.getChainState()
+        const readerState = await reader.callStatic.getChainStorage()
         expect(readerState.lpDeduct).to.eq(toWei("999999999999800020")) // lp supply = 199980
-        expect(readerState.assetStates[1].deduct).to.eq(toWei("999999999999999999.953380952380952381")) // muxWbtc supply = 0.046619047619047619
+        expect(readerState.assets[1].deduct).to.eq(toWei("999999999999999999.953380952380952381")) // muxWbtc supply = 0.046619047619047619
         expect(readerState.stableDeduct).to.eq(toWei("1000000000000000000")) // muxUSD supply = 0
       }
       // redeem muxBtc
@@ -971,9 +1001,9 @@ describe("Integration", () => {
         const assetInfo = await pool.getAssetInfo(1)
         expect(assetInfo.spotLiquidity).to.equal(toWei("0.953380952380952381"))
         expect(assetInfo.collectedFee).to.equal(toWei("0.011")) // += fee
-        const readerState = await reader.callStatic.getChainState()
+        const readerState = await reader.callStatic.getChainStorage()
         expect(readerState.lpDeduct).to.eq(toWei("999999999999800020")) // lp supply = 199980
-        expect(readerState.assetStates[1].deduct).to.eq(toWei("1000000000000000000")) // muxWbtc supply = 0
+        expect(readerState.assets[1].deduct).to.eq(toWei("1000000000000000000")) // muxWbtc supply = 0
         expect(readerState.stableDeduct).to.eq(toWei("1000000000000000000")) // muxUSD supply = 0
       }
     })
@@ -993,7 +1023,7 @@ describe("Integration", () => {
         const collateral2Info = await pool.getAssetInfo(2)
         expect(collateral2Info.spotLiquidity).to.equal(toWei("10000"))
         expect(collateral2Info.collectedFee).to.equal(toWei("1"))
-        const readerState = await reader.callStatic.getChainState()
+        const readerState = await reader.callStatic.getChainStorage()
         expect(readerState.lpDeduct).to.eq(toWei("999999999999790021")) // lp supply = 209979
         expect(readerState.stableDeduct).to.eq(toWei("1000000000000000000")) // muxUSD supply = 0
       }
@@ -1001,7 +1031,9 @@ describe("Integration", () => {
       const shortAccountId = assembleSubAccountId(trader1.address, 0, 1, false)
       await usdc.connect(trader1).approve(orderBook.address, toUnit("1000", 6))
       {
-        await orderBook.connect(trader1).placePositionOrder(shortAccountId, toUnit("1000", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition)
+        await orderBook
+          .connect(trader1)
+          .placePositionOrder(shortAccountId, toUnit("1000", 6), toWei("1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100)
         expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("99000", 6))
         expect(await usdt.balanceOf(trader1.address)).to.equal(toUnit("100000", 12))
         await orderBook.connect(broker).fillPositionOrder(2, toWei("1"), toWei("2000"), toWei("0"))
@@ -1019,7 +1051,9 @@ describe("Integration", () => {
       }
       // close short, profit in usdc (muxUsd), auto withdraw all
       {
-        await orderBook.connect(trader1).placePositionOrder(shortAccountId, toUnit("0", 6), toWei("1"), toWei("3000"), 0, PositionOrderFlags.WithdrawAllIfEmpty)
+        await orderBook
+          .connect(trader1)
+          .placePositionOrder(shortAccountId, toUnit("0", 6), toWei("1"), toWei("3000"), 0, PositionOrderFlags.WithdrawAllIfEmpty, 86400 * 100)
         await orderBook.connect(broker).fillPositionOrder(3, toWei("1"), toWei("1900"), toWei("1")) // pnl = 100, fee = 1.9
         expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("100000", 6)) // += collateral + [0].spotLiquidity
         expect(await usdt.balanceOf(trader1.address)).to.equal(toUnit("100000", 12)) // += 0
@@ -1035,7 +1069,7 @@ describe("Integration", () => {
         const collateral2Info = await pool.getAssetInfo(2)
         expect(collateral2Info.spotLiquidity).to.equal(toWei("10000"))
         expect(collateral2Info.collectedFee).to.equal(toWei("1"))
-        const readerState = await reader.callStatic.getChainState()
+        const readerState = await reader.callStatic.getChainStorage()
         expect(readerState.lpDeduct).to.eq(toWei("999999999999790021")) // lp supply = 209979
         expect(readerState.stableDeduct).to.eq(toWei("999999999999999903.9")) // muxUsd supply = 96.1
       }
@@ -1055,7 +1089,7 @@ describe("Integration", () => {
         const collateral2Info = await pool.getAssetInfo(2)
         expect(collateral2Info.spotLiquidity).to.equal(toWei("9903.9")) // -= 96.1
         expect(collateral2Info.collectedFee).to.equal(toWei("1"))
-        const readerState = await reader.callStatic.getChainState()
+        const readerState = await reader.callStatic.getChainStorage()
         expect(readerState.lpDeduct).to.eq(toWei("999999999999790021")) // lp supply = 209979
         expect(readerState.stableDeduct).to.eq(toWei("1000000000000000000")) // muxUsd supply = 0
       }

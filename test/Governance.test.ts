@@ -119,23 +119,6 @@ describe("Trade", () => {
     await ownable.transferOwnership(admin.address)
     await admin.connect(user1).schedule(ownable.address, 0, U.id("takeOwnership()").slice(0, 10), zero, zero, 0)
     await admin.connect(user2).execute(ownable.address, 0, U.id("takeOwnership()").slice(0, 10), zero, zero)
-
-    await admin.connect(user1).schedule(
-      admin.address,
-      0,
-      U.id("addQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [user0.address]).slice(2),
-      zero,
-      zero,
-      0
-    )
-    await expect(admin.connect(user2).execute(
-      admin.address,
-      0,
-      U.id("addQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [user0.address]).slice(2),
-      zero,
-      zero
-    )).to.be.revertedWith("underlying transaction reverted")
-
     await admin.connect(user1).schedule(
       admin.address,
       0,

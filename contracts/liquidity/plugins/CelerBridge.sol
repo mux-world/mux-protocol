@@ -5,12 +5,12 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../../libraries/LibUtils.sol";
-import "./Module.sol";
+import "./Plugin.sol";
 
 /**
  * @notice A module to provide liquidity to curve then farm on some project with the lpToken.
  */
-contract CBridgeModule is Module {
+contract CelerBridge is Plugin {
     using Address for address;
 
     event BridgePeerTransfer(
@@ -21,6 +21,18 @@ contract CBridgeModule is Module {
         uint64 dstChainId,
         bytes extraData
     );
+    event SetTransferPermission(uint256 chainId, uint8 assetId, bool isAllowed);
+
+    function name() public pure override returns (string memory) {
+        return "CelerBridge";
+    }
+
+    function exports() public pure override returns (bytes4[] memory selectors) {
+        selectors = new bytes4[](3);
+        selectors[0] = this.celerTransfer.selector;
+        selectors[1] = this.getCelerBridgePermission.selector;
+        selectors[2] = this.setCelerBridgePermission.selector;
+    }
 
     function getPeers(uint256 chainId) public pure returns (address peer) {
         assembly {
@@ -40,14 +52,6 @@ contract CBridgeModule is Module {
             case 42161 {
                 // arbitrum
                 peer := 0x02FAe054ACD7FB1615471319c4E3029DFbC2B23C
-            }
-            case 97 {
-                // testnet bsc
-                peer := 0xe3124B1F5B7c793B6B4C97aFcAD7C6df6c1A9bc9
-            }
-            case 5 {
-                // testnet goerli
-                peer := 0xe3124B1F5B7c793B6B4C97aFcAD7C6df6c1A9bc9
             }
         }
     }
@@ -71,68 +75,64 @@ contract CBridgeModule is Module {
                 // arbitrum
                 bridge := 0x1619DE6B6B20eD217a58d00f37B9d47C7663feca
             }
-            case 97 {
-                bridge := 0xf89354f314faf344abd754924438ba798e306df2
-            }
-            case 5 {
-                bridge := 0x358234b325ef9ea8115291a8b81b7d33a2fa762d
-            }
         }
     }
 
-    function id() public pure override returns (bytes32) {
-        return "cbridge-transfer-mod";
+    function getCelerBridgePermission(uint256 chainId, uint8 assetId) public view returns (bool isAllowed) {
+        isAllowed = _getStateAsUint256(_permissionKey(chainId, assetId)) > 0;
     }
 
-    function meta()
-        public
-        pure
-        override
-        returns (
-            bytes32[] memory ids,
-            bytes4[] memory selectors,
-            bytes32[] memory initialStates
-        )
-    {
-        ids = new bytes32[](1);
-        ids[0] = LibUtils.toBytes32("cBridgeTransferById");
-        selectors = new bytes4[](1);
-        selectors[0] = this.cBridgeTransferById.selector;
-        initialStates = new bytes32[](0);
+    function setCelerBridgePermission(
+        uint256 chainId,
+        uint8 assetId,
+        bool isAllowed
+    ) public onlyOwner {
+        _setStateAsUint256(_permissionKey(chainId, assetId), isAllowed ? 1 : 0);
+        emit SetTransferPermission(chainId, assetId, isAllowed);
     }
 
-    function cBridgeTransferById(
+    function _permissionKey(uint256 chainId, uint8 assetId) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(chainId, assetId));
+    }
+
+    function celerTransfer(
         uint8 assetId,
         uint256 amount,
         uint256 dstChainId,
         uint256 maxSlippage
-    ) public {
-        require(amount != 0, "Amount is zero");
-        require(dstChainId <= type(uint64).max, "ChainId is out of range");
-        require(maxSlippage <= type(uint32).max, "Slippage is out of range");
+    ) public onlyOwner {
+        require(getCelerBridgePermission(dstChainId, assetId), "CelerBridge::NotPermitted");
+        require(amount != 0, "CelerBridge::ZeroAmount");
+        require(dstChainId <= type(uint64).max, "CelerBridge::ChainIdOutOfRange");
+        require(maxSlippage <= type(uint32).max, "CelerBridge::SlippageOutOfRange");
 
-        address token = _getTokenAddr(assetId);
-        require(token != address(0), "Invalid token");
+        address token = _tryGetTokenAddress(assetId);
+        require(token != address(0), "CelerBridge::InvalidTokenAddress");
 
         address recipient = getPeers(dstChainId);
-        require(recipient != address(0), "No recipient in target network");
+        require(recipient != address(0), "CelerBridge::NoPeer");
 
         address bridge = getBridge();
-        require(bridge != address(0), "Bridge not exists in current network");
-        // require(bridge.isContract(), "Bridge is not a contract");
+        require(bridge != address(0), "CelerBridge::NoBridge");
 
-        uint64 nonce = uint64(block.timestamp);
+        uint8[] memory assetIds = new uint8[](1);
+        uint256[] memory amounts = new uint256[](1);
+        assetIds[0] = assetId;
+        amounts[0] = amount;
+        _fetchAssets(assetIds, amounts);
+
         try IERC20(token).approve(bridge, amount) {} catch Error(string memory reason) {
             revert(reason);
         } catch {
-            revert("Fail to call bridge send");
+            revert("CelerBridge::FailtoCallApprove");
         }
+        uint64 nonce = uint64(block.timestamp);
         try
             ICelerBridge(bridge).send(recipient, token, amount, uint64(dstChainId), nonce, uint32(maxSlippage))
         {} catch Error(string memory reason) {
             revert(reason);
         } catch {
-            revert("Fail to call bridge send");
+            revert("CelerBridge::FailtoCallBridgeSend");
         }
         emit BridgePeerTransfer(bridge, recipient, token, amount, uint64(dstChainId), abi.encode(nonce, maxSlippage));
     }

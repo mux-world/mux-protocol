@@ -1,11 +1,8 @@
 import { ethers } from "hardhat"
 import "@nomiclabs/hardhat-waffle"
 import { expect } from "chai"
-import { toWei, createContract, OrderType, assembleSubAccountId, PositionOrderFlags, rate } from "./deployUtils"
+import { createContract } from "./deployUtils"
 import { Contract } from "ethers"
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { BigNumber } from "@ethersproject/bignumber"
-const U = ethers.utils
 
 describe("LibOrder - enumerable order list", () => {
   let orderBook: Contract

@@ -5,12 +5,12 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../../libraries/LibUtils.sol";
-import "./Module.sol";
+import "./Plugin.sol";
 
 /**
  * @notice A module to provide liquidity to curve then farm on some project with the lpToken.
  */
-contract AnySwapModule is Module {
+contract AnySwapBridge is Plugin {
     using Address for address;
 
     event BridgePeerTransfer(
@@ -21,6 +21,15 @@ contract AnySwapModule is Module {
         uint64 dstChainId,
         bytes extraData
     );
+
+    function name() public pure override returns (string memory) {
+        return "AnySwapBridge";
+    }
+
+    function exports() public pure override returns (bytes4[] memory selectors) {
+        selectors = new bytes4[](1);
+        selectors[0] = this.anySwapTransfer.selector;
+    }
 
     function getPeers(uint256 chainId) public pure returns (address peer) {
         assembly {
@@ -73,28 +82,7 @@ contract AnySwapModule is Module {
         }
     }
 
-    function id() public pure override returns (bytes32) {
-        return "anyswap-transfer-mod";
-    }
-
-    function meta()
-        public
-        pure
-        override
-        returns (
-            bytes32[] memory ids,
-            bytes4[] memory selectors,
-            bytes32[] memory initialStates
-        )
-    {
-        ids = new bytes32[](1);
-        ids[0] = LibUtils.toBytes32("anySwapTransferById");
-        selectors = new bytes4[](1);
-        selectors[0] = this.anySwapTransferById.selector;
-        initialStates = new bytes32[](0);
-    }
-
-    function anySwapTransferById(
+    function anySwapTransfer(
         uint8 assetId,
         uint256 amount,
         uint256 dstChainId,
@@ -104,7 +92,7 @@ contract AnySwapModule is Module {
         require(dstChainId <= type(uint64).max, "ChainId is out of range");
         require(maxSlippage == 0, "Slippage is not supported");
 
-        address token = _getTokenAddr(assetId);
+        address token = _getTokenAddress(assetId);
         require(token != address(0), "Invalid token");
 
         address recipient = getPeers(dstChainId);

@@ -89,6 +89,7 @@ contract Trade is Storage, Account {
         // post check
         require(_isAccountImSafe(subAccount, decoded.assetId, decoded.isLong, collateralPrice, assetPrice), "!IM");
         _updateSequence();
+        _updateBrokerTransactions();
         return assetPrice;
     }
 
@@ -208,6 +209,7 @@ contract Trade is Storage, Account {
         // post check
         require(_isAccountMmSafe(subAccount, ctx.id.assetId, ctx.id.isLong, collateralPrice, assetPrice), "!MM");
         _updateSequence();
+        _updateBrokerTransactions();
         return assetPrice;
     }
 
@@ -332,6 +334,7 @@ contract Trade is Storage, Account {
             emit Liquidate(ctx.id.account, ctx.id.assetId, args);
         }
         _updateSequence();
+        _updateBrokerTransactions();
         return assetPrice;
     }
 
@@ -432,6 +435,7 @@ contract Trade is Storage, Account {
             emit WithdrawProfit(ctx.id.account, ctx.id.assetId, args);
         }
         _updateSequence();
+        _updateBrokerTransactions();
     }
 
     function _increaseTotalSize(

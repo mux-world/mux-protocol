@@ -3,17 +3,35 @@ pragma solidity 0.8.10;
 
 interface IOrderBook {
     /**
-     * @notice seconds before a Liquidity Order can be filled
+     * @notice Liquidity Order can be filled after this time in seconds.
      */
     function liquidityLockPeriod() external view returns (uint32);
 
+    /**
+     * @notice Market Order MUST NOT be filled after this time in seconds.
+     */
+    function marketOrderTimeout() external view returns (uint32);
+
+    /**
+     * @notice Limit/Trigger Order MUST NOT be filled after this time in seconds.
+     */
+    function maxLimitOrderTimeout() external view returns (uint32);
+
+    /**
+     * @notice Get an Order by orderId.
+     */
     function getOrder(uint64 orderId) external view returns (bytes32[3] memory, bool);
 
+    /**
+     * @notice Cancel an Order by orderId.
+     */
     function cancelOrder(uint64 orderId) external;
 
     /**
      * @dev   Open/close position. called by Trader
      *
+     *        Market order will expire after marketOrderTimeout seconds.
+     *        Limit/Trigger order will expire after deadline.
      * @param subAccountId       sub account id. see LibSubAccount.decodeSubAccountId
      * @param collateralAmount   deposit collateral before open; or withdraw collateral after close. decimals = erc20.decimals
      * @param size               position size. decimals = 18
@@ -25,6 +43,7 @@ interface IOrderBook {
      *                           POSITION_MARKET_ORDER             0x40 means ignore limitPrice
      *                           POSITION_WITHDRAW_ALL_IF_EMPTY    0x20 means auto withdraw all collateral if position.size == 0
      *                           POSITION_TRIGGER_ORDER            0x10 means this is a trigger order (ex: stop-loss order). 0 means this is a limit order (ex: take-profit order)
+     * @param deadline           a unix timestamp after which the limit/trigger order MUST NOT be filled. fill 0 for market order.
      */
     function placePositionOrder(
         bytes32 subAccountId,
@@ -32,12 +51,14 @@ interface IOrderBook {
         uint96 size, // 1e18
         uint96 price, // 1e18
         uint8 profitTokenId,
-        uint8 flags
+        uint8 flags,
+        uint32 deadline // 1e0
     ) external payable;
 
     /**
      * @dev   Add/remove liquidity. called by Liquidity Provider
      *
+     *        Can be filled after liquidityLockPeriod seconds.
      * @param assetId   asset.id that added/removed to
      * @param rawAmount asset token amount. decimals = erc20.decimals
      * @param isAdding  true for add liquidity, false for remove liquidity
@@ -51,6 +72,7 @@ interface IOrderBook {
     /**
      * @dev   Withdraw collateral/profit. called by Trader
      *
+     *        This order will expire after marketOrderTimeout seconds.
      * @param subAccountId       sub account id. see LibSubAccount.decodeSubAccountId
      * @param rawAmount          collateral or profit asset amount. decimals = erc20.decimals
      * @param profitTokenId      specify the profitable asset.id

@@ -2,6 +2,7 @@
 pragma solidity 0.8.10;
 
 struct LiquidityPoolStorage {
+    // slot
     address orderBook;
     // slot
     address mlp;
@@ -17,7 +18,6 @@ struct LiquidityPoolStorage {
     uint32 lastFundingTime; // 1e0
     // slot
     uint32 _reserved2;
-    // note: 224 bits remaining
     // slot
     Asset[] assets;
     // slot
@@ -37,6 +37,10 @@ struct LiquidityPoolStorage {
     // a sequence number that changes when LiquidityPoolStorage updated. this helps to keep track the state of LiquidityPool.
     uint32 sequence; // 1e0. note: will be 0 after 0xffffffff
     uint32 strictStableDeviation; // 1e5. strictStable price is 1.0 if in this damping range
+    uint32 brokerTransactions; // transaction count for broker gas rebates
+    // slot
+    address vault;
+    uint96 brokerGasRebate; // the number of native tokens for broker gas rebates per transaction
     bytes32[50] _gap;
 }
 

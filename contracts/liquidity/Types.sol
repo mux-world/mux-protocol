@@ -6,22 +6,28 @@ uint256 constant DEX_CURVE = 1;
 
 struct DexSpotConfiguration {
     uint8 dexId;
-    uint8 dexType; // 0 = default (uni), 1 = curve
+    uint8 dexType;
     uint32 dexWeight;
     uint8[] assetIds;
     uint32[] assetWeightInDex;
     uint256[] totalSpotInDex;
 }
 
-struct ModuleInfo {
-    bytes32 id;
-    address path;
-    bool isDexModule;
-    uint8 dexId;
-    bytes32[] methodIds;
+struct DexRegistration {
+    address adapter;
+    bool disabled;
+    uint32 slippage;
 }
 
-struct CallRegistration {
-    address callee;
-    bytes4 selector;
+struct DexData {
+    bytes config; // read only
+    mapping(bytes32 => bytes32) states; // mutable
+}
+
+struct PluginData {
+    mapping(bytes32 => bytes32) states; // mutable
+}
+
+struct CallContext {
+    uint8 dexId;
 }

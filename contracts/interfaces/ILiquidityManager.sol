@@ -4,23 +4,15 @@ pragma solidity 0.8.10;
 import "../liquidity/Types.sol";
 
 interface ILiquidityManager {
-    function hasGenericCall(bytes32 methodId) external view returns (bool);
-
-    function hasDexCall(uint8 dexId, bytes32 methodId) external view returns (bool);
-
     function getDexSpotConfiguration(uint8 dexId) external returns (DexSpotConfiguration memory);
 
     function getAllDexSpotConfiguration() external returns (DexSpotConfiguration[] memory);
 
     function getDexLiquidity(uint8 dexId) external returns (uint256[] memory liquidities, uint256 lpBalance);
 
-    function getModuleInfo(bytes32 moduleId) external view returns (ModuleInfo memory);
+    function getDexAdapterConfig(uint8 dexId) external view returns (bytes memory config);
 
-    function callGenericModule(bytes32 methodId, bytes memory params) external returns (bytes memory);
+    function getDexAdapterState(uint8 dexId, bytes32 key) external view returns (bytes32 state);
 
-    function callDexModule(
-        uint8 dexId,
-        bytes32 methodId,
-        bytes memory params
-    ) external returns (bytes memory);
+    function getDexAdapter(uint8 dexId) external view returns (DexRegistration memory registration);
 }

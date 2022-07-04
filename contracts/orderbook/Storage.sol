@@ -22,7 +22,9 @@ contract Storage is Initializable, SafeOwnableUpgradeable {
     mapping(address => bool) public rebalancers;
     bool public isPositionOrderPaused;
     bool public isLiquidityOrderPaused;
-    bytes32[47] _gap;
+    uint32 public marketOrderTimeout;
+    uint32 public maxLimitOrderTimeout;
+    bytes32[45] _gap;
 
     modifier whenPositionOrderEnabled() {
         require(!isPositionOrderPaused, "POP"); // Position Order Paused
