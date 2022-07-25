@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../../libraries/LibUtils.sol";
-import "./CurveFarm.sol";
+import "./CvxFarm.sol";
 
 interface ICurve3Pool {
     function add_liquidity(uint256[3] memory _amounts, uint256 _min_mint_amount) external;
@@ -19,19 +19,16 @@ interface ICurve3Pool {
 /**
  * @notice A module to provide liquidity to curve then farm on some project with the lpToken.
  */
-contract CurveFarm3 is CurveFarm {
+contract CvxTriCrypto2Farm is CvxFarm {
     uint256 constant TOKEN_COUNT = 3;
 
     function initializeAdapter(bytes memory initialData) external virtual {
         Context memory context = abi.decode(initialData, (Context));
         require(context.pool != address(0), "!A0");
         require(context.lpToken != address(0), "!A1");
-        require(
-            (context.farm == address(0) && context.rewardToken == address(0)) ||
-                (context.farm != address(0) && context.rewardToken != address(0)),
-            "!A2"
-        );
-        require(context.quoteIndex < TOKEN_COUNT, "!A3");
+        require(context.deposit != address(0), "!A2");
+        require(context.rewards != address(0), "!A3");
+        require(context.quoteIndex < TOKEN_COUNT, "!A4");
         address[] memory tokens = _getDexTokens();
         require(tokens.length == TOKEN_COUNT, "LEN");
         for (uint256 i = 0; i < TOKEN_COUNT; i++) {
@@ -58,7 +55,7 @@ contract CurveFarm3 is CurveFarm {
         } catch Error(string memory reason) {
             revert(reason);
         } catch {
-            revert("CurveFarm3::CallCalcTokenAmountFail");
+            revert("CvxTriCrypto2Farm::CallCalcTokenAmountFail");
         }
     }
 
@@ -74,14 +71,14 @@ contract CurveFarm3 is CurveFarm {
         uint256[] memory maxAmounts,
         uint256 minLpAmount
     ) public virtual override returns (uint256 lpAmount) {
-        require(maxAmounts.length == TOKEN_COUNT, "CurveFarm3::WrongArrayLength");
+        require(maxAmounts.length == TOKEN_COUNT, "CvxTriCrypto2Farm::WrongArrayLength");
         uint256 balanceBefore = IERC20(context.lpToken).balanceOf(address(this));
         try ICurve3Pool(context.pool).add_liquidity(_toArray(maxAmounts), minLpAmount) {
             lpAmount = IERC20(context.lpToken).balanceOf(address(this)) - balanceBefore;
         } catch Error(string memory reason) {
             revert(reason);
         } catch {
-            revert("CurveFarm3::CallAddLiquidityFail");
+            revert("CvxTriCrypto2Farm::CallAddLiquidityFail");
         }
     }
 
@@ -90,7 +87,7 @@ contract CurveFarm3 is CurveFarm {
         uint256 lpAmount,
         uint256[] memory minAmounts
     ) public virtual override returns (uint256[] memory removedAmounts) {
-        require(minAmounts.length == TOKEN_COUNT, "CurveFarm3::WrongArrayLength");
+        require(minAmounts.length == TOKEN_COUNT, "CvxTriCrypto2Farm::WrongArrayLength");
         try ICurve3Pool(context.pool).remove_liquidity(lpAmount, _toArray(minAmounts)) {
             address[] memory tokens = _getDexTokens();
             removedAmounts = new uint256[](3);
@@ -100,7 +97,7 @@ contract CurveFarm3 is CurveFarm {
         } catch Error(string memory reason) {
             revert(reason);
         } catch {
-            revert("CurveFarm3::CallRemoveLiquidityFail");
+            revert("CvxTriCrypto2Farm::CallRemoveLiquidityFail");
         }
     }
 

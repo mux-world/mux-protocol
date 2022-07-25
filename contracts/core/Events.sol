@@ -117,9 +117,9 @@ contract Events {
         address tokenAddress,
         address muxTokenAddress
     );
-    event SetAssetSymbol(uint8 indexed assetId, bytes32 symbol);
     event SetAssetParams(
         uint8 indexed assetId,
+        bytes32 symbol,
         uint32 newInitialMarginRate,
         uint32 newMaintenanceMarginRate,
         uint32 newPositionFeeRate,
@@ -130,15 +130,7 @@ contract Events {
         uint32 newSpotWeight,
         uint32 newHalfSpread
     );
-    event SetAssetFlags(
-        uint8 indexed assetId,
-        bool isTradable,
-        bool isOpenable,
-        bool isShortable,
-        bool useStableTokenForProfit,
-        bool isEnabled,
-        bool isStrictStable
-    );
+    event SetAssetFlags(uint8 indexed assetId, uint56 oldFlags, uint56 newFlags);
     event SetReferenceOracle(
         uint8 indexed assetId,
         uint8 referenceOracleType,
@@ -151,6 +143,7 @@ contract Events {
     event SetLiquidityFee(uint32 newLiquidityBaseFeeRate, uint32 newLiquidityDynamicFeeRate);
     event SetStrictStableDeviation(uint32 newStrictStableDeviation);
     event SetBrokerGasRebate(uint96 newBrokerGasRebate);
+    event SetMaintainer(address indexed newMaintainer);
     event WithdrawCollectedFee(uint8 indexed assetId, uint96 collectedFee);
     event TransferLiquidity(address indexed sender, address indexed recipient, uint8 assetId, uint256 amount);
 }

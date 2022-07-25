@@ -12,6 +12,7 @@ contract Admin is Storage {
     event SetOrderTimeout(uint32 marketOrderTimeout, uint32 maxLimitOrderTimeout);
     event PausePositionOrder(bool isPaused);
     event PauseLiquidityOrder(bool isPaused);
+    event SetMaintainer(address indexed newMaintainer);
 
     modifier onlyBroker() {
         require(brokers[_msgSender()], "BKR"); // only BroKeR
@@ -20,6 +21,11 @@ contract Admin is Storage {
 
     modifier onlyRebalancer() {
         require(rebalancers[_msgSender()], "BAL"); // only reBALancer
+        _;
+    }
+
+    modifier onlyMaintainer() {
+        require(_msgSender() == maintainer || _msgSender() == owner(), "S!M"); // Sender is Not MaiNTainer
         _;
     }
 
@@ -69,7 +75,7 @@ contract Admin is Storage {
         emit SetOrderTimeout(marketOrderTimeout_, maxLimitOrderTimeout_);
     }
 
-    function pause(bool isPositionOrderPaused_, bool isLiquidityOrderPaused_) external onlyOwner {
+    function pause(bool isPositionOrderPaused_, bool isLiquidityOrderPaused_) external onlyMaintainer {
         if (isPositionOrderPaused != isPositionOrderPaused_) {
             isPositionOrderPaused = isPositionOrderPaused_;
             emit PausePositionOrder(isPositionOrderPaused_);
@@ -78,6 +84,12 @@ contract Admin is Storage {
             isLiquidityOrderPaused = isLiquidityOrderPaused_;
             emit PauseLiquidityOrder(isLiquidityOrderPaused_);
         }
+    }
+
+    function setMaintainer(address newMaintainer) external onlyOwner {
+        require(maintainer != newMaintainer, "CHG"); // not CHanGed
+        maintainer = newMaintainer;
+        emit SetMaintainer(newMaintainer);
     }
 
     function _removeBroker(address broker) internal {

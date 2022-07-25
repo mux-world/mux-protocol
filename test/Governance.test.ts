@@ -60,18 +60,20 @@ describe("Trade", () => {
     expect(await ownable.pendingOwner()).to.equal(user0.address)
   })
 
-  it("quickPlugin", async () => {
+  const zeroAddres = "0x0000000000000000000000000000000000000000"
+
+  it("emergencyCall", async () => {
     const p = await createContract("QuickTransferOwner")
     const ownable = await createContract("TestSafeOwnable")
     await ownable.transferOwnership(admin.address)
     await admin.connect(user1).schedule(ownable.address, 0, U.id("takeOwnership()").slice(0, 10), zero, zero, 0)
     await admin.connect(user2).execute(ownable.address, 0, U.id("takeOwnership()").slice(0, 10), zero, zero)
 
-    await expect(admin.addQuickPath(p.address)).to.revertedWith("S!T");
+    await expect(admin.setEmergencyCall(p.address)).to.revertedWith("S!T");
     await admin.connect(user1).schedule(
       admin.address,
       0,
-      U.id("addQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      U.id("setEmergencyCall(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
       zero,
       zero,
       0
@@ -79,12 +81,11 @@ describe("Trade", () => {
     await admin.connect(user2).execute(
       admin.address,
       0,
-      U.id("addQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      U.id("setEmergencyCall(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
       zero,
       zero
     )
-    await admin.connect(user2).executeQuickPath(
-      p.address,
+    await admin.connect(user2).executeEmergencyCall(
       U.id("transferOwnership(address,address)").slice(0, 10) + U.defaultAbiCoder.encode(["address", "address"], [ownable.address, user3.address]).slice(2)
     )
     expect(await ownable.pendingOwner()).to.equal(user3.address)
@@ -93,24 +94,23 @@ describe("Trade", () => {
     await admin.connect(user1).schedule(
       admin.address,
       0,
-      U.id("removeQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      U.id("setEmergencyCall(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [zeroAddres]).slice(2),
       zero,
       zero,
       0
     )
-    await expect(admin.connect(user3).removeQuickPath(p.address)).to.be.revertedWith("S!T")
+    await expect(admin.connect(user3).setEmergencyCall(zeroAddres)).to.be.revertedWith("S!T")
 
     await admin.connect(user2).execute(
       admin.address,
       0,
-      U.id("removeQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      U.id("setEmergencyCall(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [zeroAddres]).slice(2),
       zero,
       zero
     )
-    await expect(admin.connect(user2).executeQuickPath(
-      p.address,
+    await expect(admin.connect(user2).executeEmergencyCall(
       U.id("transferOwnership(address,address)").slice(0, 10) + U.defaultAbiCoder.encode(["address", "address"], [ownable.address, user3.address]).slice(2)
-    )).to.be.revertedWith("!QP")
+    )).to.be.revertedWith("EmergencyCall not set")
   })
 
   it("quickPlugin2", async () => {
@@ -122,7 +122,7 @@ describe("Trade", () => {
     await admin.connect(user1).schedule(
       admin.address,
       0,
-      U.id("addQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      U.id("setEmergencyCall(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
       zero,
       zero,
       0
@@ -130,14 +130,14 @@ describe("Trade", () => {
     await admin.connect(user2).execute(
       admin.address,
       0,
-      U.id("addQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      U.id("setEmergencyCall(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
       zero,
       zero
     )
     await admin.connect(user1).schedule(
       admin.address,
       0,
-      U.id("addQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      U.id("setEmergencyCall(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
       zero,
       toBytes32("123"),
       0
@@ -145,7 +145,7 @@ describe("Trade", () => {
     await expect(admin.connect(user2).execute(
       admin.address,
       0,
-      U.id("addQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      U.id("setEmergencyCall(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
       zero,
       toBytes32("123"),
     )).to.be.revertedWith("underlying transaction reverted")
@@ -153,7 +153,7 @@ describe("Trade", () => {
     await admin.connect(user1).schedule(
       admin.address,
       0,
-      U.id("removeQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      U.id("setEmergencyCall(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [zeroAddres]).slice(2),
       zero,
       zero,
       0
@@ -161,7 +161,7 @@ describe("Trade", () => {
     await admin.connect(user2).execute(
       admin.address,
       0,
-      U.id("removeQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      U.id("setEmergencyCall(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [zeroAddres]).slice(2),
       zero,
       zero
     )
@@ -169,7 +169,7 @@ describe("Trade", () => {
     await admin.connect(user1).schedule(
       admin.address,
       0,
-      U.id("removeQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      U.id("setEmergencyCall(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [zeroAddres]).slice(2),
       zero,
       toBytes32("123"),
       0
@@ -177,7 +177,7 @@ describe("Trade", () => {
     await expect(admin.connect(user2).execute(
       admin.address,
       0,
-      U.id("removeQuickPath(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [p.address]).slice(2),
+      U.id("setEmergencyCall(address)").slice(0, 10) + U.defaultAbiCoder.encode(["address"], [zeroAddres]).slice(2),
       zero,
       toBytes32("123")
     )).to.be.revertedWith("underlying transaction reverted")

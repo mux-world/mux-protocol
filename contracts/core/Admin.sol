@@ -15,6 +15,12 @@ contract Admin is Storage {
     using LibMath for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    function setMaintainer(address newMaintainer) external onlyOwner {
+        require(_storage.maintainer != newMaintainer, "CHG"); // not CHanGed
+        _storage.maintainer = newMaintainer;
+        emit SetMaintainer(newMaintainer);
+    }
+
     function addAsset(
         uint8 assetId,
         bytes32 symbol,
@@ -33,26 +39,16 @@ contract Admin is Storage {
         asset.symbol = symbol;
         asset.id = assetId;
         asset.decimals = decimals;
-        asset.isStable = isStable;
+        asset.flags = (asset.flags & (~ASSET_IS_STABLE)) | (isStable ? ASSET_IS_STABLE : 0);
         asset.tokenAddress = tokenAddress;
         asset.muxTokenAddress = muxTokenAddress;
         emit AddAsset(assetId, symbol, decimals, isStable, tokenAddress, muxTokenAddress);
         _updateSequence();
     }
 
-    function setAssetSymbol(uint8 assetId, bytes32 symbol) external onlyOwner {
-        require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
-        require(symbol != "", "SYM"); // invalid SYMbol
-
-        Asset storage asset = _storage.assets[assetId];
-        require(asset.symbol != symbol, "CHG"); // setting is not CHanGed
-        asset.symbol = symbol;
-        emit SetAssetSymbol(assetId, symbol);
-        _updateSequence();
-    }
-
     function setAssetParams(
         uint8 assetId,
+        bytes32 symbol,
         uint32 newInitialMarginRate, // 1e5
         uint32 newMaintenanceMarginRate, // 1e5
         uint32 newPositionFeeRate, // 1e5
@@ -64,9 +60,11 @@ contract Admin is Storage {
         uint32 newHalfSpread
     ) external onlyOwner {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
+        require(symbol != "", "SYM"); // invalid SYMbol
         Asset storage asset = _storage.assets[assetId];
         require(asset.initialMarginRate == 0 || newInitialMarginRate <= asset.initialMarginRate, "IMR"); // Initial Margin Raised
         require(asset.maintenanceMarginRate == 0 || newMaintenanceMarginRate <= asset.maintenanceMarginRate, "MMR"); // Maintenance Margin Raised
+        asset.symbol = symbol;
         asset.initialMarginRate = newInitialMarginRate;
         asset.maintenanceMarginRate = newMaintenanceMarginRate;
         asset.positionFeeRate = newPositionFeeRate;
@@ -78,6 +76,7 @@ contract Admin is Storage {
         asset.halfSpread = newHalfSpread;
         emit SetAssetParams(
             assetId,
+            symbol,
             newInitialMarginRate,
             newMaintenanceMarginRate,
             newPositionFeeRate,
@@ -98,28 +97,28 @@ contract Admin is Storage {
         bool isShortable,
         bool useStableTokenForProfit,
         bool isEnabled,
-        bool isStrictStable
-    ) external onlyOwner {
+        bool isStrictStable,
+        bool canAddRemoveLiquidity
+    ) external onlyMaintainer {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         Asset storage asset = _storage.assets[assetId];
-        if (!asset.isStable) {
+        if (!asset.isStable()) {
             require(!isStrictStable, "STB"); // the asset is impossible to be a strict STaBle coin
         }
-        asset.isTradable = isTradable;
-        asset.isOpenable = isOpenable;
-        asset.isShortable = isShortable;
-        asset.useStableTokenForProfit = useStableTokenForProfit;
-        asset.isEnabled = isEnabled;
-        asset.isStrictStable = isStrictStable;
-        emit SetAssetFlags(
-            assetId,
-            isTradable,
-            isOpenable,
-            isShortable,
-            useStableTokenForProfit,
-            isEnabled,
-            isStrictStable
-        );
+        uint56 newFlags = asset.flags;
+        newFlags = (newFlags & (~ASSET_IS_TRADABLE)) | (isTradable ? ASSET_IS_TRADABLE : 0);
+        newFlags = (newFlags & (~ASSET_IS_OPENABLE)) | (isOpenable ? ASSET_IS_OPENABLE : 0);
+        newFlags = (newFlags & (~ASSET_IS_SHORTABLE)) | (isShortable ? ASSET_IS_SHORTABLE : 0);
+        newFlags =
+            (newFlags & (~ASSET_USE_STABLE_TOKEN_FOR_PROFIT)) |
+            (useStableTokenForProfit ? ASSET_USE_STABLE_TOKEN_FOR_PROFIT : 0);
+        newFlags = (newFlags & (~ASSET_IS_ENABLED)) | (isEnabled ? ASSET_IS_ENABLED : 0);
+        newFlags = (newFlags & (~ASSET_IS_STRICT_STABLE)) | (isStrictStable ? ASSET_IS_STRICT_STABLE : 0);
+        newFlags =
+            (newFlags & (~ASSET_CAN_ADD_REMOVE_LIQUIDITY)) |
+            (canAddRemoveLiquidity ? ASSET_CAN_ADD_REMOVE_LIQUIDITY : 0);
+        emit SetAssetFlags(assetId, asset.flags, newFlags);
+        asset.flags = newFlags;
         _updateSequence();
     }
 
@@ -129,7 +128,7 @@ contract Admin is Storage {
         uint32 newLimitRate8H
     ) external onlyOwner {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
-        if (_storage.assets[assetId].isStable) {
+        if (_storage.assets[assetId].isStable()) {
             _storage.shortFundingBaseRate8H = newBaseRate8H;
             _storage.shortFundingLimitRate8H = newLimitRate8H;
         } else {
@@ -157,10 +156,19 @@ contract Admin is Storage {
         _updateSequence();
     }
 
+    function setEmergencyNumbers(uint96 newMlpPriceLowerBound, uint96 newMlpPriceUpperBound) external onlyMaintainer {
+        if (
+            _storage.mlpPriceLowerBound != newMlpPriceLowerBound || _storage.mlpPriceUpperBound != newMlpPriceUpperBound
+        ) {
+            _storage.mlpPriceLowerBound = newMlpPriceLowerBound;
+            _storage.mlpPriceUpperBound = newMlpPriceUpperBound;
+            emit SetMlpPriceRange(newMlpPriceLowerBound, newMlpPriceUpperBound);
+        }
+        _updateSequence();
+    }
+
     function setNumbers(
         uint32 newFundingInterval,
-        uint96 newMlpPriceLowerBound,
-        uint96 newMlpPriceUpperBound,
         uint32 newLiquidityBaseFeeRate, // 1e5
         uint32 newLiquidityDynamicFeeRate, // 1e5
         uint32 newStrictStableDeviation, // 1e5
@@ -172,13 +180,6 @@ contract Admin is Storage {
         if (_storage.fundingInterval != newFundingInterval) {
             emit SetFundingInterval(_storage.fundingInterval, newFundingInterval);
             _storage.fundingInterval = newFundingInterval;
-        }
-        if (
-            _storage.mlpPriceLowerBound != newMlpPriceLowerBound || _storage.mlpPriceUpperBound != newMlpPriceUpperBound
-        ) {
-            _storage.mlpPriceLowerBound = newMlpPriceLowerBound;
-            _storage.mlpPriceUpperBound = newMlpPriceUpperBound;
-            emit SetMlpPriceRange(newMlpPriceLowerBound, newMlpPriceUpperBound);
         }
         if (
             _storage.liquidityBaseFeeRate != newLiquidityBaseFeeRate ||

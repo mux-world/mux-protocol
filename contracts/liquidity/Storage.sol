@@ -46,7 +46,7 @@ contract Storage is PlaceHolder, Initializable, SafeOwnableUpgradeable {
     mapping(bytes4 => address) internal _plugins;
     mapping(string => PluginData) internal _pluginData;
 
-    address internal _assetBroker;
+    address internal _maintainer;
     // reserves
     bytes32[49] private __gaps;
 }

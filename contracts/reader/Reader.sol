@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/ILiquidityPool.sol";
 import "../interfaces/IOrderBook.sol";
 import "../interfaces/ILiquidityManager.sol";
+import "../libraries/LibAsset.sol";
 
 contract Reader {
     struct ChainStorage {
@@ -17,6 +18,8 @@ contract Reader {
         uint32 maxLimitOrderTimeout; // 1e0
         uint256 lpDeduct; // MLP totalSupply = PRE_MINED - Σ_chains lpDeduct
         uint256 stableDeduct; // debt of stable coins = PRE_MINED - Σ_chains stableDeduct
+        bool isPositionOrderPaused;
+        bool isLiquidityOrderPaused;
     }
 
     struct PoolStorage {
@@ -33,18 +36,17 @@ contract Reader {
     }
 
     struct AssetStorage {
+        // assets with the same symbol in different chains are the same asset. they shares the same muxToken. so debts of the same symbol
+        // can be accumulated across chains (see Reader.AssetState.deduct). ex: ERC20(fBNB).symbol should be "BNB", so that BNBs of
+        // different chains are the same.
+        // since muxToken of all stable coins is the same and is calculated separately (see Reader.ChainState.stableDeduct), stable coin
+        // symbol can be different (ex: "USDT", "USDT.e" and "fUSDT").
         bytes32 symbol;
-        address tokenAddress;
-        address muxTokenAddress;
+        address tokenAddress; // erc20.address
+        address muxTokenAddress; // muxToken.address. all stable coins share the same muxTokenAddress
         uint8 id;
-        uint8 decimals;
-        bool isStable;
-        bool isTradable;
-        bool isOpenable;
-        bool isShortable;
-        bool useStableTokenForProfit;
-        bool isEnabled;
-        bool isStrictStable;
+        uint8 decimals; // erc20.decimals
+        uint56 flags; // a bitset of ASSET_*
         uint32 initialMarginRate; // 1e5
         uint32 maintenanceMarginRate; // 1e5
         uint32 positionFeeRate; // 1e5
@@ -59,8 +61,8 @@ contract Reader {
         address referenceOracle;
         uint32 referenceDeviation;
         uint32 halfSpread;
-        uint128 longCumulativeFundingRate;
-        uint128 shortCumulativeFunding;
+        uint128 longCumulativeFundingRate; // Σ_t fundingRate_t
+        uint128 shortCumulativeFunding; // Σ_t fundingRate_t * indexPrice_t
         uint96 spotLiquidity;
         uint96 totalLongPosition;
         uint96 totalShortPosition;
@@ -138,10 +140,10 @@ contract Reader {
         chain.assets = new AssetStorage[](assetLength);
         for (uint256 i = 0; i < assetLength; i++) {
             chain.assets[i] = _convertAssetStorage(assets[i]);
-            if (!assets[i].isStable) {
-                chain.assets[i].deduct = getDeduct(assets[i].muxTokenAddress);
-            } else {
+            if ((assets[i].flags & ASSET_IS_STABLE) != 0) {
                 stableMuxTokenAddress = assets[i].muxTokenAddress;
+            } else {
+                chain.assets[i].deduct = getDeduct(assets[i].muxTokenAddress);
             }
         }
         // from liquidityManager
@@ -163,6 +165,8 @@ contract Reader {
         chain.liquidityLockPeriod = orderBook.liquidityLockPeriod();
         chain.marketOrderTimeout = orderBook.marketOrderTimeout();
         chain.maxLimitOrderTimeout = orderBook.maxLimitOrderTimeout();
+        chain.isPositionOrderPaused = orderBook.isPositionOrderPaused();
+        chain.isLiquidityOrderPaused = orderBook.isLiquidityOrderPaused();
 
         // Deduct
         chain.lpDeduct = getDeduct(address(mlp));
@@ -252,13 +256,7 @@ contract Reader {
         a.muxTokenAddress = asset.muxTokenAddress;
         a.id = asset.id;
         a.decimals = asset.decimals;
-        a.isStable = asset.isStable;
-        a.isTradable = asset.isTradable;
-        a.isOpenable = asset.isOpenable;
-        a.isShortable = asset.isShortable;
-        a.useStableTokenForProfit = asset.useStableTokenForProfit;
-        a.isEnabled = asset.isEnabled;
-        a.isStrictStable = asset.isStrictStable;
+        a.flags = asset.flags;
         a.initialMarginRate = asset.initialMarginRate;
         a.maintenanceMarginRate = asset.maintenanceMarginRate;
         a.positionFeeRate = asset.positionFeeRate;

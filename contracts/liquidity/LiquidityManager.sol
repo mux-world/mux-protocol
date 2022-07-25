@@ -27,22 +27,34 @@ contract LiquidityManager is Storage, AssetManager, DexWrapper, Admin, Extension
         _dexSpotConfigs.push();
     }
 
+    /**
+     * @notice Return the address of LiquidityPool.
+     */
     function getPool() public view returns (address) {
         return _pool;
     }
 
+    /**
+     * @notice Return the address of vault to which the profits of dex farming is transferred.
+     */
     function getVault() public view returns (address) {
         return _vault;
     }
 
-    function getAssetBroker() public view returns (address) {
-        return _assetBroker;
+    function getMaintainer() public view returns (address) {
+        return _maintainer;
     }
 
+    /**
+     * @notice Return true if an external contract is allowed to access authed methods.
+     */
     function isHandler(address handler) public view returns (bool) {
         return _handlers[handler];
     }
 
+    /**
+     * @notice Return all the configs of current dexes.
+     */
     function getAllDexSpotConfiguration() external returns (DexSpotConfiguration[] memory configs) {
         uint256 n = _dexSpotConfigs.length - 1;
         if (n == 0) {
@@ -55,24 +67,39 @@ contract LiquidityManager is Storage, AssetManager, DexWrapper, Admin, Extension
         return configs;
     }
 
+    /**
+     * @notice Return the config of a given dex.
+     */
     function getDexSpotConfiguration(uint8 dexId) external returns (DexSpotConfiguration memory config) {
         require(dexId != 0 && dexId < _dexSpotConfigs.length, "LST"); // the asset is not LiSTed
         config = _getDexSpotConfiguration(dexId);
     }
 
+    /**
+     * @notice Return the lp balance and calculated spot amounts of a given dex.
+     */
     function getDexLiquidity(uint8 dexId) external returns (uint256[] memory liquidities, uint256 lpBalance) {
         lpBalance = getDexLpBalance(dexId);
         liquidities = getDexSpotAmounts(dexId, lpBalance);
     }
 
+    /**
+     * @notice Return adapter config of a given dex.
+     */
     function getDexAdapterConfig(uint8 dexId) external view returns (bytes memory config) {
         config = _dexData[dexId].config;
     }
 
+    /**
+     * @notice Query the adapter state of a given dex by key. A state key can be obtain by `keccak(KEY_NAME)`
+     */
     function getDexAdapterState(uint8 dexId, bytes32 key) external view returns (bytes32 state) {
         state = _dexData[dexId].states[key];
     }
 
+    /**
+     * @notice Return the address of adapter of a given dex.
+     */
     function getDexAdapter(uint8 dexId) external view returns (DexRegistration memory registration) {
         registration = _dexAdapters[dexId];
     }

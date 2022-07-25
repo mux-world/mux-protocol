@@ -28,6 +28,7 @@ contract LiquidityPoolHop1 is Storage, Trade, Getter, Proxy {
         _storage.weth = weth;
         _storage.nativeUnwrapper = nativeUnwrapper;
         _storage.vault = vault;
+        _storage.maintainer = owner();
     }
 
     /**

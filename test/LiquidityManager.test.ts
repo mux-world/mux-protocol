@@ -271,18 +271,12 @@ describe("LiquidityManager", () => {
   })
 
 
-  it("asset broker", async () => {
-    await tokenA.mint(lm.address, toWei("20"))
-    await user0.sendTransaction({ to: lm.address, value: toWei("1") })
+  it("maintainer", async () => {
 
-    expect(await tokenA.balanceOf(user0.address)).to.equal(toWei("0"))
-    console.log(fromWei(await user0.getBalance()))
-    await expect(lm.connect(user0).withdrawToken(tokenA.address, toWei("5"))).to.be.revertedWith("BRK")
-    await lm.setAssetBroker(user0.address)
-    await lm.connect(user0).withdrawToken(tokenA.address, toWei("5"))
-    await lm.connect(user0).withdrawToken(zeroAddress, toWei("0.5"))
-    expect(await tokenA.balanceOf(user0.address)).to.equal(toWei("5"))
-    console.log(fromWei(await user0.getBalance()))
-
+    expect(await lm.getMaintainer()).to.equal(zeroAddress)
+    await lm.setMaintainer(user1.address)
+    expect(await lm.getMaintainer()).to.equal(user1.address)
+    await lm.setMaintainer(zeroAddress)
+    expect(await lm.getMaintainer()).to.equal(zeroAddress)
   })
 })

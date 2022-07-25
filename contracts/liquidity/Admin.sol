@@ -20,30 +20,34 @@ contract Admin is AssetManager, DexWrapper {
     event SetDexWrapperEnable(uint8 dexId, bool enable);
     event SetDexSlippage(uint8 dexId, uint32 slippage);
     event SetPlugin(address plugin, bool enable, bytes4[] selectors);
-    event SetAssetBroker(address broker);
+    event SetVault(address previousVault, address newVault);
+    event SetPool(address previousVault, address newPool);
+    event SetMaintainer(address previousMaintainer, address newMaintainer);
 
     function setVault(address newVault) external onlyOwner {
         require(newVault != address(0), "ZAD"); // zero address
         require(newVault != _vault, "DUP"); // duplicated
+        emit SetVault(_vault, newVault);
         _vault = newVault;
     }
 
     function setPool(address newPool) external onlyOwner {
         require(newPool != address(0), "ZAD"); // zero address
         require(newPool != _pool, "DUP"); // duplicated
+        emit SetPool(_pool, newPool);
         _pool = newPool;
+    }
+
+    function setMaintainer(address newMaintainer) external onlyOwner {
+        require(newMaintainer != _maintainer, "DUP"); // duplicated
+        emit SetMaintainer(_maintainer, newMaintainer);
+        _maintainer = newMaintainer;
     }
 
     function setHandler(address handler, bool enable) external onlyOwner {
         require(_handlers[handler] != enable, "DUP");
         _handlers[handler] = enable;
         emit SetHandler(handler, enable);
-    }
-
-    function setAssetBroker(address broker) external onlyOwner {
-        require(_assetBroker != broker, "DUP");
-        _assetBroker = broker;
-        emit SetAssetBroker(broker);
     }
 
     /**

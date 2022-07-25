@@ -7,10 +7,10 @@ import "@openzeppelin/contracts/governance/TimelockController.sol";
 contract MuxTimelockController is TimelockController {
     using Address for address;
 
-    mapping(address => bool) public quickPaths;
-    event AddQuickPath(address indexed path);
-    event RemoveQuickPath(address indexed path);
-    event ExecuteQuickPath(address indexed path, bytes pluginData);
+    address public emergencyCall;
+
+    event SetEmergencyFunctions(address emergencyFunctions);
+    event CallEmergencyFunction(address path, bytes callData, bytes returnData);
 
     constructor(
         uint256 minDelay,
@@ -18,24 +18,17 @@ contract MuxTimelockController is TimelockController {
         address[] memory executors
     ) TimelockController(minDelay, proposers, executors) {}
 
-    function addQuickPath(address path) external {
-        require(!quickPaths[path], "QPE");
+    function setEmergencyCall(address _emergencyCall) external {
+        require(emergencyCall != _emergencyCall, "CHG");
         require(msg.sender == address(this), "S!T");
-        quickPaths[path] = true;
-        emit AddQuickPath(path);
+        emergencyCall = _emergencyCall;
+        emit SetEmergencyFunctions(_emergencyCall);
     }
 
-    function removeQuickPath(address path) external {
-        require(quickPaths[path], "QPE");
-        require(msg.sender == address(this), "S!T");
-        delete quickPaths[path];
-        emit RemoveQuickPath(path);
-    }
-
-    function executeQuickPath(address path, bytes calldata pluginData) external {
-        require(hasRole(EXECUTOR_ROLE, msg.sender), "S!R");
-        require(quickPaths[path], "!QP");
-        path.functionDelegateCall(pluginData);
-        emit ExecuteQuickPath(path, pluginData);
+    function executeEmergencyCall(bytes calldata callData) external {
+        require(hasRole(EXECUTOR_ROLE, msg.sender), "Sender must have EXECUTOR_ROLE");
+        require(emergencyCall != address(0), "EmergencyCall not set");
+        bytes memory returnData = emergencyCall.functionDelegateCall(callData);
+        emit CallEmergencyFunction(emergencyCall, callData, returnData);
     }
 }

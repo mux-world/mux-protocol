@@ -3,20 +3,9 @@ import "@nomiclabs/hardhat-ethers"
 import { expect } from "chai"
 import { Contract } from "ethers"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import {
-  toWei,
-  createContract,
-  toBytes32,
-  rate,
-  assembleSubAccountId,
-  PreMinedTokenTotalSupply,
-  createFactory,
-  toChainlink,
-  ReferenceOracleType,
-} from "./deployUtils"
+import { toWei, createContract, toBytes32, rate, assembleSubAccountId, PreMinedTokenTotalSupply, createFactory, toChainlink, ReferenceOracleType } from "./deployUtils"
 import { TestLiquidityPool } from "../typechain"
 import { MockChainlink } from "../typechain"
-const U = ethers.utils
 
 describe("Trade", () => {
   const weth9 = "0x0000000000000000000000000000000000000000" // this test file will not use weth
@@ -49,7 +38,9 @@ describe("Trade", () => {
     await mlp.mint(pool.address, toWei(PreMinedTokenTotalSupply))
     await pool.initialize(poolHop2.address, mlp.address, user0.address /* test only */, user0.address /* test only */, weth9, weth9, user0.address /* vault */)
     // fundingInterval, mlpPrice, mlpPrice, liqBase, liqDyn, σ_strict, brokerGas
-    await pool.setNumbers(3600 * 8, toWei("1"), toWei("2"), rate("0.000"), rate("0.000"), rate("0.01"), toWei("0"))
+    await pool.setNumbers(3600 * 8, rate("0.000"), rate("0.000"), rate("0.01"), toWei("0"))
+    // mlpPrice, mlpPrice
+    await pool.setEmergencyNumbers(toWei("1"), toWei("2"))
 
     asset0 = await createContract("MockERC20", ["AST0", "AST0", 18])
     asset1 = await createContract("MockERC20", ["AST1", "AST1", 18])
@@ -63,47 +54,45 @@ describe("Trade", () => {
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(0, toBytes32("AST0"), 18, true, asset0.address, muxAsset0.address)
     // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
-    await pool.setAssetParams(0, rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 1, rate("0"))
-    // id, tradable, openable, shortable, useStable, enabled, strict
-    await pool.setAssetFlags(0, true, true, true, false, true, true)
+    await pool.setAssetParams(0, toBytes32("AST0"), rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 1, rate("0"))
+    // id, tradable, openable, shortable, useStable, enabled, strict, liq
+    await pool.setAssetFlags(0, true, true, true, false, true, true, true)
     await pool.setFundingParams(0, rate("0.0003"), rate("0.0009"))
 
     // Asset 1 - position
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(1, toBytes32("AST1"), 18, false, asset1.address, muxAsset1.address)
     // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
-    await pool.setAssetParams(1, rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
-    // id, tradable, openable, shortable, useStable, enabled, strict
-    await pool.setAssetFlags(1, true, true, true, false, true, false)
+    await pool.setAssetParams(1, toBytes32("AST1"), rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
+    // id, tradable, openable, shortable, useStable, enabled, strict, liq
+    await pool.setAssetFlags(1, true, true, true, false, true, false, true)
     await pool.setFundingParams(1, rate("0.0002"), rate("0.0008"))
 
     // Asset 2 - another stable (not strict stable)
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(2, toBytes32("AST2"), 18, true, asset2.address, muxAsset0.address)
     // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
-    await pool.setAssetParams(2, rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 1, rate("0"))
-    // id, tradable, openable, shortable, useStable, enabled, strict
-    await pool.setAssetFlags(2, true, true, true, false, true, false)
+    await pool.setAssetParams(2, toBytes32("AST2"), rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 1, rate("0"))
+    // id, tradable, openable, shortable, useStable, enabled, strict, liq
+    await pool.setAssetFlags(2, true, true, true, false, true, false, true)
     await pool.setFundingParams(2, rate("0.0003"), rate("0.0009"))
 
     // Asset 3 - another position, useStable = true
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(3, toBytes32("AST3"), 18, false, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
     // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
-    await pool.setAssetParams(3, rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
-    // id, tradable, openable, shortable, useStable, enabled, strict
-    await pool.setAssetFlags(3, true, true, true, true, true, false)
+    await pool.setAssetParams(3, toBytes32("AST3"), rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
+    // id, tradable, openable, shortable, useStable, enabled, strict, liq
+    await pool.setAssetFlags(3, true, true, true, true, true, false, true)
     await pool.setFundingParams(3, rate("0.0002"), rate("0.0008"))
 
     await pool.setBlockTimestamp(3600 * 8 * 1)
   })
 
   it("invalid admin parameters", async () => {
-    await expect(pool.setNumbers(3600 * 8, toWei("1"), toWei("2"), rate("1"), rate("0.000"), rate("0.01"), toWei("0"))).to.revertedWith("F>1")
-    await expect(
-      pool.setAssetParams(100, rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
-    ).to.revertedWith("LST")
-    await expect(pool.setAssetFlags(100, true, true, true, true, true, false)).to.revertedWith("LST")
+    await expect(pool.setNumbers(3600 * 8, rate("1"), rate("0.000"), rate("0.01"), toWei("0"))).to.revertedWith("F>1")
+    await expect(pool.setAssetParams(100, toBytes32("SYM"), rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))).to.revertedWith("LST")
+    await expect(pool.setAssetFlags(100, true, true, true, true, true, false, true)).to.revertedWith("LST")
     await expect(pool.setFundingParams(100, rate("0.0002"), rate("0.0008"))).to.revertedWith("LST")
 
     const mockChainlink = (await createContract("MockChainlink")) as MockChainlink
@@ -181,6 +170,28 @@ describe("Trade", () => {
     await pool.removeLiquidity(user0.address, toWei("200"), 1, toWei("100"), toWei("1"), current, target)
     expect(await asset0.balanceOf(user0.address)).to.equal(toWei("51"))
     expect(await asset1.balanceOf(user0.address)).to.equal(toWei("2"))
+  })
+
+  it("add/remove liquidity is forbidden", async () => {
+    const current = toWei("29700")
+    const target = toWei("29700")
+
+    // add liq
+    await asset0.mint(pool.address, toWei("1000"))
+    // id, tradable, openable, shortable, useStable, enabled, strict, liq
+    await pool.setAssetFlags(0, true, true, true, false, true, true, false)
+    await expect(pool.addLiquidity(user0.address, 0, toWei("1000"), toWei("1"), toWei("1"), current, target)).to.revertedWith("TUL")
+    // id, tradable, openable, shortable, useStable, enabled, strict, liq
+    await pool.setAssetFlags(0, true, true, true, false, true, true, true)
+    await pool.addLiquidity(user0.address, 0, toWei("1000"), toWei("1"), toWei("1"), current, target) // = 100 mlp
+
+    // remove liq
+    // id, tradable, openable, shortable, useStable, enabled, strict, liq
+    await pool.setAssetFlags(0, true, true, true, false, true, true, false)
+    await expect(pool.removeLiquidity(user0.address, toWei("1"), 0, toWei("1"), toWei("1"), current, target)).to.revertedWith("TUL")
+    // id, tradable, openable, shortable, useStable, enabled, strict, liq
+    await pool.setAssetFlags(0, true, true, true, false, true, true, true)
+    await pool.removeLiquidity(user0.address, toWei("1"), 0, toWei("1"), toWei("1"), current, target)
   })
 
   it("depositCollateral / withdrawCollateral", async () => {
@@ -1043,22 +1054,5 @@ describe("Trade", () => {
       const tx1 = await pool.addLiquidity(user0.address, 0, toWei("1"), toWei("9999") /* ignore broker price */, toWei("1"), toWei("0"), toWei("1"))
       await expect(tx1).to.emit(pool, "AddLiquidity").withArgs(user0.address, 0, toWei("0.0001"), toWei("1"), toWei("0.0001"), toWei("0"))
     })
-  })
-
-  it("pauseAll", async () => {
-    await expect(pool.connect(user1).pauseAll()).to.revertedWith("Ownable: caller is not the owner")
-    await pool.pauseAll()
-
-    const current = toWei("29700")
-    const target = toWei("29700")
-    await expect(pool.addLiquidity(user0.address, 0, toWei("100"), toWei("1"), toWei("1"), current, target)).to.revertedWith("ENA")
-    await expect(pool.removeLiquidity(user0.address, toWei("1"), 0, toWei("1"), toWei("1"), current, target)).to.revertedWith("ENA")
-
-    const subAccountId = assembleSubAccountId(user0.address, 0, 1, true)
-    await expect(pool.depositCollateral(subAccountId, toWei("200"))).to.revertedWith("ENA")
-    await expect(pool.withdrawCollateral(subAccountId, toWei("50"), toWei("1"), toWei("1"))).to.revertedWith("ENA")
-
-    await expect(pool.openPosition(subAccountId, toWei("1"), toWei("1"), toWei("100"))).to.revertedWith("ENA")
-    await expect(pool.closePosition(subAccountId, toWei("1"), 0, toWei("2"), toWei("50"), toWei("2"))).to.revertedWith("ENA")
   })
 })

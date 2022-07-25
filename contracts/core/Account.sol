@@ -46,8 +46,8 @@ contract Account is Storage {
         SubAccount storage subAccount = _storage.accounts[subAccountId];
         Asset storage asset = _storage.assets[decoded.assetId];
         Asset storage collateral = _storage.assets[decoded.collateralId];
-        require(asset.isEnabled, "ENA"); // the token is temporarily not ENAbled
-        require(collateral.isEnabled, "ENA"); // the token is temporarily not ENAbled
+        require(asset.isEnabled(), "ENA"); // the token is temporarily not ENAbled
+        require(collateral.isEnabled(), "ENA"); // the token is temporarily not ENAbled
         uint96 wadAmount = collateral.toWad(rawAmount);
         subAccount.collateral += wadAmount;
 
@@ -69,8 +69,8 @@ contract Account is Storage {
 
         Asset storage asset = _storage.assets[decoded.assetId];
         Asset storage collateral = _storage.assets[decoded.collateralId];
-        require(asset.isEnabled, "ENA"); // the token is temporarily not ENAbled
-        require(collateral.isEnabled, "ENA"); // the token is temporarily not ENAbled
+        require(asset.isEnabled(), "ENA"); // the token is temporarily not ENAbled
+        require(collateral.isEnabled(), "ENA"); // the token is temporarily not ENAbled
         SubAccount storage subAccount = _storage.accounts[subAccountId];
         assetPrice = LibReferenceOracle.checkPrice(_storage, asset, assetPrice);
         collateralPrice = LibReferenceOracle.checkPrice(_storage, collateral, collateralPrice);
@@ -107,8 +107,8 @@ contract Account is Storage {
 
         Asset storage asset = _storage.assets[decoded.assetId];
         Asset storage collateral = _storage.assets[decoded.collateralId];
-        require(asset.isEnabled, "ENA"); // the token is temporarily not ENAbled
-        require(collateral.isEnabled, "ENA"); // the token is temporarily not ENAbled
+        require(asset.isEnabled(), "ENA"); // the token is temporarily not ENAbled
+        require(collateral.isEnabled(), "ENA"); // the token is temporarily not ENAbled
         uint96 wadAmount = subAccount.collateral;
         uint256 rawAmount = collateral.toRaw(wadAmount);
         subAccount.collateral = 0;

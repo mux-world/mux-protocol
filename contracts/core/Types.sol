@@ -41,6 +41,8 @@ struct LiquidityPoolStorage {
     // slot
     address vault;
     uint96 brokerGasRebate; // the number of native tokens for broker gas rebates per transaction
+    // slot
+    address maintainer;
     bytes32[50] _gap;
 }
 
@@ -56,13 +58,7 @@ struct Asset {
     address tokenAddress; // erc20.address
     uint8 id;
     uint8 decimals; // erc20.decimals
-    bool isStable; // is a usdt, usdc, ...
-    bool isTradable; // allowed to be assetId
-    bool isOpenable; // can open position
-    bool isShortable; // allow shorting this asset
-    bool useStableTokenForProfit; // take profit will get stable coin
-    bool isEnabled; // allowed to be assetId and collateralId
-    bool isStrictStable; // assetPrice is always 1
+    uint56 flags; // a bitset of ASSET_*
     uint24 _flagsPadding;
     // slot
     uint32 initialMarginRate; // 1e5
@@ -106,6 +102,17 @@ struct Asset {
     uint128 longCumulativeFundingRate; // Σ_t fundingRate_t
     uint128 shortCumulativeFunding; // Σ_t fundingRate_t * indexPrice_t
 }
+
+uint32 constant FUNDING_PERIOD = 3600 * 8;
+
+uint56 constant ASSET_IS_STABLE = 0x00000000000001; // is a usdt, usdc, ...
+uint56 constant ASSET_CAN_ADD_REMOVE_LIQUIDITY = 0x00000000000002; // can call addLiquidity and removeLiquidity with this token
+uint56 constant ASSET_IS_TRADABLE = 0x00000000000100; // allowed to be assetId
+uint56 constant ASSET_IS_OPENABLE = 0x00000000010000; // can open position
+uint56 constant ASSET_IS_SHORTABLE = 0x00000001000000; // allow shorting this asset
+uint56 constant ASSET_USE_STABLE_TOKEN_FOR_PROFIT = 0x00000100000000; // take profit will get stable coin
+uint56 constant ASSET_IS_ENABLED = 0x00010000000000; // allowed to be assetId and collateralId
+uint56 constant ASSET_IS_STRICT_STABLE = 0x01000000000000; // assetPrice is always 1 unless volatility exceeds strictStableDeviation
 
 struct SubAccount {
     // slot

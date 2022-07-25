@@ -5,23 +5,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../../libraries/LibUtils.sol";
-import "./Plugin.sol";
+import "./TokenBridge.sol";
 
 /**
  * @notice A module to provide liquidity to curve then farm on some project with the lpToken.
  */
-contract CelerBridge is Plugin {
+contract CelerBridge is TokenBridge {
     using Address for address;
-
-    event BridgePeerTransfer(
-        address indexed bridge,
-        address indexed recipient,
-        address indexed token,
-        uint256 amount,
-        uint64 dstChainId,
-        bytes extraData
-    );
-    event SetTransferPermission(uint256 chainId, uint8 assetId, bool isAllowed);
 
     function name() public pure override returns (string memory) {
         return "CelerBridge";
@@ -34,46 +24,24 @@ contract CelerBridge is Plugin {
         selectors[2] = this.setCelerBridgePermission.selector;
     }
 
-    function getPeers(uint256 chainId) public pure returns (address peer) {
-        assembly {
-            switch chainId
-            case 43114 {
-                // ava
-                peer := 0x28f16eB86481066Bf63BcBEB05C8474f7120A36C
-            }
-            case 250 {
-                // fantom
-                peer := 0x5898c3E218a8501533d771C86e2fA37743ea2aDd
-            }
-            case 56 {
-                // bsc
-                peer := 0xee85CDdCe0CF068091081eA0fcd53f279aa3B09F
-            }
-            case 42161 {
-                // arbitrum
-                peer := 0x02FAe054ACD7FB1615471319c4E3029DFbC2B23C
-            }
-        }
-    }
-
     function getBridge() public view returns (address bridge) {
         assembly {
             switch chainid()
+            case 42161 {
+                // arbitrum
+                bridge := 0x1619DE6B6B20eD217a58d00f37B9d47C7663feca
+            }
             case 43114 {
                 // ava
                 bridge := 0xef3c714c9425a8F3697A9C969Dc1af30ba82e5d4
-            }
-            case 250 {
-                // fantom
-                bridge := 0x374B8a9f3eC5eB2D97ECA84Ea27aCa45aa1C57EF
             }
             case 56 {
                 // bsc
                 bridge := 0xdd90E5E87A2081Dcf0391920868eBc2FFB81a1aF
             }
-            case 42161 {
-                // arbitrum
-                bridge := 0x1619DE6B6B20eD217a58d00f37B9d47C7663feca
+            case 250 {
+                // fantom
+                bridge := 0x374B8a9f3eC5eB2D97ECA84Ea27aCa45aa1C57EF
             }
         }
     }
@@ -87,12 +55,7 @@ contract CelerBridge is Plugin {
         uint8 assetId,
         bool isAllowed
     ) public onlyOwner {
-        _setStateAsUint256(_permissionKey(chainId, assetId), isAllowed ? 1 : 0);
-        emit SetTransferPermission(chainId, assetId, isAllowed);
-    }
-
-    function _permissionKey(uint256 chainId, uint8 assetId) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(chainId, assetId));
+        _setPermission(chainId, assetId, isAllowed);
     }
 
     function celerTransfer(
@@ -100,7 +63,7 @@ contract CelerBridge is Plugin {
         uint256 amount,
         uint256 dstChainId,
         uint256 maxSlippage
-    ) public onlyOwner {
+    ) public onlyMaintainer {
         require(getCelerBridgePermission(dstChainId, assetId), "CelerBridge::NotPermitted");
         require(amount != 0, "CelerBridge::ZeroAmount");
         require(dstChainId <= type(uint64).max, "CelerBridge::ChainIdOutOfRange");

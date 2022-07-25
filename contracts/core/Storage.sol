@@ -5,11 +5,12 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import "../components/SafeOwnableUpgradeable.sol";
 import "../libraries/LibSubAccount.sol";
+import "../libraries/LibAsset.sol";
 import "./Types.sol";
 import "./Events.sol";
 
 contract Storage is Initializable, SafeOwnableUpgradeable, Events {
-    uint32 internal constant FUNDING_PERIOD = 3600 * 8;
+    using LibAsset for Asset;
 
     LiquidityPoolStorage internal _storage;
 
@@ -20,6 +21,11 @@ contract Storage is Initializable, SafeOwnableUpgradeable, Events {
 
     modifier onlyLiquidityManager() {
         require(_msgSender() == _storage.liquidityManager, "LQM"); // can only be called by LiQuidity Manager
+        _;
+    }
+
+    modifier onlyMaintainer() {
+        require(_msgSender() == _storage.maintainer || _msgSender() == owner(), "S!M"); // Sender is Not MaiNTainer
         _;
     }
 
@@ -45,7 +51,7 @@ contract Storage is Initializable, SafeOwnableUpgradeable, Events {
     }
 
     function _isStable(uint8 tokenId) internal view returns (bool) {
-        return _storage.assets[tokenId].isStable;
+        return _storage.assets[tokenId].isStable();
     }
 
     bytes32[50] internal _gap;

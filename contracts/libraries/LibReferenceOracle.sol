@@ -3,6 +3,7 @@ pragma solidity 0.8.10;
 
 import "../core/Types.sol";
 import "./LibMath.sol";
+import "./LibAsset.sol";
 
 interface IChainlink {
     function latestAnswer() external view returns (int256);
@@ -59,6 +60,7 @@ enum SpreadType {
 library LibReferenceOracle {
     using LibMath for uint256;
     using LibMath for uint96;
+    using LibAsset for Asset;
 
     // indicate that the asset price is too far away from reference oracle
     event AssetPriceOutOfRange(uint8 assetId, uint96 price, uint96 referencePrice, uint32 deviation);
@@ -96,7 +98,7 @@ library LibReferenceOracle {
         }
 
         // strict stable dampener
-        if (asset.isStrictStable) {
+        if (asset.isStrictStable()) {
             uint256 delta = price > 1e18 ? price - 1e18 : 1e18 - price;
             uint256 dampener = uint256(pool.strictStableDeviation) * 1e13; // 1e5 => 1e18
             if (delta <= dampener) {

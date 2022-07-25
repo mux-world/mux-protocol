@@ -116,7 +116,7 @@ describe("LmCrvFarm", () => {
   })
 
 
-  it("uni-like-2-farm", async () => {
+  it("crv-like-2-farm", async () => {
     const crv = await createContract("Curve2Pool",
       [
         [tokenC.address, tokenD.address],

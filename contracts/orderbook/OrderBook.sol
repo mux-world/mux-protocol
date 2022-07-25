@@ -64,6 +64,7 @@ contract OrderBook is Storage, Admin {
         _mlp = IERC20Upgradeable(mlp);
         _weth = IWETH(weth);
         _nativeUnwrapper = INativeUnwrapper(nativeUnwrapper);
+        maintainer = owner();
     }
 
     function getOrderCount() external view returns (uint256) {
@@ -227,7 +228,7 @@ contract OrderBook is Storage, Admin {
     /**
      * @dev   Rebalance pool liquidity. Swap token 0 for token 1.
      *
-     *        msg.sender must implement IMuxRebalancerCallback. rebate rate follows baseFeeRate.
+     *        msg.sender must implement IMuxRebalancerCallback.
      * @param tokenId0      asset.id to be swapped out of the pool
      * @param tokenId1      asset.id to be swapped into the pool
      * @param rawAmount0    token 0 amount. decimals = erc20.decimals

@@ -21,7 +21,7 @@ export interface DeploymentRecord {
 
 export class Deployer {
   public SAVE_PREFIX = "./deployments/"
-  public SAVE_POSTFIX = ".deployment.js"
+  public SAVE_POSTFIX = ".deployment.json"
 
   public e: HardhatEthersHelpers
   public options: DeploymentOptions
@@ -108,7 +108,7 @@ export class Deployer {
       deployedAt: receipt.blockNumber,
     }
     this._logDeployment(aliasName, deployed, `(implementation[${implementation.address}] admin[${admin}]`)
-    return deployed
+    return await this.getContractAt(contractName, deployed.address)
   }
 
   public async upgrade(contractName: string, aliasName: string, admin: string, newImplementation?: string): Promise<any> {

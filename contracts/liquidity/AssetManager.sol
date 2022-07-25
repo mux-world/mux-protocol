@@ -18,12 +18,16 @@ contract AssetManager is Storage {
     event WithdrawToken(address token, address recipient, uint256 amount);
 
     modifier auth() {
-        require(msg.sender == address(this) || _handlers[msg.sender], "NHL"); // not handler
+        require(_handlers[msg.sender], "NHL"); // not handler
         _;
     }
 
-    function withdrawToken(address token, uint256 amount) external {
-        require(msg.sender == _assetBroker, "BRK");
+    modifier onlyMaintainer() {
+        require(msg.sender == _maintainer || msg.sender == owner(), "SND"); // invalid sender
+        _;
+    }
+
+    function withdrawToken(address token, uint256 amount) external onlyOwner {
         if (token == address(0)) {
             AddressUpgradeable.sendValue(payable(msg.sender), amount);
         } else {

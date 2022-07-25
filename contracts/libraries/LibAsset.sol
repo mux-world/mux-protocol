@@ -45,4 +45,44 @@ library LibAsset {
     function toRaw(Asset storage token, uint96 wadAmount) internal view returns (uint256) {
         return uint256(wadAmount) / 10**(18 - token.decimals);
     }
+
+    // is a usdt, usdc, ...
+    function isStable(Asset storage asset) internal view returns (bool) {
+        return (asset.flags & ASSET_IS_STABLE) != 0;
+    }
+
+    // can call addLiquidity and removeLiquidity with this token
+    function canAddRemoveLiquidity(Asset storage asset) internal view returns (bool) {
+        return (asset.flags & ASSET_CAN_ADD_REMOVE_LIQUIDITY) != 0;
+    }
+
+    // allowed to be assetId
+    function isTradable(Asset storage asset) internal view returns (bool) {
+        return (asset.flags & ASSET_IS_TRADABLE) != 0;
+    }
+
+    // can open position
+    function isOpenable(Asset storage asset) internal view returns (bool) {
+        return (asset.flags & ASSET_IS_OPENABLE) != 0;
+    }
+
+    // allow shorting this asset
+    function isShortable(Asset storage asset) internal view returns (bool) {
+        return (asset.flags & ASSET_IS_SHORTABLE) != 0;
+    }
+
+    // take profit will get stable coin
+    function useStableTokenForProfit(Asset storage asset) internal view returns (bool) {
+        return (asset.flags & ASSET_USE_STABLE_TOKEN_FOR_PROFIT) != 0;
+    }
+
+    // allowed to be assetId and collateralId
+    function isEnabled(Asset storage asset) internal view returns (bool) {
+        return (asset.flags & ASSET_IS_ENABLED) != 0;
+    }
+
+    // assetPrice is always 1 unless volatility exceeds strictStableDeviation
+    function isStrictStable(Asset storage asset) internal view returns (bool) {
+        return (asset.flags & ASSET_IS_STRICT_STABLE) != 0;
+    }
 }

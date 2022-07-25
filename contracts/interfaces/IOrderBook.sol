@@ -18,6 +18,16 @@ interface IOrderBook {
     function maxLimitOrderTimeout() external view returns (uint32);
 
     /**
+     * @notice Return true if the filling of position order is temporarily paused.
+     */
+    function isPositionOrderPaused() external view returns (bool);
+
+    /**
+     * @notice Return true if the filling of liquidity/rebalance order is temporarily paused.
+     */
+    function isLiquidityOrderPaused() external view returns (bool);
+
+    /**
      * @notice Get an Order by orderId.
      */
     function getOrder(uint64 orderId) external view returns (bytes32[3] memory, bool);

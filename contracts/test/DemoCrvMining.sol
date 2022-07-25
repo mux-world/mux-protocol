@@ -59,4 +59,12 @@ contract DemoCrvMining {
         pendingRewards[_addr][address(this)] = 0;
         IERC20(rewardToken).transfer(_receiver, r);
     }
+
+    function mint(address gauge) external {
+        claim_rewards(msg.sender, msg.sender);
+    }
+
+    function claimable_tokens(address _user) external returns (uint256) {
+        return pendingRewards[_user][rewardToken];
+    }
 }

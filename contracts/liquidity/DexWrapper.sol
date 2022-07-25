@@ -170,7 +170,7 @@ contract DexWrapper is AssetManager {
         emit RemoveDexLiquidity(dexId, shareAmount, minAmounts, deadline);
     }
 
-    function claimDexFees(uint8 dexId) external dexCall(dexId) auth {
+    function claimDexFees(uint8 dexId) external dexCall(dexId) {
         DexRegistration storage registration = _dexAdapters[dexId];
         require(registration.adapter != address(0), "ANS"); // adapter not set
         _delegateCall(registration.adapter, abi.encodeWithSelector(IDexAdapter.claimFees.selector, dexId));

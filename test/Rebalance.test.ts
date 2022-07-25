@@ -46,8 +46,10 @@ describe("Rebalance", () => {
     await orderBook.addBroker(broker.address)
     await liquidityManager.initialize(vault.address, pool.address)
     await pool.initialize(poolHop2.address, mlp.address, orderBook.address, liquidityManager.address, weth9.address, nativeUnwrapper.address, vault.address)
-    // fundingInterval, mlpPrice, mlpPrice, liqBase, liqDyn, σ_strict, brokerGas
-    await pool.setNumbers(3600 * 8, toWei("1"), toWei("2000"), rate("0.0001"), rate("0.0000"), rate("0.01"), toWei("0"))
+    // fundingInterval, liqBase, liqDyn, σ_strict, brokerGas
+    await pool.setNumbers(3600 * 8, rate("0.0001"), rate("0.0000"), rate("0.01"), toWei("0"))
+    // mlpPrice, mlpPrice
+    await pool.setEmergencyNumbers(toWei("1"), toWei("2000"))
     await nativeUnwrapper.addWhiteList(pool.address)
     await nativeUnwrapper.addWhiteList(orderBook.address)
     await mlp.transfer(pool.address, toWei(PreMinedTokenTotalSupply))
@@ -69,18 +71,18 @@ describe("Rebalance", () => {
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(1, toBytes32("ETH"), 18, false, weth9.address, muxWeth.address)
     // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, spread
-    await pool.setAssetParams(1, rate("0.1"), rate("0.05"), rate("0.001"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
-    // id, tradable, openable, shortable, useStable, enabled, strict
-    await pool.setAssetFlags(1, true, true, true, false, true, false)
+    await pool.setAssetParams(1, toBytes32("ETH"), rate("0.1"), rate("0.05"), rate("0.001"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
+    // id, tradable, openable, shortable, useStable, enabled, strict, liq
+    await pool.setAssetFlags(1, true, true, true, false, true, false, true)
     await pool.setFundingParams(1, rate("0.0003"), rate("0.0009"))
 
     // 2 = USDC
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(2, toBytes32("USDC"), 6, true, usdc.address, muxUsd.address)
     // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, spread
-    await pool.setAssetParams(2, rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1, rate("0"))
-    // id, tradable, openable, shortable, useStable, enabled, strict
-    await pool.setAssetFlags(2, false, false, false, false, true, true)
+    await pool.setAssetParams(2, toBytes32("USDC"), rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1, rate("0"))
+    // id, tradable, openable, shortable, useStable, enabled, strict, liq
+    await pool.setAssetFlags(2, false, false, false, false, true, true, true)
     await pool.setFundingParams(2, rate("0.0002"), rate("0.0008"))
 
     await pool.setBlockTimestamp(86400 * 1)
@@ -111,11 +113,7 @@ describe("Rebalance", () => {
   it("good", async () => {
     await usdc.mint(rebalancer.address, toUnit("300000", 6))
     {
-      await expect(
-        orderBook
-          .connect(lp1)
-          .placeRebalanceOrder(1, 2, toWei("100"), toUnit("99999999", 6), "0xe0e5df977c8fd4547a156835a1328d03794e4b169d7d6d318bcbe2516bd8265b")
-      ).to.revertedWith("BAL")
+      await expect(orderBook.connect(lp1).placeRebalanceOrder(1, 2, toWei("100"), toUnit("99999999", 6), "0xe0e5df977c8fd4547a156835a1328d03794e4b169d7d6d318bcbe2516bd8265b")).to.revertedWith("BAL")
       await expect(rebalancer.placeOrder(1, 2, toWei("100"), toUnit("99999999", 6)))
         .to.emit(orderBook, "NewRebalanceOrder")
         .withArgs(rebalancer.address, 1, 1, 2, toWei("100"), toUnit("99999999", 6), "0xe0e5df977c8fd4547a156835a1328d03794e4b169d7d6d318bcbe2516bd8265b")
@@ -123,12 +121,12 @@ describe("Rebalance", () => {
     {
       await expect(orderBook.fillRebalanceOrder(1, toWei("3000"), toWei("1"))).to.revertedWith("BKR")
       await orderBook.connect(broker).fillRebalanceOrder(1, toWei("3000"), toWei("1"))
-      expect(await usdc.balanceOf(rebalancer.address)).to.equal(toUnit("30", 6)) //  // 100 * 3000  / 1 * 0.0001
+      expect(await usdc.balanceOf(rebalancer.address)).to.equal(toUnit("0", 6)) // rebate = 0
       const tokenInfo0 = await pool.getAssetInfo(1)
       expect(tokenInfo0.spotLiquidity).to.equal(toWei("0"))
       expect(tokenInfo0.collectedFee).to.equal(toWei("0.01"))
       const tokenInfo1 = await pool.getAssetInfo(2)
-      expect(tokenInfo1.spotLiquidity).to.equal(toWei("299970")) //  // 100 * 3000  / 1 * 0.9999
+      expect(tokenInfo1.spotLiquidity).to.equal(toWei("300000")) // 100 * 3000 / 1
       expect(tokenInfo1.collectedFee).to.equal(toWei("0"))
     }
   })

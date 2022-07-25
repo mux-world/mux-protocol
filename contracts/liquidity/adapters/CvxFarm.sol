@@ -18,50 +18,76 @@ interface ICurvePool {
         uint256 j,
         uint256 dx
     ) external view returns (uint256 dy);
+
+    function add_liquidity(uint256[3] memory _amounts, uint256 _min_mint_amount) external;
+
+    function remove_liquidity(uint256 _burn_amount, uint256[3] memory _min_amounts) external;
+
+    function calc_token_amount(uint256[3] memory _amounts, bool _is_deposit) external view returns (uint256);
 }
 
-interface IGaugeFactory {
-    function mint(address gauge) external;
-}
+interface IDeposit {
+    struct PoolInfo {
+        address lptoken;
+        address token;
+        address gauge;
+        address crvRewards;
+        address stash;
+        bool shutdown;
+    }
 
-interface IGauge {
-    function factory() external view returns (address);
+    function poolInfo(uint256 index) external view returns (PoolInfo memory);
+
+    function staker() external view returns (address);
 
     function deposit(
-        uint256 _value,
-        address _user,
-        bool _claim_rewards
-    ) external;
+        uint256 _pid,
+        uint256 _amount,
+        bool _stake
+    ) external returns (bool);
 
-    function withdraw(
-        uint256 _value,
-        address _user,
-        bool _claim_rewards
-    ) external;
+    function withdraw(uint256 _pid, uint256 _amount) external returns (bool);
+}
 
-    function balanceOf(address account) external view returns (uint256);
+interface IRewards {
+    function balanceOf(address) external view returns (uint256);
 
-    function claim_rewards(address _addr, address _receiver) external;
+    function earned(address account) external view returns (uint256);
 
-    function claimable_tokens(address _addr) external returns (uint256);
+    function getReward(address _account, bool _claimExtras) external returns (bool);
+}
+
+interface ICvxToken {
+    function totalSupply() external view returns (uint256);
+
+    function reductionPerCliff() external view returns (uint256);
+
+    function totalCliffs() external view returns (uint256);
+
+    function maxSupply() external view returns (uint256);
 }
 
 /**
  * @notice A module to provide liquidity to curve then farm on some project with the lpToken.
  */
-abstract contract CurveFarm is DexAdapter {
+abstract contract CvxFarm is DexAdapter {
     using Address for address;
     using SafeERC20 for IERC20;
+
+    address public constant CRV_TOKEN = 0xD533a949740bb3306d119CC777fa900bA034cd52;
+    address public constant CVX_TOKEN = 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B;
 
     struct Context {
         address pool;
         address lpToken;
-        address farm;
-        address rewardToken;
+        address deposit;
+        uint256 poolId;
+        address rewards;
         uint8 quoteIndex;
     }
 
-    bytes32 constant CLAIMED_FARM_REWARD = keccak256("CLAIMED_FARM_REWARD");
+    bytes32 constant CLAIMED_CRV_REWARD = keccak256("CLAIMED_CRV_REWARD");
+    bytes32 constant CLAIMED_CVX_REWARD = keccak256("CLAIMED_CVX_REWARD");
 
     function getFees()
         external
@@ -74,19 +100,43 @@ abstract contract CurveFarm is DexAdapter {
     {
         Context memory context = _getContext();
         address[] memory dexTokens = _getDexTokens();
-        uint256 n = context.rewardToken == address(0) ? dexTokens.length : dexTokens.length + 1;
-        tokens = new address[](n);
-        for (uint256 i = 0; i < dexTokens.length; i++) {
+        uint256 n = dexTokens.length;
+        tokens = new address[](n + 2);
+        for (uint256 i = 0; i < n; i++) {
             tokens[i] = dexTokens[i];
         }
         // 0 -- no fee
-        claimedAmounts = new uint256[](n);
-        pendingAmounts = new uint256[](n);
+        claimedAmounts = new uint256[](n + 2);
+        pendingAmounts = new uint256[](n + 2);
+
+        uint256 earnedAmount = IRewards(context.rewards).earned(address(this));
         // farm rewards
-        if (context.farm != address(0)) {
-            tokens[n - 1] = context.rewardToken;
-            pendingAmounts[n - 1] = IGauge(context.farm).claimable_tokens(address(this));
-            claimedAmounts[n - 1] = _getStateAsUint256(CLAIMED_FARM_REWARD);
+        tokens[n] = CRV_TOKEN;
+        pendingAmounts[n] = earnedAmount;
+        claimedAmounts[n] = _getStateAsUint256(CLAIMED_CRV_REWARD);
+
+        tokens[n + 1] = CVX_TOKEN;
+        pendingAmounts[n + 1] = _getCvxMintAmount(earnedAmount);
+        claimedAmounts[n + 1] = _getStateAsUint256(CLAIMED_CVX_REWARD);
+    }
+
+    function _getCvxMintAmount(uint256 amount) internal view returns (uint256 mintAmount) {
+        uint256 supply = ICvxToken(CVX_TOKEN).totalSupply();
+        if (supply == 0) {
+            mintAmount = amount;
+            return mintAmount;
+        }
+        uint256 reductionPerCliff = ICvxToken(CVX_TOKEN).reductionPerCliff();
+        uint256 totalCliffs = ICvxToken(CVX_TOKEN).totalCliffs();
+        uint256 maxSupply = ICvxToken(CVX_TOKEN).maxSupply();
+        uint256 cliff = supply / reductionPerCliff;
+        if (cliff < totalCliffs) {
+            uint256 reduction = totalCliffs - cliff;
+            mintAmount = (amount * reduction) / totalCliffs;
+            uint256 amtTillMax = maxSupply - supply;
+            if (mintAmount > amtTillMax) {
+                mintAmount = amtTillMax;
+            }
         }
     }
 
@@ -126,7 +176,7 @@ abstract contract CurveFarm is DexAdapter {
         uint256[] calldata,
         uint256
     ) external pure override returns (uint256[] memory, uint256) {
-        revert("CurveFarm::InterfaceUnsupported");
+        revert("CvxFarm::InterfaceUnsupported");
     }
 
     function addLiquidityCurve(uint256[] calldata maxAmounts, uint256 minLpAmount)
@@ -138,7 +188,8 @@ abstract contract CurveFarm is DexAdapter {
         address[] memory tokens = _getDexTokens();
         require(maxAmounts.length == tokens.length, "LEN");
         for (uint256 i = 0; i < tokens.length; i++) {
-            IERC20(tokens[i]).approve(context.pool, maxAmounts[i]);
+            IERC20(tokens[i]).safeApprove(context.pool, 0);
+            IERC20(tokens[i]).safeApprove(context.pool, maxAmounts[i]);
         }
         liquidityAmount = _addLiquidity(context, maxAmounts, minLpAmount);
         addedAmounts = maxAmounts;
@@ -158,25 +209,31 @@ abstract contract CurveFarm is DexAdapter {
 
     function claimFees() external virtual {
         Context memory context = _getContext();
-        address factory = IGauge(context.farm).factory();
-        if (factory != address(0)) {
-            IGaugeFactory(factory).mint(context.farm);
+        IRewards(context.rewards).getReward(address(this), true);
+        {
+            uint256 rewardAmount = IERC20(CRV_TOKEN).balanceOf(address(this));
+            if (rewardAmount > 0) {
+                IERC20(CRV_TOKEN).safeTransfer(_vault, rewardAmount);
+                _incStateAsUint256(CLAIMED_CRV_REWARD, rewardAmount);
+                emit TransferFeeToVault(CRV_TOKEN, _vault, rewardAmount);
+            }
         }
-        IGauge(context.farm).claim_rewards(address(this), address(this));
-        uint256 rewardAmount = IERC20(context.rewardToken).balanceOf(address(this));
-        if (rewardAmount > 0) {
-            IERC20(context.rewardToken).safeTransfer(_vault, rewardAmount);
-            _incStateAsUint256(CLAIMED_FARM_REWARD, rewardAmount);
-            emit TransferFeeToVault(context.rewardToken, _vault, rewardAmount);
+        {
+            uint256 rewardAmount = IERC20(CVX_TOKEN).balanceOf(address(this));
+            if (rewardAmount > 0) {
+                IERC20(CVX_TOKEN).safeTransfer(_vault, rewardAmount);
+                _incStateAsUint256(CLAIMED_CVX_REWARD, rewardAmount);
+                emit TransferFeeToVault(CVX_TOKEN, _vault, rewardAmount);
+            }
         }
     }
 
     function _stakeLpToken(Context memory context, uint256 lpAmount) internal virtual {
-        if (context.farm == address(0)) {
+        if (context.deposit == address(0)) {
             return;
         }
-        IERC20(context.lpToken).approve(context.farm, lpAmount);
-        try IGauge(context.farm).deposit(lpAmount, address(this), false) {} catch Error(string memory reason) {
+        IERC20(context.lpToken).approve(context.deposit, lpAmount);
+        try IDeposit(context.deposit).deposit(context.poolId, lpAmount, true) {} catch Error(string memory reason) {
             revert(reason);
         } catch {
             revert("SushIGauge::CallStakeFail");
@@ -184,10 +241,10 @@ abstract contract CurveFarm is DexAdapter {
     }
 
     function _unstakeLpToken(Context memory context, uint256 lpAmount) internal virtual {
-        if (context.farm == address(0)) {
+        if (context.deposit == address(0)) {
             return;
         }
-        try IGauge(context.farm).withdraw(lpAmount, address(this), false) {} catch Error(string memory reason) {
+        try IDeposit(context.deposit).withdraw(context.poolId, lpAmount) {} catch Error(string memory reason) {
             revert(reason);
         } catch {
             revert("SushIGauge::CallUnStakeFail");
@@ -224,8 +281,15 @@ abstract contract CurveFarm is DexAdapter {
     }
 
     function _getLpBalance(Context memory context) internal view returns (uint256) {
-        if (context.farm != address(0)) {
-            return IGauge(context.farm).balanceOf(address(this));
+        // if (context.deposit != address(0)) {
+        //     address token = IDeposit(context.deposit).poolInfo(context.poolId).token;
+        //     return IERC20(token).balanceOf(address(this));
+        // } else {
+        //     return IERC20(context.lpToken).balanceOf(address(this));
+        // }
+
+        if (context.rewards != address(0)) {
+            return IERC20(context.rewards).balanceOf(address(this));
         } else {
             return IERC20(context.lpToken).balanceOf(address(this));
         }

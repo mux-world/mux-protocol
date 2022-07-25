@@ -6,6 +6,7 @@ import { LiquidityPool, OrderBook, LiquidityManager, Reader, NativeUnwrapper } f
 import { MuxToken, MlpToken, MockERC20 } from "../typechain"
 import { Contract, ContractReceipt } from "ethers"
 import { transferThroughDemoBridge } from "./demoBridgeTransfer"
+import { Vault } from "../typechain/Vault"
 
 const TOKEN_POSTFIX = "0328"
 const keeperAddress = "0xc6b1458fcc02abc7f3d912fa60c7fb59c957fbf0"
@@ -67,7 +68,6 @@ async function preset1(deployer: Deployer) {
 
   console.log("init tokens")
   await muxWbtc.initialize("MUX Token for WBTC", "muxWBTC" + TOKEN_POSTFIX)
-  await muxFtm.initialize("MUX Token for FTM", "muxFTM" + TOKEN_POSTFIX)
   await muxAvax.initialize("MUX Token for AVAX", "muxAVAX" + TOKEN_POSTFIX)
   await muxLink.initialize("MUX Token for LINK", "muxLINK" + TOKEN_POSTFIX)
 
@@ -80,6 +80,14 @@ async function preset1(deployer: Deployer) {
   await transferThroughDemoBridge(deployer, accounts[0], 97, muxFtm.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
   await transferThroughDemoBridge(deployer, accounts[0], 97, muxAvax.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
   await transferThroughDemoBridge(deployer, accounts[0], 97, muxLink.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
+  await transferThroughDemoBridge(deployer, accounts[0], 4002, muxWbtc.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
+  await transferThroughDemoBridge(deployer, accounts[0], 4002, muxFtm.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
+  await transferThroughDemoBridge(deployer, accounts[0], 4002, muxAvax.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
+  await transferThroughDemoBridge(deployer, accounts[0], 4002, muxLink.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
+  await transferThroughDemoBridge(deployer, accounts[0], 43113, muxWbtc.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
+  await transferThroughDemoBridge(deployer, accounts[0], 43113, muxFtm.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
+  await transferThroughDemoBridge(deployer, accounts[0], 43113, muxAvax.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
+  await transferThroughDemoBridge(deployer, accounts[0], 43113, muxLink.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
 
   // ----------------------------------------------------------------------------------
 
@@ -88,13 +96,15 @@ async function preset1(deployer: Deployer) {
   await ensureFinished(pool.addAsset(0, toBytes32("USDC"), 6, true, usdc.address, muxUsd.address))
   await ensureFinished(pool.addAsset(1, toBytes32("USDT"), 6, true, usdt.address, muxUsd.address))
   await ensureFinished(pool.addAsset(2, toBytes32("DAI"), 18, true, dai.address, muxUsd.address))
+  // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
+  await pool.setAssetParams(0, toBytes32("USDC"), rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1, rate("0"))
+  await pool.setAssetParams(1, toBytes32("USDT"), rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1, rate("0"))
+  await pool.setAssetParams(2, toBytes32("DAI"), rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1, rate("0"))
   for (let tokenId = 0; tokenId < 3; tokenId++) {
     console.log("set stable coin", tokenId)
 
-    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight
-    await pool.setAssetParams(tokenId, rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1)
-    // id, tradable, openable, shortable, useStable, enabled, strict
-    await pool.setAssetFlags(tokenId, false, false, false, false, true, true)
+    // id, tradable, openable, shortable, useStable, enabled, strict, liq
+    await pool.setAssetFlags(tokenId, false, false, false, false, true, true, true)
     await pool.setFundingParams(tokenId, rate("0.00011"), rate("0.0008"))
   }
 
@@ -107,18 +117,22 @@ async function preset1(deployer: Deployer) {
   await ensureFinished(pool.addAsset(5, toBytes32("FTM"), 18, false, ftm.address, muxFtm.address))
   await ensureFinished(pool.addAsset(6, toBytes32("AVAX"), 18, false, "0x0000000000000000000000000000000000000000", muxAvax.address))
   await ensureFinished(pool.addAsset(7, toBytes32("LINK"), 18, false, link.address, muxLink.address))
+  // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
+  await pool.setAssetParams(3, toBytes32("ETH"), rate("0.01"), rate("0.005"), rate("0.001"), rate("0.001"), 60, toWei("1000000"), toWei("1000000"), 2, rate("0"))
+  await pool.setAssetParams(4, toBytes32("BTC"), rate("0.01"), rate("0.005"), rate("0.001"), rate("0.001"), 60, toWei("1000000"), toWei("1000000"), 2, rate("0"))
+  await pool.setAssetParams(5, toBytes32("FTM"), rate("0.01"), rate("0.005"), rate("0.001"), rate("0.001"), 60, toWei("1000000"), toWei("1000000"), 2, rate("0.0012"))
+  await pool.setAssetParams(6, toBytes32("AVAX"), rate("0.01"), rate("0.005"), rate("0.001"), rate("0.001"), 60, toWei("1000000"), toWei("1000000"), 2, rate("0.0012"))
+  await pool.setAssetParams(7, toBytes32("LINK"), rate("0.01"), rate("0.005"), rate("0.001"), rate("0.001"), 60, toWei("1000000"), toWei("1000000"), 2, rate("0"))
   for (let tokenId = 3; tokenId < 8; tokenId++) {
     console.log("set other coins", tokenId)
 
-    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight
-    await pool.setAssetParams(tokenId, rate("0.01"), rate("0.005"), rate("0.001"), rate("0.001"), 60, toWei("1000000"), toWei("1000000"), 2)
+    let useStable = false
     if (tokenId === 6 /* avax */) {
-      // id, tradable, openable, shortable, useStable, enabled, strict
-      await pool.setAssetFlags(tokenId, true, true, true, true, true, false)
-    } else {
-      // id, tradable, openable, shortable, useStable, enabled, strict
-      await pool.setAssetFlags(tokenId, true, true, true, false, true, false)
+      useStable = true
     }
+    // id, tradable, openable, shortable, useStable, enabled, strict, liq
+    await pool.setAssetFlags(tokenId, true, true, true, useStable, true, false, true)
+
     await pool.setFundingParams(tokenId, rate("0.0001"), rate("0.0008"))
   }
 
@@ -151,7 +165,6 @@ async function addLiq(deployer: Deployer) {
   const usdt: MockERC20 = await deployer.getDeployedContract("MockERC20", "MockUsdt")
   const dai: MockERC20 = await deployer.getDeployedContract("MockERC20", "MockDai")
   const wbtc: MockERC20 = await deployer.getDeployedContract("MockERC20", "MockWbtc")
-  const ftm: MockERC20 = await deployer.getDeployedContract("MockERC20", "MockFtm")
   const link: MockERC20 = await deployer.getDeployedContract("MockERC20", "MockLink")
   const muxUsd: MuxToken = await deployer.getDeployedContract("MuxToken", "MuxUsd")
   const muxWeth: MuxToken = await deployer.getDeployedContract("MuxToken", "MuxWeth")
@@ -225,9 +238,8 @@ function getOrderId(receipt: ContractReceipt): string {
 async function main(deployer: Deployer) {
   const accounts = await ethers.getSigners()
   if (accounts.length < 3) {
-    throw new Error("this script needs 3 accounts: deployer/vault, broker, lp")
+    throw new Error("this script needs 3 accounts: deployer, broker, lp")
   }
-  const vault = accounts[0]
 
   // deploy
   let proxyAdmin = deployer.addressOf("ProxyAdmin")
@@ -239,11 +251,11 @@ async function main(deployer: Deployer) {
   const orderBook: OrderBook = await deployer.deployUpgradeableOrSkip("OrderBook", "OrderBook", proxyAdmin)
   await deployer.deployUpgradeableOrSkip("LiquidityManager", "LiquidityManager", proxyAdmin)
   const liquidityManager = await deployer.getDeployedContract("LiquidityManager", "LiquidityManager")
-  const dexLiquidity = await deployer.deployOrSkip("DexLiquidity", "DexLiquidity", liquidityManager.address)
-  const reader: Reader = await deployer.deployOrSkip("Reader", "Reader", pool.address, mlpToken.address, dexLiquidity.address, orderBook.address, [
+  const reader: Reader = await deployer.deployOrSkip("Reader", "Reader", pool.address, mlpToken.address, liquidityManager.address, orderBook.address, [
     accounts[0].address, // deployer's mux tokens are not debt
   ])
   const nativeUnwrapper: NativeUnwrapper = await deployer.deployOrSkip("NativeUnwrapper", "NativeUnwrapper", weth9.address)
+  const vault: Vault = await deployer.deployUpgradeableOrSkip("Vault", "Vault", proxyAdmin)
   const muxUsd: MuxToken = await deployer.deployOrSkip("MuxToken", "MuxUsd")
   const muxWeth: MuxToken = await deployer.deployOrSkip("MuxToken", "MuxWeth")
 
@@ -252,27 +264,36 @@ async function main(deployer: Deployer) {
   await ensureFinished(mlpToken.initialize("MUX LP", "MUXLP" + TOKEN_POSTFIX))
   await ensureFinished(muxUsd.initialize("MUX Token for USD", "muxUSD" + TOKEN_POSTFIX))
   await ensureFinished(muxWeth.initialize("MUX Token for WETH", "muxWETH" + TOKEN_POSTFIX))
-  await ensureFinished(pool.initialize(poolHop2.address, mlpToken.address, orderBook.address, liquidityManager.address, weth9.address, nativeUnwrapper.address))
+  await ensureFinished(pool.initialize(poolHop2.address, mlpToken.address, orderBook.address, liquidityManager.address, weth9.address, nativeUnwrapper.address, vault.address))
   await ensureFinished(orderBook.initialize(pool.address, mlpToken.address, weth9.address, nativeUnwrapper.address))
   await orderBook.addBroker(accounts[1].address)
   await orderBook.addBroker(keeperAddress)
   await orderBook.setLiquidityLockPeriod(5 * 60)
+  await orderBook.setOrderTimeout(300, 86400 * 365)
   await ensureFinished(liquidityManager.initialize(vault.address, pool.address))
-  // fundingInterval, mlpPrice, mlpPrice, liqBase, liqDyn
-  await pool.setNumbers(3600 * 8, toWei("0.9"), toWei("1.1"), rate("0.0025"), rate("0.005"))
-  await liquidityManager.addExternalAccessor(dexLiquidity.address)
+  // fundingInterval, liqBase, liqDyn, σ_strict, brokerGas
+  await pool.setNumbers(3600 * 8, rate("0.0025"), rate("0.005"), rate("0.01"), toWei("0"))
+  // mlpPrice, mlpPrice
+  await pool.setEmergencyNumbers(toWei("0.5"), toWei("1.1"))
   await ensureFinished(nativeUnwrapper.addWhiteList(pool.address))
   await ensureFinished(nativeUnwrapper.addWhiteList(orderBook.address))
+  await ensureFinished(vault.initialize())
 
   console.log("transfer mlp")
   await mlpToken.transfer(pool.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
   await transferThroughDemoBridge(deployer, accounts[0], 97, mlpToken.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
+  await transferThroughDemoBridge(deployer, accounts[0], 4002, mlpToken.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
+  await transferThroughDemoBridge(deployer, accounts[0], 43113, mlpToken.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
 
   console.log("transfer muxUsd")
   await muxUsd.transfer(pool.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
   await muxWeth.transfer(pool.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
   await transferThroughDemoBridge(deployer, accounts[0], 97, muxUsd.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
   await transferThroughDemoBridge(deployer, accounts[0], 97, muxWeth.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
+  await transferThroughDemoBridge(deployer, accounts[0], 4002, muxUsd.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
+  await transferThroughDemoBridge(deployer, accounts[0], 4002, muxWeth.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
+  await transferThroughDemoBridge(deployer, accounts[0], 43113, muxUsd.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
+  await transferThroughDemoBridge(deployer, accounts[0], 43113, muxWeth.address, toWei("10000000000000000")) // < toWei(PreMinedTokenTotalSupply)
 
   // presets
   await faucet(deployer)

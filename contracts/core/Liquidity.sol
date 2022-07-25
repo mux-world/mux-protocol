@@ -41,10 +41,11 @@ contract Liquidity is Storage, Account {
         require(mlpPrice <= _storage.mlpPriceUpperBound, "MPO"); // Mlp Price is Out of range
         require(mlpPrice >= _storage.mlpPriceLowerBound, "MPO"); // Mlp Price is Out of range
         Asset storage token = _storage.assets[tokenId];
+        require(token.isEnabled(), "ENA"); // the token is temporarily not ENAbled
+        require(token.canAddRemoveLiquidity(), "TUL"); // the Token cannot be Used to add Liquidity
         tokenPrice = LibReferenceOracle.checkPriceWithSpread(_storage, token, tokenPrice, SpreadType.Bid);
 
         // token amount
-        require(token.isEnabled, "ENA"); // the token is temporarily not ENAbled
         uint96 wadAmount = token.toWad(rawAmount);
         token.spotLiquidity += wadAmount; // already reserved fee
         // fee
@@ -95,10 +96,11 @@ contract Liquidity is Storage, Account {
         require(mlpPrice >= _storage.mlpPriceLowerBound, "MPO"); // Mlp Price is Out of range
         require(mlpAmount != 0, "A=0"); // Amount Is Zero
         Asset storage token = _storage.assets[tokenId];
+        require(token.isEnabled(), "ENA"); // the token is temporarily not ENAbled
+        require(token.canAddRemoveLiquidity(), "TUL"); // the Token cannot be Used to remove Liquidity
         tokenPrice = LibReferenceOracle.checkPriceWithSpread(_storage, token, tokenPrice, SpreadType.Ask);
 
         // amount
-        require(token.isEnabled, "ENA"); // the token is temporarily not ENAbled
         uint96 wadAmount = ((uint256(mlpAmount) * uint256(mlpPrice)) / uint256(tokenPrice)).safeUint96();
         // fee
         uint96 feeCollateral;
@@ -140,9 +142,9 @@ contract Liquidity is Storage, Account {
         require(_hasAsset(tokenId), "LST"); // the asset is not LiSTed
         require(muxTokenAmount != 0, "A=0"); // Amount Is Zero
         Asset storage token = _storage.assets[tokenId];
-        require(token.isEnabled, "ENA"); // the token is temporarily not ENAbled
-        if (token.isStable) {
-            require(token.isStrictStable, "STR"); // only STRict stable coins and un-stable coins are supported
+        require(token.isEnabled(), "ENA"); // the token is temporarily not ENAbled
+        if (token.isStable()) {
+            require(token.isStrictStable(), "STR"); // only STRict stable coins and un-stable coins are supported
         }
         require(token.spotLiquidity >= muxTokenAmount, "LIQ"); // insufficient LIQuidity
         uint256 rawAmount = token.toRaw(muxTokenAmount);
@@ -184,7 +186,7 @@ contract Liquidity is Storage, Account {
     /**
      * @dev  Rebalance pool liquidity. Swap token 0 for token 1.
      *
-     *       rebalancer must implement IMuxRebalancerCallback. rebate rate follows baseFeeRate.
+     *       rebalancer must implement IMuxRebalancerCallback.
      */
     function rebalance(
         address rebalancer,
@@ -204,8 +206,8 @@ contract Liquidity is Storage, Account {
         Asset storage token1 = _storage.assets[tokenId1];
         price0 = LibReferenceOracle.checkPrice(_storage, token0, price0);
         price1 = LibReferenceOracle.checkPrice(_storage, token1, price1);
-        require(token0.isEnabled, "ENA"); // the token is temporarily not ENAbled
-        require(token1.isEnabled, "ENA"); // the token is temporarily not ENAbled
+        require(token0.isEnabled(), "ENA"); // the token is temporarily not ENAbled
+        require(token1.isEnabled(), "ENA"); // the token is temporarily not ENAbled
         // send token 0. get amount 1
         uint256 expectedRawAmount1;
         {
@@ -214,8 +216,6 @@ contract Liquidity is Storage, Account {
             token0.spotLiquidity -= amount0;
 
             uint96 expectedAmount1 = ((uint256(amount0) * uint256(price0)) / uint256(price1)).safeUint96();
-            uint96 rebate = uint256(expectedAmount1).rmul(_storage.liquidityBaseFeeRate).safeUint96();
-            expectedAmount1 -= rebate;
             expectedRawAmount1 = token1.toRaw(expectedAmount1);
         }
         require(expectedRawAmount1 <= maxRawAmount1, "LMT"); // LiMiTed by limitPrice
@@ -306,7 +306,7 @@ contract Liquidity is Storage, Account {
         uint8 i = 0;
         for (uint8 tokenId = 0; tokenId < tokenLen; tokenId++) {
             Asset storage asset = _storage.assets[tokenId];
-            if (asset.isStable) {
+            if (asset.isStable()) {
                 continue;
             }
             require(i < unstableTokenIds.length, "LEN"); // invalid LENgth of unstableTokenIds

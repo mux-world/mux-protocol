@@ -28,12 +28,12 @@ contract Trade is Storage, Account {
         Asset storage asset = _storage.assets[decoded.assetId];
         Asset storage collateral = _storage.assets[decoded.collateralId];
         SubAccount storage subAccount = _storage.accounts[subAccountId];
-        require(asset.isOpenable, "OPN"); // the asset is not OPeNable
-        require(!asset.isStable, "STB"); // can not trade a STaBle coin
-        require(asset.isTradable, "TRD"); // the asset is not TRaDable
-        require(asset.isEnabled, "ENA"); // the token is temporarily not ENAbled
-        require(collateral.isEnabled, "ENA"); // the token is temporarily not ENAbled
-        require(decoded.isLong || asset.isShortable, "SHT"); // can not SHorT this asset
+        require(asset.isOpenable(), "OPN"); // the asset is not OPeNable
+        require(!asset.isStable(), "STB"); // can not trade a STaBle coin
+        require(asset.isTradable(), "TRD"); // the asset is not TRaDable
+        require(asset.isEnabled(), "ENA"); // the token is temporarily not ENAbled
+        require(collateral.isEnabled(), "ENA"); // the token is temporarily not ENAbled
+        require(decoded.isLong || asset.isShortable(), "SHT"); // can not SHorT this asset
         assetPrice = LibReferenceOracle.checkPriceWithSpread(
             _storage,
             asset,
@@ -128,11 +128,11 @@ contract Trade is Storage, Account {
         Asset storage asset = _storage.assets[ctx.id.assetId];
         Asset storage collateral = _storage.assets[ctx.id.collateralId];
         SubAccount storage subAccount = _storage.accounts[subAccountId];
-        require(!asset.isStable, "STB"); // can not trade a STaBle coin
-        require(asset.isTradable, "TRD"); // the asset is not TRaDable
-        require(asset.isEnabled, "ENA"); // the token is temporarily not ENAbled
-        require(collateral.isEnabled, "ENA"); // the token is temporarily not ENAbled
-        require(ctx.id.isLong || asset.isShortable, "SHT"); // can not SHorT this asset
+        require(!asset.isStable(), "STB"); // can not trade a STaBle coin
+        require(asset.isTradable(), "TRD"); // the asset is not TRaDable
+        require(asset.isEnabled(), "ENA"); // the token is temporarily not ENAbled
+        require(collateral.isEnabled(), "ENA"); // the token is temporarily not ENAbled
+        require(ctx.id.isLong || asset.isShortable(), "SHT"); // can not SHorT this asset
         require(amount <= subAccount.size, "A>S"); // close Amount is Larger than position Size
         assetPrice = LibReferenceOracle.checkPriceWithSpread(
             _storage,
@@ -141,7 +141,7 @@ contract Trade is Storage, Account {
             ctx.id.isLong ? SpreadType.Bid : SpreadType.Ask
         );
         collateralPrice = LibReferenceOracle.checkPrice(_storage, collateral, collateralPrice);
-        if (ctx.id.isLong && !asset.useStableTokenForProfit) {
+        if (ctx.id.isLong && !asset.useStableTokenForProfit()) {
             profitAssetId = ctx.id.assetId;
             profitAssetPrice = assetPrice;
         } else {
@@ -152,7 +152,7 @@ contract Trade is Storage, Account {
                 profitAssetPrice
             );
         }
-        require(_storage.assets[profitAssetId].isEnabled, "ENA"); // the token is temporarily not ENAbled
+        require(_storage.assets[profitAssetId].isEnabled(), "ENA"); // the token is temporarily not ENAbled
 
         // total
         _decreaseTotalSize(asset, ctx.id.isLong, amount, subAccount.entryPrice);
@@ -236,11 +236,11 @@ contract Trade is Storage, Account {
         Asset storage asset = _storage.assets[ctx.id.assetId];
         Asset storage collateral = _storage.assets[ctx.id.collateralId];
         SubAccount storage subAccount = _storage.accounts[subAccountId];
-        require(!asset.isStable, "STB"); // can not trade a STaBle coin
-        require(asset.isTradable, "TRD"); // the asset is not TRaDable
-        require(asset.isEnabled, "ENA"); // the token is temporarily not ENAbled
-        require(collateral.isEnabled, "ENA"); // the token is temporarily not ENAbled
-        require(ctx.id.isLong || asset.isShortable, "SHT"); // can not SHorT this asset
+        require(!asset.isStable(), "STB"); // can not trade a STaBle coin
+        require(asset.isTradable(), "TRD"); // the asset is not TRaDable
+        require(asset.isEnabled(), "ENA"); // the token is temporarily not ENAbled
+        require(collateral.isEnabled(), "ENA"); // the token is temporarily not ENAbled
+        require(ctx.id.isLong || asset.isShortable(), "SHT"); // can not SHorT this asset
         require(subAccount.size > 0, "S=0"); // position Size Is Zero
         assetPrice = LibReferenceOracle.checkPriceWithSpread(
             _storage,
@@ -249,7 +249,7 @@ contract Trade is Storage, Account {
             ctx.id.isLong ? SpreadType.Bid : SpreadType.Ask
         );
         collateralPrice = LibReferenceOracle.checkPrice(_storage, collateral, collateralPrice);
-        if (ctx.id.isLong && !asset.useStableTokenForProfit) {
+        if (ctx.id.isLong && !asset.useStableTokenForProfit()) {
             profitAssetId = ctx.id.assetId;
             profitAssetPrice = assetPrice;
         } else {
@@ -260,7 +260,7 @@ contract Trade is Storage, Account {
                 profitAssetPrice
             );
         }
-        require(_storage.assets[profitAssetId].isEnabled, "ENA"); // the token is temporarily not ENAbled
+        require(_storage.assets[profitAssetId].isEnabled(), "ENA"); // the token is temporarily not ENAbled
 
         // total
         _decreaseTotalSize(asset, ctx.id.isLong, subAccount.size, subAccount.entryPrice);
@@ -364,11 +364,11 @@ contract Trade is Storage, Account {
         Asset storage asset = _storage.assets[ctx.id.assetId];
         Asset storage collateral = _storage.assets[ctx.id.collateralId];
         SubAccount storage subAccount = _storage.accounts[subAccountId];
-        require(!asset.isStable, "STB"); // can not trade a STaBle coin
-        require(asset.isTradable, "TRD"); // the asset is not TRaDable
-        require(asset.isEnabled, "ENA"); // the token is temporarily not ENAbled
-        require(collateral.isEnabled, "ENA"); // the token is temporarily not ENAbled
-        require(ctx.id.isLong || asset.isShortable, "SHT"); // can not SHorT this asset
+        require(!asset.isStable(), "STB"); // can not trade a STaBle coin
+        require(asset.isTradable(), "TRD"); // the asset is not TRaDable
+        require(asset.isEnabled(), "ENA"); // the token is temporarily not ENAbled
+        require(collateral.isEnabled(), "ENA"); // the token is temporarily not ENAbled
+        require(ctx.id.isLong || asset.isShortable(), "SHT"); // can not SHorT this asset
         require(subAccount.size > 0, "S=0"); // position Size Is Zero
         assetPrice = LibReferenceOracle.checkPriceWithSpread(
             _storage,
@@ -377,7 +377,7 @@ contract Trade is Storage, Account {
             ctx.id.isLong ? SpreadType.Bid : SpreadType.Ask
         );
         collateralPrice = LibReferenceOracle.checkPrice(_storage, collateral, collateralPrice);
-        if (ctx.id.isLong && !asset.useStableTokenForProfit) {
+        if (ctx.id.isLong && !asset.useStableTokenForProfit()) {
             profitAssetId = ctx.id.assetId;
             profitAssetPrice = assetPrice;
         } else {
@@ -388,7 +388,7 @@ contract Trade is Storage, Account {
                 profitAssetPrice
             );
         }
-        require(_storage.assets[profitAssetId].isEnabled, "ENA"); // the token is temporarily not ENAbled
+        require(_storage.assets[profitAssetId].isEnabled(), "ENA"); // the token is temporarily not ENAbled
 
         // fee & funding
         uint96 totalFeeUsd = _getFundingFeeUsd(subAccount, asset, ctx.id.isLong, assetPrice);
@@ -516,7 +516,7 @@ contract Trade is Storage, Account {
                 uint96 muxTokenAmount = profitCollateral - spot;
                 if (muxTokenAmount > 0) {
                     profitAsset.issueMuxToken(trader, uint256(muxTokenAmount));
-                    emit IssueMuxToken(profitAsset.isStable ? 0 : profitAsset.id, profitAsset.isStable, muxTokenAmount);
+                    emit IssueMuxToken(profitAsset.isStable() ? 0 : profitAsset.id, profitAsset.isStable(), muxTokenAmount);
                 }
             }
         }
