@@ -1,0 +1,241 @@
+{
+  "ProxyAdmin": {
+    "type": "preset",
+    "name": "ProxyAdmin",
+    "address": "0x855E99F768FaD76DD0d3EB7c446C0b759C96D520"
+  },
+  "MultiSignAdmin": {
+    "type": "preset",
+    "name": "MultiSignAdmin",
+    "address": "0x8564C77261094Abeee6d60a26d40f8DBAF23Fc94"
+  },
+  "WrappedNative": {
+    "type": "preset",
+    "name": "WrappedNative",
+    "address": "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7"
+  },
+  "PeggedUsdc": {
+    "type": "preset",
+    "name": "PeggedUsdc",
+    "address": "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E"
+  },
+  "PeggedUsdcE": {
+    "type": "preset",
+    "name": "PeggedUsdcE",
+    "address": "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664"
+  },
+  "PeggedUsdt": {
+    "type": "preset",
+    "name": "PeggedUsdt",
+    "address": "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7"
+  },
+  "PeggedUsdtE": {
+    "type": "preset",
+    "name": "PeggedUsdtE",
+    "address": "0xc7198437980c041c805A1EDcbA50c1Ce5db95118"
+  },
+  "PeggedDai": {
+    "type": "preset",
+    "name": "PeggedDai",
+    "address": "0xd586E7F844cEa2F87f50152665BCbc2C279D8d70"
+  },
+  "PeggedEth": {
+    "type": "preset",
+    "name": "PeggedEth",
+    "address": "0x49D5c2BdFfac6CE2BFdB6640F4F80f226bc10bAB"
+  },
+  "PeggedBtc": {
+    "type": "preset",
+    "name": "PeggedBtc",
+    "address": "0x50b7545627a5162F82A992c33b87aDc75187B218"
+  },
+  "PeggedMlp": {
+    "type": "preset",
+    "name": "PeggedMlp",
+    "address": "0xAf2D365e668bAaFEdcFd256c0FBbe519e594E390"
+  },
+  "PeggedMuxUsd": {
+    "type": "preset",
+    "name": "PeggedMuxUsd",
+    "address": "0xEA4B1b0aa3C110c55f650d28159Ce4AD43a4a58b"
+  },
+  "PeggedMuxEth": {
+    "type": "preset",
+    "name": "PeggedMuxEth",
+    "address": "0xDE53842F87c95362B2912DB5dBBA404E7D5Ff842"
+  },
+  "PeggedMuxBtc": {
+    "type": "preset",
+    "name": "PeggedMuxBtc",
+    "address": "0xCd7D33c265c811ee12c956D28c0e91f32a65119d"
+  },
+  "PeggedMuxAvax": {
+    "type": "preset",
+    "name": "PeggedMuxAvax",
+    "address": "0xaC80096d53c5965D9432592D28687C521472b9EB"
+  },
+  "PeggedMuxBnb": {
+    "type": "preset",
+    "name": "PeggedMuxBnb",
+    "address": "0x30a667dF8562a2460F45AC297D833a36FEaC0C2F"
+  },
+  "PeggedMuxFtm": {
+    "type": "preset",
+    "name": "PeggedMuxFtm",
+    "address": "0x70D30270ccC356f47E5782a1A905ea85B9E08CEa"
+  },
+  "LiquidityPoolHop1__implementation": {
+    "type": "plain",
+    "name": "LiquidityPoolHop1__implementation",
+    "address": "0x35923D08A9862a984E9f051d6DB5FC8fFA2C6D30",
+    "deployedAt": 16965226
+  },
+  "LiquidityPool": {
+    "type": "upgradeable",
+    "name": "LiquidityPool",
+    "address": "0x0bA2e492e8427fAd51692EE8958eBf936bEE1d84",
+    "dependencies": {
+      "admin": "0x855E99F768FaD76DD0d3EB7c446C0b759C96D520",
+      "implementation": "0x35923D08A9862a984E9f051d6DB5FC8fFA2C6D30"
+    },
+    "deployedAt": 14304145
+  },
+  "LiquidityPoolHop2": {
+    "type": "plain",
+    "name": "LiquidityPoolHop2",
+    "address": "0x3EfE4639eb082e22209fee29aAbaf14Ade5bF82B",
+    "deployedAt": 17650897
+  },
+  "OrderBook": {
+    "type": "upgradeable",
+    "name": "OrderBook",
+    "address": "0x5898c3E218a8501533d771C86e2fA37743ea2aDd",
+    "dependencies": {
+      "admin": "0x855E99F768FaD76DD0d3EB7c446C0b759C96D520",
+      "implementation": "0xFaD49693Cb3F920417c987A55a1aCE32b33EEccE"
+    }
+  },
+  "LiquidityManager__implementation": {
+    "type": "plain",
+    "name": "LiquidityManager__implementation",
+    "address": "0x9D4A8d7523a36f4a2E99870f1aFf232ded7e95Ae",
+    "deployedAt": 17612690
+  },
+  "LiquidityManager": {
+    "type": "upgradeable",
+    "name": "LiquidityManager",
+    "address": "0x28f16eB86481066Bf63BcBEB05C8474f7120A36C",
+    "dependencies": {
+      "admin": "0x855E99F768FaD76DD0d3EB7c446C0b759C96D520",
+      "implementation": "0x9D4A8d7523a36f4a2E99870f1aFf232ded7e95Ae"
+    }
+  },
+  "PeggedBusdE": {
+    "type": "preset",
+    "name": "PeggedBusdE",
+    "address": "0x19860CCB0A68fd4213aB9D8266F7bBf05A8dDe98"
+  },
+  "WETH9": {
+    "type": "preset",
+    "name": "WETH9",
+    "address": "0xB47e6A5f8b33b3F17603C83a0535A9dcD7E32681"
+  },
+  "traderJoeFarm": {
+    "type": "plain",
+    "name": "traderJoeFarm",
+    "address": "0x01d16F922dFf39dFBC5Cb217B6f029B276cB1773",
+    "deployedAt": 14587125
+  },
+  "TransferModule": {
+    "type": "plain",
+    "name": "TransferModule",
+    "address": "0x75e5CCdE81746b6C017B797EaDfAccc3b56ACfCb",
+    "deployedAt": 14588323
+  },
+  "traderJoeFarmDebug": {
+    "type": "plain",
+    "name": "traderJoeFarmDebug",
+    "address": "0xE4F135f63f0728f903De89c03066b285E8fA4570",
+    "deployedAt": 14589864
+  },
+  "NativeUnwrapper": {
+    "type": "plain",
+    "name": "NativeUnwrapper",
+    "address": "0xc294bFc63be5C3663A9eDE426f41d317701a17A7",
+    "deployedAt": 14633082
+  },
+  "OrderBook__implementation": {
+    "type": "plain",
+    "name": "OrderBook__implementation",
+    "address": "0xFaD49693Cb3F920417c987A55a1aCE32b33EEccE",
+    "deployedAt": 17651068
+  },
+  "Vault__implementation": {
+    "type": "plain",
+    "name": "Vault__implementation",
+    "address": "0x7a1AE37F17269dD604EA291E87A3064Ac97f27C5",
+    "deployedAt": 16452348
+  },
+  "Vault": {
+    "type": "upgradeable",
+    "name": "Vault",
+    "address": "0x29a28cC3FdC128693ef6a596eF45c43ff63B7062",
+    "dependencies": {
+      "admin": "0x855E99F768FaD76DD0d3EB7c446C0b759C96D520",
+      "implementation": "0x7a1AE37F17269dD604EA291E87A3064Ac97f27C5"
+    },
+    "deployedAt": 16452350
+  },
+  "TraderJoe": {
+    "type": "plain",
+    "name": "TraderJoe",
+    "address": "0xe6006167d82B59bcA33e3CE2688F79eddA5cF8fF",
+    "deployedAt": 16312362
+  },
+  "TraderJoeFarm": {
+    "type": "plain",
+    "name": "TraderJoeFarm",
+    "address": "0x05A890993E6b031794cE54F9395b7F4322dfDb13",
+    "deployedAt": 16312403
+  },
+  "ReceiveAssets": {
+    "type": "plain",
+    "name": "ReceiveAssets",
+    "address": "0x91862632e3C922de44200F59a5d6892eDb4f6153",
+    "deployedAt": 17600138
+  },
+  "CelerBridge": {
+    "type": "plain",
+    "name": "CelerBridge",
+    "address": "0x15d25314234b55Ef1D7e1c787EcF25d42d59C2cE",
+    "deployedAt": 17051922
+  },
+  "WithdrawAsset": {
+    "type": "plain",
+    "name": "WithdrawAsset",
+    "address": "0x51e3dD0bCfECBd8371691B6BfDDD92091371a7F6",
+    "deployedAt": 17054446
+  },
+  "MuxTimelock__implementation": {
+    "type": "plain",
+    "name": "MuxTimelock__implementation",
+    "address": "0x973db3142aa601ef11c1C8148e6EA8e7A4eE6B07",
+    "deployedAt": 17662087
+  },
+  "MuxTimelock": {
+    "type": "upgradeable",
+    "name": "MuxTimelock",
+    "address": "0xe013756fE041c524F0583e644fFC00Ed13bdc938",
+    "dependencies": {
+      "admin": "0x855E99F768FaD76DD0d3EB7c446C0b759C96D520",
+      "implementation": "0x973db3142aa601ef11c1C8148e6EA8e7A4eE6B07"
+    },
+    "deployedAt": 17662091
+  },
+  "Reader": {
+    "type": "plain",
+    "name": "Reader",
+    "address": "0x5996D4545EE59D96cb1FE8661a028Bef0f4744B0",
+    "deployedAt": 17900193
+  }
+}
