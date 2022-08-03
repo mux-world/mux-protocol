@@ -12,7 +12,7 @@ interface INativeWrapper {
 }
 
 /**
- * @notice A module to provide liquidity to curve then farm on some project with the lpToken.
+ * @notice A patch to transfer received tokens to liquidity pool.
  */
 contract ReceiveAssets is Plugin {
     function name() public pure override returns (string memory) {

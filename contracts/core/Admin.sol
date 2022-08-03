@@ -206,7 +206,7 @@ contract Admin is Storage {
         require(assetIds.length == rawAmounts.length, "LEN"); // LENgth of 2 arguments does not match
         for (uint256 i = 0; i < length; i++) {
             Asset storage asset = _storage.assets[assetIds[i]];
-            IERC20Upgradeable(asset.tokenAddress).transfer(msg.sender, rawAmounts[i]);
+            IERC20Upgradeable(asset.tokenAddress).safeTransfer(msg.sender, rawAmounts[i]);
             uint96 wadAmount = asset.toWad(rawAmounts[i]);
             require(asset.spotLiquidity >= wadAmount, "NLT"); // not enough liquidity
             asset.spotLiquidity -= wadAmount;

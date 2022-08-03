@@ -9,8 +9,8 @@ import "./SushiFarm.sol";
 
 interface IPancakeFarm {
     struct UserInfo {
-        uint256 amount; // LP tokens provided
-        uint256 rewardDebt; // pending reward = user.amount * pool.accRewardPerShare - user.rewardDebt
+        uint256 amount;
+        uint256 rewardDebt;
     }
 
     function CAKE() external view returns (address);
@@ -27,7 +27,6 @@ interface IPancakeFarm {
 contract PancakeFarm is SushiFarm {
     using SafeERC20 for IERC20;
 
-    // DO NOT define any storage variable with adapter.
     function _rewardToken(Context memory context) internal view override returns (address) {
         return IPancakeFarm(context.farm).CAKE();
     }

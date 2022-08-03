@@ -72,7 +72,6 @@ interface IFarm {
 
 contract SushiFarm is DexAdapter {
     using SafeERC20 for IERC20;
-    // DO NOT define any storage variable with adapter.
 
     struct Context {
         address router;

@@ -207,7 +207,7 @@
   "CelerBridge": {
     "type": "plain",
     "name": "CelerBridge",
-    "address": "0x15d25314234b55Ef1D7e1c787EcF25d42d59C2cE",
+    "address": "0xd84e49013cFe5Af1eF992A66dA9993796b4002f6",
     "deployedAt": 17051922
   },
   "WithdrawAsset": {
@@ -237,5 +237,11 @@
     "name": "Reader",
     "address": "0x5996D4545EE59D96cb1FE8661a028Bef0f4744B0",
     "deployedAt": 17900193
+  },
+  "Rebalancer": {
+    "type": "plain",
+    "name": "SafeOwnable",
+    "address": "0xdF88Fe94EF674D8c1ab1743AD88717E7AE893a44",
+    "deployedAt": 18755590
   }
 }

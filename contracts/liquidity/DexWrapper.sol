@@ -15,6 +15,9 @@ contract DexWrapper is AssetManager {
     event RemoveDexLiquidity(uint8 dexId, uint256 shareAmount, uint256[] minAmounts, uint256 deadline);
     event ClaimDexFees(uint8 dexId);
 
+    /**
+     * @notice Set dex id before dex method access.
+     */
     modifier dexCall(uint8 dexId) {
         require(dexId != 0, "ZDI"); // zero dex id
         uint8 lastDexId = _dexContext.dexId;

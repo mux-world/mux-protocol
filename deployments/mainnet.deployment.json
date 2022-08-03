@@ -1,0 +1,161 @@
+{
+  "ProxyAdmin": {
+    "type": "preset",
+    "name": "ProxyAdmin",
+    "address": "0x6CFbbbC478Ed4b2E4D4aC37C934A9d2659e7eFA3"
+  },
+  "MultiSignAdmin": {
+    "type": "preset",
+    "name": "MultiSignAdmin",
+    "address": "0x292693a45E8387D09c8BBea18a208BE5dd7a8031"
+  },
+  "WETH9": {
+    "type": "preset",
+    "name": "WETH9",
+    "address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+  },
+  "PeggedUsdc": {
+    "type": "preset",
+    "name": "PeggedUsdc",
+    "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+  },
+  "PeggedUsdt": {
+    "type": "preset",
+    "name": "PeggedUsdt",
+    "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+  },
+  "PeggedDai": {
+    "type": "preset",
+    "name": "PeggedDai",
+    "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+  },
+  "PeggedBtc": {
+    "type": "preset",
+    "name": "PeggedBtc",
+    "address": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599"
+  },
+  "PeggedMlp": {
+    "type": "preset",
+    "name": "PeggedMlp",
+    "address": "0x55c6b11d9FA571e1eea371D0cbB160B8FEfB571a"
+  },
+  "PeggedMuxUsd": {
+    "type": "preset",
+    "name": "PeggedMuxUsd",
+    "address": "0x7120262aB9B9bB387F69456D7332F49075a64989"
+  },
+  "PeggedMuxEth": {
+    "type": "preset",
+    "name": "PeggedMuxEth",
+    "address": "0x3a10C2C549FD4633f3943f8b526bEE87123dE614"
+  },
+  "PeggedMuxBtc": {
+    "type": "preset",
+    "name": "PeggedMuxBtc",
+    "address": "0x4d4E572b0f3DE11c138017BA22990F2ABe65Dad0"
+  },
+  "LiquidityPoolHop1__implementation": {
+    "type": "plain",
+    "name": "LiquidityPoolHop1__implementation",
+    "address": "0xf72BD2efEAc7Df6b926b87b21AC29716dDEDE752",
+    "deployedAt": 15191056
+  },
+  "LiquidityPool": {
+    "type": "upgradeable",
+    "name": "LiquidityPool",
+    "address": "0xaB6f7bCC18ce206a355F2993a013ba4a67656f0D",
+    "dependencies": {
+      "admin": "0x6CFbbbC478Ed4b2E4D4aC37C934A9d2659e7eFA3",
+      "implementation": "0xf72BD2efEAc7Df6b926b87b21AC29716dDEDE752"
+    },
+    "deployedAt": 15146041
+  },
+  "LiquidityPoolHop2": {
+    "type": "plain",
+    "name": "LiquidityPoolHop2",
+    "address": "0x1133a2b2884cD79B1E816556B81C926c492B1E5D",
+    "deployedAt": 15191060
+  },
+  "OrderBook__implementation": {
+    "type": "plain",
+    "name": "OrderBook__implementation",
+    "address": "0x8276eae84b087e505a4aeC7baBac833587c73fC5",
+    "deployedAt": 15191029
+  },
+  "OrderBook": {
+    "type": "upgradeable",
+    "name": "OrderBook",
+    "address": "0xA2972bB7f89F8E67807C02d8AC4C8C7a4C41D309",
+    "dependencies": {
+      "admin": "0x6CFbbbC478Ed4b2E4D4aC37C934A9d2659e7eFA3",
+      "implementation": "0x8276eae84b087e505a4aeC7baBac833587c73fC5"
+    },
+    "deployedAt": 15146045
+  },
+  "LiquidityManager__implementation": {
+    "type": "plain",
+    "name": "LiquidityManager__implementation",
+    "address": "0xc9296e12e2Fe55605d9F6dB5412EaA1938F0B404",
+    "deployedAt": 15211044
+  },
+  "LiquidityManager": {
+    "type": "upgradeable",
+    "name": "LiquidityManager",
+    "address": "0xd5db0EF907066d07D912b2Dd14C38F6E94156DEb",
+    "dependencies": {
+      "admin": "0x6CFbbbC478Ed4b2E4D4aC37C934A9d2659e7eFA3",
+      "implementation": "0xc9296e12e2Fe55605d9F6dB5412EaA1938F0B404"
+    },
+    "deployedAt": 15146047
+  },
+  "NativeUnwrapper": {
+    "type": "plain",
+    "name": "NativeUnwrapper",
+    "address": "0xafE4D59965Ec3422502dAB9D46f8b89930aF1e03",
+    "deployedAt": 15146052
+  },
+  "Vault__implementation": {
+    "type": "plain",
+    "name": "Vault__implementation",
+    "address": "0x58f982f13365b64B94FC2cDD921aFe933A0c76D3",
+    "deployedAt": 15146054
+  },
+  "Vault": {
+    "type": "upgradeable",
+    "name": "Vault",
+    "address": "0x0625f0f7ed57b16b5EA8ad59Cff32D0e9A7126B2",
+    "dependencies": {
+      "admin": "0x6CFbbbC478Ed4b2E4D4aC37C934A9d2659e7eFA3",
+      "implementation": "0x58f982f13365b64B94FC2cDD921aFe933A0c76D3"
+    },
+    "deployedAt": 15146056
+  },
+  "MuxTokenPlaceHolder": {
+    "type": "plain",
+    "name": "MuxTokenPlaceHolder",
+    "address": "0x7AD9990DBF65f02dbE278aaBD5CA7E16c798F385",
+    "deployedAt": 15146252
+  },
+  "MuxTimelock__implementation": {
+    "type": "plain",
+    "name": "MuxTimelock__implementation",
+    "address": "0x6DBF774db5073414977926c8104d52A4153c8a11",
+    "deployedAt": 15191981
+  },
+  "MuxTimelock": {
+    "type": "upgradeable",
+    "name": "MuxTimelock",
+    "address": "0xDecAF732796E4Cc9BaB17297B078E110f4948557",
+    "dependencies": {
+      "admin": "0x6CFbbbC478Ed4b2E4D4aC37C934A9d2659e7eFA3",
+      "implementation": "0x6DBF774db5073414977926c8104d52A4153c8a11"
+    },
+    "deployedAt": 15191989
+  },
+  "Reader": {
+    "type": "plain",
+    "name": "Reader",
+    "address": "0x4153024Bcaa030b70819b9ADf1c7Ad8780EC17D7",
+    "deployedAt": 15229595
+  }
+}

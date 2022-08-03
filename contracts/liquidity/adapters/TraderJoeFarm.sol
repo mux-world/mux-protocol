@@ -35,7 +35,6 @@ interface ITraderJoeFarm {
 contract TraderJoeFarm is SushiFarm {
     using SafeERC20 for IERC20;
 
-    // DO NOT define any storage variable with adapter.
     function _rewardToken(Context memory context) internal view override returns (address) {
         return ITraderJoeFarm(context.farm).JOE();
     }

@@ -20,12 +20,12 @@ struct DexRegistration {
 }
 
 struct DexData {
-    bytes config; // read only
-    mapping(bytes32 => bytes32) states; // mutable
+    bytes config;
+    mapping(bytes32 => bytes32) states;
 }
 
 struct PluginData {
-    mapping(bytes32 => bytes32) states; // mutable
+    mapping(bytes32 => bytes32) states;
 }
 
 struct CallContext {
