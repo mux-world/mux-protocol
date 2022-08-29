@@ -100,13 +100,13 @@ contract OrderBook is Storage, Admin {
      *
      *         Market order will expire after marketOrderTimeout seconds.
      *         Limit/Trigger order will expire after deadline.
-     * @param  subAccountId       sub account id. see LibSubAccount.decodeSubAccountId
-     * @param  collateralAmount   deposit collateral before open; or withdraw collateral after close. decimals = erc20.decimals
-     * @param  size               position size. decimals = 18
-     * @param  price              limit price. decimals = 18
+     * @param  subAccountId       sub account id. see LibSubAccount.decodeSubAccountId.
+     * @param  collateralAmount   deposit collateral before open; or withdraw collateral after close. decimals = erc20.decimals.
+     * @param  size               position size. decimals = 18.
+     * @param  price              limit price. decimals = 18.
      * @param  profitTokenId      specify the profitable asset.id when closing a position and making a profit.
      *                            take no effect when opening a position or loss.
-     * @param  flags              a bitset of LibOrder.POSITION_*
+     * @param  flags              a bitset of LibOrder.POSITION_*.
      *                            POSITION_INCREASING               0x80 means openPosition; otherwise closePosition
      *                            POSITION_MARKET_ORDER             0x40 means ignore limitPrice
      *                            POSITION_WITHDRAW_ALL_IF_EMPTY    0x20 means auto withdraw all collateral if position.size == 0
@@ -164,9 +164,9 @@ contract OrderBook is Storage, Admin {
      * @notice Add/remove liquidity. called by Liquidity Provider.
      *
      *         Can be filled after liquidityLockPeriod seconds.
-     * @param  assetId   asset.id that added/removed to
-     * @param  rawAmount asset token amount. decimals = erc20.decimals
-     * @param  isAdding  true for add liquidity, false for remove liquidity
+     * @param  assetId   asset.id that added/removed to.
+     * @param  rawAmount asset token amount. decimals = erc20.decimals.
+     * @param  isAdding  true for add liquidity, false for remove liquidity.
      */
     function placeLiquidityOrder(
         uint8 assetId,
@@ -199,10 +199,10 @@ contract OrderBook is Storage, Admin {
      * @notice Withdraw collateral/profit. called by Trader.
      *
      *         This order will expire after marketOrderTimeout seconds.
-     * @param  subAccountId       sub account id. see LibSubAccount.decodeSubAccountId
-     * @param  rawAmount          collateral or profit asset amount. decimals = erc20.decimals
-     * @param  profitTokenId      specify the profitable asset.id
-     * @param  isProfit           true for withdraw profit. false for withdraw collateral
+     * @param  subAccountId       sub account id. see LibSubAccount.decodeSubAccountId.
+     * @param  rawAmount          collateral or profit asset amount. decimals = erc20.decimals.
+     * @param  profitTokenId      specify the profitable asset.id.
+     * @param  isProfit           true for withdraw profit. false for withdraw collateral.
      */
     function placeWithdrawalOrder(
         bytes32 subAccountId,
@@ -232,11 +232,11 @@ contract OrderBook is Storage, Admin {
      * @notice Rebalance pool liquidity. Swap token 0 for token 1.
      *
      *         msg.sender must implement IMuxRebalancerCallback.
-     * @param  tokenId0      asset.id to be swapped out of the pool
-     * @param  tokenId1      asset.id to be swapped into the pool
-     * @param  rawAmount0    token 0 amount. decimals = erc20.decimals
-     * @param  maxRawAmount1 max token 1 that rebalancer is willing to pay. decimals = erc20.decimals
-     * @param  userData      max token 1 that rebalancer is willing to pay. decimals = erc20.decimals
+     * @param  tokenId0      asset.id to be swapped out of the pool.
+     * @param  tokenId1      asset.id to be swapped into the pool.
+     * @param  rawAmount0    token 0 amount. decimals = erc20.decimals.
+     * @param  maxRawAmount1 max token 1 that rebalancer is willing to pay. decimals = erc20.decimals.
+     * @param  userData      any user defined data.
      */
     function placeRebalanceOrder(
         uint8 tokenId0,
@@ -264,10 +264,10 @@ contract OrderBook is Storage, Admin {
     /**
      * @dev   Open/close a position. called by Broker.
      *
-     * @param orderId           order id
-     * @param collateralPrice   collateral price. decimals = 18
-     * @param assetPrice        asset price. decimals = 18
-     * @param profitAssetPrice  profit asset price. decimals = 18
+     * @param orderId           order id.
+     * @param collateralPrice   collateral price. decimals = 18.
+     * @param assetPrice        asset price. decimals = 18.
+     * @param profitAssetPrice  profit asset price. decimals = 18.
      */
     function fillPositionOrder(
         uint64 orderId,
@@ -339,11 +339,11 @@ contract OrderBook is Storage, Admin {
      * @dev   Add/remove liquidity. called by Broker.
      *
      *        Check _getLiquidityFeeRate in Liquidity.sol on how to calculate liquidity fee.
-     * @param orderId           order id
-     * @param assetPrice        token price that added/removed to
-     * @param mlpPrice          mlp price
-     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset)
-     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains
+     * @param orderId           order id.
+     * @param assetPrice        token price that added/removed to. decimals = 18.
+     * @param mlpPrice          mlp price. decimals = 18.
+     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset). decimals = 18.
+     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains. decimals = 18.
      */
     function fillLiquidityOrder(
         uint64 orderId,
@@ -392,10 +392,10 @@ contract OrderBook is Storage, Admin {
     /**
      * @dev   Withdraw collateral/profit. called by Broker.
      *
-     * @param orderId           order id
-     * @param collateralPrice   collateral price. decimals = 18
-     * @param assetPrice        asset price. decimals = 18
-     * @param profitAssetPrice  profit asset price. decimals = 18
+     * @param orderId           order id.
+     * @param collateralPrice   collateral price. decimals = 18.
+     * @param assetPrice        asset price. decimals = 18.
+     * @param profitAssetPrice  profit asset price. decimals = 18.
      */
     function fillWithdrawalOrder(
         uint64 orderId,
@@ -430,9 +430,9 @@ contract OrderBook is Storage, Admin {
     /**
      * @dev   Rebalance. called by Broker.
      *
-     * @param orderId  order id
-     * @param price0   price of token 0
-     * @param price1   price of token 1
+     * @param orderId  order id.
+     * @param price0   price of token 0. decimals = 18.
+     * @param price1   price of token 1. decimals = 18.
      */
     function fillRebalanceOrder(
         uint64 orderId,
@@ -518,16 +518,16 @@ contract OrderBook is Storage, Admin {
      * @notice Broker can update funding each [fundingInterval] seconds by specifying utilizations.
      *
      *         Check _getFundingRate in Liquidity.sol on how to calculate funding rate.
-     * @param  stableUtilization    Stable coin utilization in all chains
+     * @param  stableUtilization    Stable coin utilization in all chains. decimals = 5.
      * @param  unstableTokenIds     All unstable Asset id(s) MUST be passed in order. ex: 1, 2, 5, 6, ...
-     * @param  unstableUtilizations Unstable Asset utilizations in all chains
-     * @param  unstablePrices       Unstable Asset prices
+     * @param  unstableUtilizations Unstable Asset utilizations in all chains decimals = 5.
+     * @param  unstablePrices       Unstable Asset prices decimals = 18.
      */
     function updateFundingState(
         uint32 stableUtilization, // 1e5
         uint8[] calldata unstableTokenIds,
         uint32[] calldata unstableUtilizations, // 1e5
-        uint96[] calldata unstablePrices
+        uint96[] calldata unstablePrices // 1e18
     ) external onlyBroker {
         _pool.updateFundingState(stableUtilization, unstableTokenIds, unstableUtilizations, unstablePrices);
     }
@@ -535,8 +535,8 @@ contract OrderBook is Storage, Admin {
     /**
      * @notice Deposit collateral into a subAccount.
      *
-     * @param  subAccountId       sub account id. see LibSubAccount.decodeSubAccountId
-     * @param  collateralAmount   collateral amount. decimals = erc20.decimals
+     * @param  subAccountId       sub account id. see LibSubAccount.decodeSubAccountId.
+     * @param  collateralAmount   collateral amount. decimals = erc20.decimals.
      */
     function depositCollateral(bytes32 subAccountId, uint256 collateralAmount) external payable {
         LibSubAccount.DecodedSubAccountId memory account = subAccountId.decodeSubAccountId();

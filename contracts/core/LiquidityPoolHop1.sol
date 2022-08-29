@@ -34,7 +34,7 @@ contract LiquidityPoolHop1 is Storage, Trade, Getter, Proxy {
     /**
      * @dev     Upgrade LiquidityPool.
      *
-     * @param   nextHop Hop2 address
+     * @param   nextHop Hop2 address.
      */
     function upgradeChainedProxy(address nextHop) external onlyOwner {
         emit UpgradeChainedProxy(_implementation(), nextHop);

@@ -96,7 +96,7 @@ async function preset1(deployer: Deployer) {
   await ensureFinished(pool.addAsset(0, toBytes32("USDC"), 6, true, usdc.address, muxUsd.address))
   await ensureFinished(pool.addAsset(1, toBytes32("USDT"), 6, true, usdt.address, muxUsd.address))
   await ensureFinished(pool.addAsset(2, toBytes32("DAI"), 18, true, dai.address, muxUsd.address))
-  // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
+  // id, symbol, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
   await pool.setAssetParams(0, toBytes32("USDC"), rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1, rate("0"))
   await pool.setAssetParams(1, toBytes32("USDT"), rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1, rate("0"))
   await pool.setAssetParams(2, toBytes32("DAI"), rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1, rate("0"))
@@ -117,12 +117,12 @@ async function preset1(deployer: Deployer) {
   await ensureFinished(pool.addAsset(5, toBytes32("FTM"), 18, false, ftm.address, muxFtm.address))
   await ensureFinished(pool.addAsset(6, toBytes32("AVAX"), 18, false, "0x0000000000000000000000000000000000000000", muxAvax.address))
   await ensureFinished(pool.addAsset(7, toBytes32("LINK"), 18, false, link.address, muxLink.address))
-  // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
   await pool.setAssetParams(3, toBytes32("ETH"), rate("0.01"), rate("0.005"), rate("0.001"), rate("0.001"), 60, toWei("1000000"), toWei("1000000"), 2, rate("0"))
   await pool.setAssetParams(4, toBytes32("BTC"), rate("0.01"), rate("0.005"), rate("0.001"), rate("0.001"), 60, toWei("1000000"), toWei("1000000"), 2, rate("0"))
   await pool.setAssetParams(5, toBytes32("FTM"), rate("0.01"), rate("0.005"), rate("0.001"), rate("0.001"), 60, toWei("1000000"), toWei("1000000"), 2, rate("0.0012"))
   await pool.setAssetParams(6, toBytes32("AVAX"), rate("0.01"), rate("0.005"), rate("0.001"), rate("0.001"), 60, toWei("1000000"), toWei("1000000"), 2, rate("0.0012"))
   await pool.setAssetParams(7, toBytes32("LINK"), rate("0.01"), rate("0.005"), rate("0.001"), rate("0.001"), 60, toWei("1000000"), toWei("1000000"), 2, rate("0"))
+  // id, symbol, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
   for (let tokenId = 3; tokenId < 8; tokenId++) {
     console.log("set other coins", tokenId)
 

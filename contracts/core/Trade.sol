@@ -17,9 +17,9 @@ contract Trade is Storage, Account {
      * @notice Open a position.
      *
      * @param  subAccountId     check LibSubAccount.decodeSubAccountId for detail.
-     * @param  amount           position size.
-     * @param  collateralPrice  price of subAccount.collateral.
-     * @param  assetPrice       price of subAccount.asset.
+     * @param  amount           position size. decimals = 18.
+     * @param  collateralPrice  price of subAccount.collateral. decimals = 18.
+     * @param  assetPrice       price of subAccount.asset. decimals = 18.
      */
     function openPosition(
         bytes32 subAccountId,
@@ -111,12 +111,12 @@ contract Trade is Storage, Account {
      * @notice Close a position.
      *
      * @param  subAccountId     check LibSubAccount.decodeSubAccountId for detail.
-     * @param  amount           position size.
+     * @param  amount           position size. decimals = 18.
      * @param  profitAssetId    for long position (unless asset.useStable is true), ignore this argument;
      *                          for short position, the profit asset should be one of the stable coin.
-     * @param  collateralPrice  price of subAccount.collateral.
-     * @param  assetPrice       price of subAccount.asset.
-     * @param  profitAssetPrice price of profitAssetId. ignore this argument if profitAssetId is ignored.
+     * @param  collateralPrice  price of subAccount.collateral. decimals = 18.
+     * @param  assetPrice       price of subAccount.asset. decimals = 18.
+     * @param  profitAssetPrice price of profitAssetId. ignore this argument if profitAssetId is ignored. decimals = 18.
      */
     function closePosition(
         bytes32 subAccountId,

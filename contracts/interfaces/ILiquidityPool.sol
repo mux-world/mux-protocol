@@ -74,13 +74,13 @@ interface ILiquidityPool {
     /**
      * @dev   Add liquidity.
      *
-     * @param trader            liquidity provider address
-     * @param tokenId           asset.id that added
-     * @param rawAmount         asset token amount. decimals = erc20.decimals
-     * @param tokenPrice        token price
-     * @param mlpPrice          mlp price
-     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset)
-     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains
+     * @param trader            liquidity provider address.
+     * @param tokenId           asset.id that added.
+     * @param rawAmount         asset token amount. decimals = erc20.decimals.
+     * @param tokenPrice        token price. decimals = 18.
+     * @param mlpPrice          mlp price.  decimals = 18.
+     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset).
+     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains.
      */
     function addLiquidity(
         address trader,
@@ -95,13 +95,13 @@ interface ILiquidityPool {
     /**
      * @dev   Remove liquidity.
      *
-     * @param trader            liquidity provider address
-     * @param mlpAmount         mlp amount
-     * @param tokenId           asset.id that removed to
-     * @param tokenPrice        token price
-     * @param mlpPrice          mlp price
-     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset)
-     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains
+     * @param trader            liquidity provider address.
+     * @param mlpAmount         mlp amount. decimals = 18.
+     * @param tokenId           asset.id that removed to.
+     * @param tokenPrice        token price. decimals = 18.
+     * @param mlpPrice          mlp price. decimals = 18.
+     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset). decimals = 18.
+     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains. decimals = 18.
      */
     function removeLiquidity(
         address trader,
@@ -117,7 +117,7 @@ interface ILiquidityPool {
      * @notice Open a position.
      *
      * @param  subAccountId     check LibSubAccount.decodeSubAccountId for detail.
-     * @param  amount           position size.
+     * @param  amount           position size. decimals = 18.
      * @param  collateralPrice  price of subAccount.collateral.
      * @param  assetPrice       price of subAccount.asset.
      */
@@ -132,12 +132,12 @@ interface ILiquidityPool {
      * @notice Close a position.
      *
      * @param  subAccountId     check LibSubAccount.decodeSubAccountId for detail.
-     * @param  amount           position size.
+     * @param  amount           position size. decimals = 18.
      * @param  profitAssetId    for long position (unless asset.useStable is true), ignore this argument;
      *                          for short position, the profit asset should be one of the stable coin.
-     * @param  collateralPrice  price of subAccount.collateral.
-     * @param  assetPrice       price of subAccount.asset.
-     * @param  profitAssetPrice price of profitAssetId. ignore this argument if profitAssetId is ignored.
+     * @param  collateralPrice  price of subAccount.collateral. decimals = 18.
+     * @param  assetPrice       price of subAccount.asset. decimals = 18.
+     * @param  profitAssetPrice price of profitAssetId. ignore this argument if profitAssetId is ignored. decimals = 18.
      */
     function closePosition(
         bytes32 subAccountId,
@@ -152,10 +152,10 @@ interface ILiquidityPool {
      * @notice Broker can update funding each [fundingInterval] seconds by specifying utilizations.
      *
      *         Check _getFundingRate in Liquidity.sol on how to calculate funding rate.
-     * @param  stableUtilization    Stable coin utilization in all chains
+     * @param  stableUtilization    Stable coin utilization in all chains. decimals = 5.
      * @param  unstableTokenIds     All unstable Asset id(s) MUST be passed in order. ex: 1, 2, 5, 6, ...
-     * @param  unstableUtilizations Unstable Asset utilizations in all chains
-     * @param  unstablePrices       Unstable Asset prices
+     * @param  unstableUtilizations Unstable Asset utilizations in all chains. decimals = 5.
+     * @param  unstablePrices       Unstable Asset prices.
      */
     function updateFundingState(
         uint32 stableUtilization, // 1e5

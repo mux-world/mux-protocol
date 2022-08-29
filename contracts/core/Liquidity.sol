@@ -17,13 +17,13 @@ contract Liquidity is Storage, Account {
     /**
      * @dev   Add liquidity.
      *
-     * @param trader            liquidity provider address
-     * @param tokenId           asset.id that added
-     * @param rawAmount         asset token amount. decimals = erc20.decimals
-     * @param tokenPrice        token price
-     * @param mlpPrice          mlp price
-     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset)
-     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains
+     * @param trader            liquidity provider address.
+     * @param tokenId           asset.id that added.
+     * @param rawAmount         asset token amount. decimals = erc20.decimals.
+     * @param tokenPrice        token price.
+     * @param mlpPrice          mlp price.
+     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset).
+     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains.
      */
     function addLiquidity(
         address trader,
@@ -72,13 +72,13 @@ contract Liquidity is Storage, Account {
     /**
      * @dev   Remove liquidity.
      *
-     * @param trader            liquidity provider address
-     * @param mlpAmount         mlp amount
-     * @param tokenId           asset.id that removed to
-     * @param tokenPrice        token price
-     * @param mlpPrice          mlp price
-     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset)
-     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains
+     * @param trader            liquidity provider address.
+     * @param mlpAmount         mlp amount.
+     * @param tokenId           asset.id that removed to.
+     * @param tokenPrice        token price.
+     * @param mlpPrice          mlp price.
+     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset).
+     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains.
      */
     function removeLiquidity(
         address trader,
@@ -158,10 +158,10 @@ contract Liquidity is Storage, Account {
      * @notice Broker can update funding each [fundingInterval] seconds by specifying utilizations.
      *
      *         Check _getFundingRate in Liquidity.sol on how to calculate funding rate.
-     * @param  stableUtilization    Stable coin utilization in all chains
+     * @param  stableUtilization    Stable coin utilization in all chains.
      * @param  unstableTokenIds     All unstable Asset id(s) MUST be passed in order. ex: 1, 2, 5, 6, ...
-     * @param  unstableUtilizations Unstable Asset utilizations in all chains
-     * @param  unstablePrices       Unstable Asset prices
+     * @param  unstableUtilizations Unstable Asset utilizations in all chains.
+     * @param  unstablePrices       Unstable Asset prices.
      */
     function updateFundingState(
         uint32 stableUtilization, // 1e5
@@ -352,12 +352,12 @@ contract Liquidity is Storage, Account {
      * case 4: max fee                                             * currentLiq              * newLiq
      *                                                                          * currentLiq * newLiq
      *
-     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset)
-     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains
-     * @param isAdd             true if add liquidity, false if remove liquidity
-     * @param deltaValue        add/remove liquidity USD value
-     * @param baseFeeRate       base fee
-     * @param dynamicFeeRate    dynamic fee
+     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset). decimals = 18.
+     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains. decimals = 18.
+     * @param isAdd             true if add liquidity, false if remove liquidity.
+     * @param deltaValue        add/remove liquidity USD value. decimals = 18.
+     * @param baseFeeRate       base fee.
+     * @param dynamicFeeRate    dynamic fee.
      */
     function _getLiquidityFeeRate(
         uint96 currentAssetValue,
