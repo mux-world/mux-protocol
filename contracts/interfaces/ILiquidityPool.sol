@@ -72,7 +72,7 @@ interface ILiquidityPool {
     ) external;
 
     /**
-     * @dev   Add liquidity
+     * @dev   Add liquidity.
      *
      * @param trader            liquidity provider address
      * @param tokenId           asset.id that added
@@ -93,7 +93,7 @@ interface ILiquidityPool {
     ) external;
 
     /**
-     * @dev   Remove liquidity
+     * @dev   Remove liquidity.
      *
      * @param trader            liquidity provider address
      * @param mlpAmount         mlp amount
@@ -113,6 +113,14 @@ interface ILiquidityPool {
         uint96 targetAssetValue
     ) external;
 
+    /**
+     * @notice Open a position.
+     *
+     * @param  subAccountId     check LibSubAccount.decodeSubAccountId for detail.
+     * @param  amount           position size.
+     * @param  collateralPrice  price of subAccount.collateral.
+     * @param  assetPrice       price of subAccount.asset.
+     */
     function openPosition(
         bytes32 subAccountId,
         uint96 amount,
@@ -121,7 +129,7 @@ interface ILiquidityPool {
     ) external returns (uint96);
 
     /**
-     * @notice Close a position
+     * @notice Close a position.
      *
      * @param  subAccountId     check LibSubAccount.decodeSubAccountId for detail.
      * @param  amount           position size.
@@ -143,6 +151,7 @@ interface ILiquidityPool {
     /**
      * @notice Broker can update funding each [fundingInterval] seconds by specifying utilizations.
      *
+     *         Check _getFundingRate in Liquidity.sol on how to calculate funding rate.
      * @param  stableUtilization    Stable coin utilization in all chains
      * @param  unstableTokenIds     All unstable Asset id(s) MUST be passed in order. ex: 1, 2, 5, 6, ...
      * @param  unstableUtilizations Unstable Asset utilizations in all chains
@@ -163,12 +172,22 @@ interface ILiquidityPool {
         uint96 profitAssetPrice // only used when !isLong
     ) external returns (uint96);
 
+    /**
+     * @notice Redeem mux token into original tokens.
+     *
+     *         Only strict stable coins and un-stable coins are supported.
+     */
     function redeemMuxToken(
         address trader,
         uint8 tokenId,
         uint96 muxTokenAmount // NOTE: OrderBook SHOULD transfer muxTokenAmount to LiquidityPool
     ) external;
 
+    /**
+     * @dev  Rebalance pool liquidity. Swap token 0 for token 1.
+     *
+     *       rebalancer must implement IMuxRebalancerCallback.
+     */
     function rebalance(
         address rebalancer,
         uint8 tokenId0,
@@ -181,7 +200,7 @@ interface ILiquidityPool {
     ) external;
 
     /**
-     * @dev Broker can withdraw brokerGasRebate
+     * @dev Broker can withdraw brokerGasRebate.
      */
     function claimBrokerGasRebate(address receiver) external returns (uint256 rawAmount);
 

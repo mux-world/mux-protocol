@@ -53,7 +53,7 @@ describe("Trade", () => {
     // Asset 0 - strict stable
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(0, toBytes32("AST0"), 18, true, asset0.address, muxAsset0.address)
-    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
+    // id, symbol, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
     await pool.setAssetParams(0, toBytes32("AST0"), rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 1, rate("0"))
     // id, tradable, openable, shortable, useStable, enabled, strict, liq
     await pool.setAssetFlags(0, true, true, true, false, true, true, true)
@@ -62,7 +62,7 @@ describe("Trade", () => {
     // Asset 1 - position
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(1, toBytes32("AST1"), 18, false, asset1.address, muxAsset1.address)
-    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
+    // id, symbol, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
     await pool.setAssetParams(1, toBytes32("AST1"), rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
     // id, tradable, openable, shortable, useStable, enabled, strict, liq
     await pool.setAssetFlags(1, true, true, true, false, true, false, true)
@@ -71,7 +71,7 @@ describe("Trade", () => {
     // Asset 2 - another stable (not strict stable)
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(2, toBytes32("AST2"), 18, true, asset2.address, muxAsset0.address)
-    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
+    // id, symbol, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
     await pool.setAssetParams(2, toBytes32("AST2"), rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 1, rate("0"))
     // id, tradable, openable, shortable, useStable, enabled, strict, liq
     await pool.setAssetFlags(2, true, true, true, false, true, false, true)
@@ -80,7 +80,7 @@ describe("Trade", () => {
     // Asset 3 - another position, useStable = true
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(3, toBytes32("AST3"), 18, false, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
-    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
+    // id, symbol, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
     await pool.setAssetParams(3, toBytes32("AST3"), rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
     // id, tradable, openable, shortable, useStable, enabled, strict, liq
     await pool.setAssetFlags(3, true, true, true, true, true, false, true)

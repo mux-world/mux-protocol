@@ -60,7 +60,7 @@ describe("POL", () => {
     // 0 = ETH
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(0, toBytes32("ETH"), 18, false, weth9.address, muxWeth.address)
-    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight
+    // id, symbol, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
     await pool.setAssetParams(0, toBytes32("ETH"), rate("0.1"), rate("0.05"), rate("0.001"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
     // id, tradable, openable, shortable, useStable, enabled, strict, liq
     await pool.setAssetFlags(0, true, true, true, false, true, false, true)

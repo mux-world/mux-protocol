@@ -66,7 +66,7 @@ library LibReferenceOracle {
     event AssetPriceOutOfRange(uint8 assetId, uint96 price, uint96 referencePrice, uint32 deviation);
 
     /**
-     * @dev Check oracle parameters before set
+     * @dev Check oracle parameters before set.
      */
     function checkParameters(
         ReferenceOracleType referenceOracleType,
@@ -82,7 +82,7 @@ library LibReferenceOracle {
     }
 
     /**
-     * @dev Truncate price if the error is too large
+     * @dev Truncate price if the error is too large.
      */
     function checkPrice(
         LiquidityPoolStorage storage pool,

@@ -8,7 +8,7 @@ struct ChainedProxyStorage {
 }
 
 /**
- * @dev ChainedProxy is a chained version of EIP1967 proxy
+ * @dev ChainedProxy is a chained version of EIP1967 proxy.
  *
  * The ChainedProxy uses Transparent Proxy as the storage layer and all logic layers
  * use Proxy pattern which call the function if the logic contract has it or delegatecall

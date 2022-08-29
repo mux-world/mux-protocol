@@ -11,7 +11,7 @@ import "../interfaces/IOrderBook.sol";
 import "../interfaces/IWETH9.sol";
 
 /**
- * @notice  POL saves Protocol-Owned-Liquidity
+ * @notice  POL saves Protocol-Owned-Liquidity.
  */
 contract POL is Initializable, SafeOwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;

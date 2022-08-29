@@ -42,7 +42,7 @@ contract LiquidityPoolHop1 is Storage, Trade, Getter, Proxy {
     }
 
     /**
-     * @dev     Forward unrecognized functions to the next hop
+     * @dev     Forward unrecognized functions to the next hop.
      */
     function _implementation() internal view virtual override returns (address) {
         return ChainedProxy.next();

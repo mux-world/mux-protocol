@@ -71,6 +71,9 @@ contract OrderBook is Storage, Admin {
         return _orders.length();
     }
 
+    /**
+     * @notice Get an Order by orderId.
+     */
     function getOrder(uint64 orderId) external view returns (bytes32[3] memory, bool) {
         return (_orders.get(orderId), _orders.contains(orderId));
     }
@@ -93,22 +96,22 @@ contract OrderBook is Storage, Admin {
     }
 
     /**
-     * @dev   Open/close position. called by Trader
+     * @notice Open/close position. called by Trader.
      *
-     *        Market order will expire after marketOrderTimeout seconds.
-     *        Limit/Trigger order will expire after deadline.
-     * @param subAccountId       sub account id. see LibSubAccount.decodeSubAccountId
-     * @param collateralAmount   deposit collateral before open; or withdraw collateral after close. decimals = erc20.decimals
-     * @param size               position size. decimals = 18
-     * @param price              limit price. decimals = 18
-     * @param profitTokenId      specify the profitable asset.id when closing a position and making a profit.
-     *                           take no effect when opening a position or loss.
-     * @param flags              a bitset of LibOrder.POSITION_*
-     *                           POSITION_INCREASING               0x80 means openPosition; otherwise closePosition
-     *                           POSITION_MARKET_ORDER             0x40 means ignore limitPrice
-     *                           POSITION_WITHDRAW_ALL_IF_EMPTY    0x20 means auto withdraw all collateral if position.size == 0
-     *                           POSITION_TRIGGER_ORDER            0x10 means this is a trigger order (ex: stop-loss order). 0 means this is a limit order (ex: take-profit order)
-     * @param deadline           a unix timestamp after which the limit/trigger order MUST NOT be filled. fill 0 for market order.
+     *         Market order will expire after marketOrderTimeout seconds.
+     *         Limit/Trigger order will expire after deadline.
+     * @param  subAccountId       sub account id. see LibSubAccount.decodeSubAccountId
+     * @param  collateralAmount   deposit collateral before open; or withdraw collateral after close. decimals = erc20.decimals
+     * @param  size               position size. decimals = 18
+     * @param  price              limit price. decimals = 18
+     * @param  profitTokenId      specify the profitable asset.id when closing a position and making a profit.
+     *                            take no effect when opening a position or loss.
+     * @param  flags              a bitset of LibOrder.POSITION_*
+     *                            POSITION_INCREASING               0x80 means openPosition; otherwise closePosition
+     *                            POSITION_MARKET_ORDER             0x40 means ignore limitPrice
+     *                            POSITION_WITHDRAW_ALL_IF_EMPTY    0x20 means auto withdraw all collateral if position.size == 0
+     *                            POSITION_TRIGGER_ORDER            0x10 means this is a trigger order (ex: stop-loss order). 0 means this is a limit order (ex: take-profit order)
+     * @param  deadline           a unix timestamp after which the limit/trigger order MUST NOT be filled. fill 0 for market order.
      */
     function placePositionOrder(
         bytes32 subAccountId,
@@ -158,12 +161,12 @@ contract OrderBook is Storage, Admin {
     }
 
     /**
-     * @dev   Add/remove liquidity. called by Liquidity Provider
+     * @notice Add/remove liquidity. called by Liquidity Provider.
      *
-     *        Can be filled after liquidityLockPeriod seconds.
-     * @param assetId   asset.id that added/removed to
-     * @param rawAmount asset token amount. decimals = erc20.decimals
-     * @param isAdding  true for add liquidity, false for remove liquidity
+     *         Can be filled after liquidityLockPeriod seconds.
+     * @param  assetId   asset.id that added/removed to
+     * @param  rawAmount asset token amount. decimals = erc20.decimals
+     * @param  isAdding  true for add liquidity, false for remove liquidity
      */
     function placeLiquidityOrder(
         uint8 assetId,
@@ -193,13 +196,13 @@ contract OrderBook is Storage, Admin {
     }
 
     /**
-     * @dev   Withdraw collateral/profit. called by Trader
+     * @notice Withdraw collateral/profit. called by Trader.
      *
-     *        This order will expire after marketOrderTimeout seconds.
-     * @param subAccountId       sub account id. see LibSubAccount.decodeSubAccountId
-     * @param rawAmount          collateral or profit asset amount. decimals = erc20.decimals
-     * @param profitTokenId      specify the profitable asset.id
-     * @param isProfit           true for withdraw profit. false for withdraw collateral
+     *         This order will expire after marketOrderTimeout seconds.
+     * @param  subAccountId       sub account id. see LibSubAccount.decodeSubAccountId
+     * @param  rawAmount          collateral or profit asset amount. decimals = erc20.decimals
+     * @param  profitTokenId      specify the profitable asset.id
+     * @param  isProfit           true for withdraw profit. false for withdraw collateral
      */
     function placeWithdrawalOrder(
         bytes32 subAccountId,
@@ -226,14 +229,14 @@ contract OrderBook is Storage, Admin {
     }
 
     /**
-     * @dev   Rebalance pool liquidity. Swap token 0 for token 1.
+     * @notice Rebalance pool liquidity. Swap token 0 for token 1.
      *
-     *        msg.sender must implement IMuxRebalancerCallback.
-     * @param tokenId0      asset.id to be swapped out of the pool
-     * @param tokenId1      asset.id to be swapped into the pool
-     * @param rawAmount0    token 0 amount. decimals = erc20.decimals
-     * @param maxRawAmount1 max token 1 that rebalancer is willing to pay. decimals = erc20.decimals
-     * @param userData      max token 1 that rebalancer is willing to pay. decimals = erc20.decimals
+     *         msg.sender must implement IMuxRebalancerCallback.
+     * @param  tokenId0      asset.id to be swapped out of the pool
+     * @param  tokenId1      asset.id to be swapped into the pool
+     * @param  rawAmount0    token 0 amount. decimals = erc20.decimals
+     * @param  maxRawAmount1 max token 1 that rebalancer is willing to pay. decimals = erc20.decimals
+     * @param  userData      max token 1 that rebalancer is willing to pay. decimals = erc20.decimals
      */
     function placeRebalanceOrder(
         uint8 tokenId0,
@@ -259,7 +262,7 @@ contract OrderBook is Storage, Admin {
     }
 
     /**
-     * @dev   Open/close a position. called by Broker
+     * @dev   Open/close a position. called by Broker.
      *
      * @param orderId           order id
      * @param collateralPrice   collateral price. decimals = 18
@@ -333,7 +336,7 @@ contract OrderBook is Storage, Admin {
     }
 
     /**
-     * @dev   Add/remove liquidity. called by Broker
+     * @dev   Add/remove liquidity. called by Broker.
      *
      *        Check _getLiquidityFeeRate in Liquidity.sol on how to calculate liquidity fee.
      * @param orderId           order id
@@ -387,7 +390,7 @@ contract OrderBook is Storage, Admin {
     }
 
     /**
-     * @dev   Withdraw collateral/profit. called by Broker
+     * @dev   Withdraw collateral/profit. called by Broker.
      *
      * @param orderId           order id
      * @param collateralPrice   collateral price. decimals = 18
@@ -425,7 +428,7 @@ contract OrderBook is Storage, Admin {
     }
 
     /**
-     * @dev   Rebalance. called by Broker
+     * @dev   Rebalance. called by Broker.
      *
      * @param orderId  order id
      * @param price0   price of token 0
@@ -458,7 +461,7 @@ contract OrderBook is Storage, Admin {
     }
 
     /**
-     * @notice Cancel an order
+     * @notice Cancel an Order by orderId.
      */
     function cancelOrder(uint64 orderId) external {
         require(_orders.contains(orderId), "OID"); // can not find this OrderID
@@ -503,7 +506,7 @@ contract OrderBook is Storage, Admin {
     }
 
     /**
-     * @notice Trader can withdraw all collateral only when position = 0
+     * @notice Trader can withdraw all collateral only when position = 0.
      */
     function withdrawAllCollateral(bytes32 subAccountId) external {
         LibSubAccount.DecodedSubAccountId memory account = subAccountId.decodeSubAccountId();
@@ -530,7 +533,7 @@ contract OrderBook is Storage, Admin {
     }
 
     /**
-     * @notice Deposit collateral into a subAccount
+     * @notice Deposit collateral into a subAccount.
      *
      * @param  subAccountId       sub account id. see LibSubAccount.decodeSubAccountId
      * @param  collateralAmount   collateral amount. decimals = erc20.decimals
@@ -566,7 +569,7 @@ contract OrderBook is Storage, Admin {
     }
 
     /**
-     * @dev Broker can withdraw brokerGasRebate
+     * @dev Broker can withdraw brokerGasRebate.
      */
     function claimBrokerGasRebate() external onlyBroker returns (uint256 rawAmount) {
         return _pool.claimBrokerGasRebate(msg.sender);

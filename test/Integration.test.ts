@@ -77,7 +77,7 @@ describe("Integration", () => {
     // 0 = USDC
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(0, toBytes32("USDC"), 6, true, usdc.address, muxUsd.address)
-    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
+    // id, symbol, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
     await pool.setAssetParams(0, toBytes32("USDC"), rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1, rate("0"))
     // id, tradable, openable, shortable, useStable, enabled, strict, liq
     await pool.setAssetFlags(0, false, false, false, false, true, true, true)
@@ -86,7 +86,7 @@ describe("Integration", () => {
     // 1 = BTC
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(1, toBytes32("BTC"), 18, false, wbtc.address, muxWbtc.address)
-    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight
+    // id, symbol, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
     await pool.setAssetParams(1, toBytes32("BTC"), rate("0.1"), rate("0.05"), rate("0.001"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
     // id, tradable, openable, shortable, useStable, enabled, strict, liq
     await pool.setAssetFlags(1, true, true, true, false, true, false, true)
@@ -95,7 +95,7 @@ describe("Integration", () => {
     // 2 = USDT
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(2, toBytes32("USDT"), 12, true, usdt.address, muxUsd.address)
-    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight
+    // id, symbol, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
     await pool.setAssetParams(2, toBytes32("USDT"), rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1, rate("0"))
     // id, tradable, openable, shortable, useStable, enabled, strict, liq
     await pool.setAssetFlags(2, false, false, false, false, true, true, true)
@@ -121,7 +121,7 @@ describe("Integration", () => {
     {
       await expect(pool.depositCollateral(shortAccountId, toUnit("1000", 6))).to.revertedWith("BOK")
       await expect(orderBook.connect(lp1).depositCollateral(shortAccountId, toUnit("1000", 6))).to.revertedWith("SND")
-      await expect(orderBook.depositCollateral(shortAccountId, toUnit("0", 6))).to.revertedWith("C=0")
+      await expect(orderBook.connect(trader1).depositCollateral(shortAccountId, toUnit("0", 6))).to.revertedWith("C=0")
       const tx1 = await orderBook.connect(trader1).depositCollateral(shortAccountId, toUnit("1000", 6))
       const receipt1 = await tx1.wait()
       console.log("GAS short deposit", receipt1.gasUsed.toString(), tx1.hash)

@@ -15,7 +15,7 @@ contract Liquidity is Storage, Account {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /**
-     * @dev   Add liquidity
+     * @dev   Add liquidity.
      *
      * @param trader            liquidity provider address
      * @param tokenId           asset.id that added
@@ -70,7 +70,7 @@ contract Liquidity is Storage, Account {
     }
 
     /**
-     * @dev   Remove liquidity
+     * @dev   Remove liquidity.
      *
      * @param trader            liquidity provider address
      * @param mlpAmount         mlp amount
@@ -129,7 +129,7 @@ contract Liquidity is Storage, Account {
     }
 
     /**
-     * @notice Redeem mux token into original tokens
+     * @notice Redeem mux token into original tokens.
      *
      *         Only strict stable coins and un-stable coins are supported.
      */
@@ -243,7 +243,7 @@ contract Liquidity is Storage, Account {
     }
 
     /**
-     * @dev Anyone can withdraw collectedFee into Vault
+     * @dev Anyone can withdraw collectedFee into Vault.
      */
     function withdrawCollectedFee(uint8[] memory assetIds) external {
         require(_storage.vault != address(0), "VLT"); // bad VauLT
@@ -262,7 +262,7 @@ contract Liquidity is Storage, Account {
     }
 
     /**
-     * @dev Broker can withdraw brokerGasRebate
+     * @dev Broker can withdraw brokerGasRebate.
      */
     function claimBrokerGasRebate(address receiver) external onlyOrderBook returns (uint256 rawAmount) {
         require(receiver != address(0), "RCV"); // bad ReCeiVer
@@ -334,7 +334,7 @@ contract Liquidity is Storage, Account {
     }
 
     /**
-     * @dev   Liquidity fee rate
+     * @dev   Liquidity fee rate.
      *
      *        Lower rates indicate liquidity is closer to target.
      *
@@ -398,7 +398,7 @@ contract Liquidity is Storage, Account {
     }
 
     /**
-     * @dev Funding rate formula
+     * @dev Funding rate formula.
      *
      * ^ fr           / limit
      * |            /

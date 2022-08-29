@@ -63,7 +63,7 @@ describe("IntegrationEth", () => {
     // 0 = ETH
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(0, toBytes32("ETH"), 18, false, weth9.address, muxWeth.address)
-    // id, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
+    // id, symbol, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
     await pool.setAssetParams(0, toBytes32("ETH"), rate("0.1"), rate("0.05"), rate("0.001"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
     // id, tradable, openable, shortable, useStable, enabled, strict, liq
     await pool.setAssetFlags(0, true, true, true, false, true, false, true)
@@ -270,10 +270,11 @@ describe("IntegrationEth", () => {
       await pool.setNumbers(3600 * 8, rate("0.0001"), rate("0.0000"), rate("0.01"), toWei("0.0001"))
       expect(await orderBook.connect(broker).callStatic.claimBrokerGasRebate()).to.equal(toWei("0.0004"))
       const balance1 = await ethers.provider.getBalance(broker.address)
-      await orderBook.connect(broker).claimBrokerGasRebate()
+      const tx1 = await orderBook.connect(broker).claimBrokerGasRebate()
+      const receipt1 = await tx1.wait()
       const balance2 = await ethers.provider.getBalance(broker.address) // fee = 0
-      expect(balance2.sub(balance1).lte(toWei("0.0004"))).to.true
-      expect(balance2.sub(balance1).gt(toWei("0.0003"))).to.true
+      const actual = balance2.sub(balance1).add(receipt1.gasUsed.mul(tx1.gasPrice!))
+      expect(actual).eq(toWei("0.0004"))
       const assetInfo = await pool.getAssetInfo(0)
       expect(assetInfo.spotLiquidity).to.equal(toWei("97.954180952380952381")) // -= 0.0004
       expect(assetInfo.collectedFee).to.equal(toWei("0.0122")) // unchanged

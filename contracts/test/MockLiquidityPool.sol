@@ -145,9 +145,6 @@ contract MockLiquidityPool is ILiquidityPool {
         uint96 muxTokenAmount // NOTE: OrderBook SHOULD transfer muxTokenAmount to LiquidityPool
     ) external {}
 
-    /**
-     * @dev Broker can withdraw brokerGasRebate
-     */
     function claimBrokerGasRebate(address receiver) external returns (uint256 rawAmount) {}
 
     function rebalance(

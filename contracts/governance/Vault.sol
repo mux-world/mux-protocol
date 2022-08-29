@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "../components/SafeOwnableUpgradeable.sol";
 
 /**
- * @notice  Vault collects fees
+ * @notice  Vault collects fees.
  */
 contract Vault is Initializable, SafeOwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;

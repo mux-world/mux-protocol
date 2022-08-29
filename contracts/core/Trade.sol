@@ -13,6 +13,14 @@ contract Trade is Storage, Account {
     using LibMath for uint256;
     using LibSubAccount for bytes32;
 
+    /**
+     * @notice Open a position.
+     *
+     * @param  subAccountId     check LibSubAccount.decodeSubAccountId for detail.
+     * @param  amount           position size.
+     * @param  collateralPrice  price of subAccount.collateral.
+     * @param  assetPrice       price of subAccount.asset.
+     */
     function openPosition(
         bytes32 subAccountId,
         uint96 amount,
@@ -100,7 +108,7 @@ contract Trade is Storage, Account {
     }
 
     /**
-     * @notice Close a position
+     * @notice Close a position.
      *
      * @param  subAccountId     check LibSubAccount.decodeSubAccountId for detail.
      * @param  amount           position size.
@@ -516,7 +524,11 @@ contract Trade is Storage, Account {
                 uint96 muxTokenAmount = profitCollateral - spot;
                 if (muxTokenAmount > 0) {
                     profitAsset.issueMuxToken(trader, uint256(muxTokenAmount));
-                    emit IssueMuxToken(profitAsset.isStable() ? 0 : profitAsset.id, profitAsset.isStable(), muxTokenAmount);
+                    emit IssueMuxToken(
+                        profitAsset.isStable() ? 0 : profitAsset.id,
+                        profitAsset.isStable(),
+                        muxTokenAmount
+                    );
                 }
             }
         }
