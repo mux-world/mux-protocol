@@ -2,10 +2,11 @@
 pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "./Types.sol";
-import "./Admin.sol";
 import "../libraries/LibSubAccount.sol";
 import "../libraries/LibMath.sol";
+import "../interfaces/IReferralManager.sol";
+import "./Types.sol";
+import "./Admin.sol";
 
 contract OrderBook is Storage, Admin {
     using LibSubAccount for bytes32;
@@ -95,6 +96,19 @@ contract OrderBook is Storage, Admin {
         }
     }
 
+    // A deprecated interface that will be removed in the next release.
+    function placePositionOrder(
+        bytes32 subAccountId,
+        uint96 collateralAmount, // erc20.decimals
+        uint96 size, // 1e18
+        uint96 price, // 1e18
+        uint8 profitTokenId,
+        uint8 flags,
+        uint32 deadline // 1e0
+    ) external payable {
+        placePositionOrder2(subAccountId, collateralAmount, size, price, profitTokenId, flags, deadline, bytes32(0));
+    }
+
     /**
      * @notice Open/close position. called by Trader.
      *
@@ -112,16 +126,18 @@ contract OrderBook is Storage, Admin {
      *                            POSITION_WITHDRAW_ALL_IF_EMPTY    0x20 means auto withdraw all collateral if position.size == 0
      *                            POSITION_TRIGGER_ORDER            0x10 means this is a trigger order (ex: stop-loss order). 0 means this is a limit order (ex: take-profit order)
      * @param  deadline           a unix timestamp after which the limit/trigger order MUST NOT be filled. fill 0 for market order.
+     * @param  referralCode       set referral code of the trading account.
      */
-    function placePositionOrder(
+    function placePositionOrder2(
         bytes32 subAccountId,
         uint96 collateralAmount, // erc20.decimals
         uint96 size, // 1e18
         uint96 price, // 1e18
         uint8 profitTokenId,
         uint8 flags,
-        uint32 deadline // 1e0
-    ) external payable {
+        uint32 deadline, // 1e0
+        bytes32 referralCode
+    ) public payable {
         LibSubAccount.DecodedSubAccountId memory account = subAccountId.decodeSubAccountId();
         require(account.account == _msgSender(), "SND"); // SeNDer is not authorized
         require(size != 0, "S=0"); // order Size Is Zero
@@ -156,6 +172,9 @@ contract OrderBook is Storage, Admin {
         if (collateralAmount > 0 && ((flags & LibOrder.POSITION_OPEN) != 0)) {
             address collateralAddress = _pool.getAssetAddress(account.collateralId);
             _transferIn(collateralAddress, address(this), collateralAmount);
+        }
+        if (referralCode != bytes32(0) && referralManager != address(0)) {
+            IReferralManager(referralManager).setReferrerCodeFor(account.account, referralCode);
         }
         emit NewPositionOrder(subAccountId, orderId, collateralAmount, size, price, profitTokenId, flags, deadline);
     }

@@ -54,6 +54,7 @@ interface IOrderBook {
      *                            POSITION_WITHDRAW_ALL_IF_EMPTY    0x20 means auto withdraw all collateral if position.size == 0
      *                            POSITION_TRIGGER_ORDER            0x10 means this is a trigger order (ex: stop-loss order). 0 means this is a limit order (ex: take-profit order)
      * @param  deadline           a unix timestamp after which the limit/trigger order MUST NOT be filled. fill 0 for market order.
+     * @param  referralCode       set referral code of the trading account.
      */
     function placePositionOrder(
         bytes32 subAccountId,
@@ -62,7 +63,8 @@ interface IOrderBook {
         uint96 price, // 1e18
         uint8 profitTokenId,
         uint8 flags,
-        uint32 deadline // 1e0
+        uint32 deadline, // 1e0
+        bytes32 referralCode
     ) external payable;
 
     /**

@@ -13,6 +13,7 @@ contract Admin is Storage {
     event PausePositionOrder(bool isPaused);
     event PauseLiquidityOrder(bool isPaused);
     event SetMaintainer(address indexed newMaintainer);
+    event SetReferralManager(address newReferralManager);
 
     modifier onlyBroker() {
         require(brokers[_msgSender()], "BKR"); // only BroKeR
@@ -90,6 +91,12 @@ contract Admin is Storage {
         require(maintainer != newMaintainer, "CHG"); // not CHanGed
         maintainer = newMaintainer;
         emit SetMaintainer(newMaintainer);
+    }
+
+    function setReferralManager(address newReferralManager) external onlyOwner {
+        require(newReferralManager != address(0), "ZAD");
+        referralManager = newReferralManager;
+        emit SetReferralManager(newReferralManager);
     }
 
     function _removeBroker(address broker) internal {

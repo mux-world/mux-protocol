@@ -42,9 +42,7 @@ describe("BscCompatible - this test should be tested on bscTestnet", () => {
     const mlp = "0x0000000000000000000000000000000000000000"
     await ensureFinished(orderBook.initialize(pool.address, mlp, wbnb.address, nativeUnwrapper.address))
     await ensureFinished(orderBook.addBroker(broker.address))
-    await ensureFinished(
-      pool.initialize(poolHop2.address, mlp, orderBook.address, broker.address /* test only */, wbnb.address, nativeUnwrapper.address, vault.address)
-    )
+    await ensureFinished(pool.initialize(poolHop2.address, mlp, orderBook.address, broker.address /* test only */, wbnb.address, nativeUnwrapper.address, vault.address))
     await ensureFinished(nativeUnwrapper.addWhiteList(pool.address))
     await ensureFinished(nativeUnwrapper.addWhiteList(orderBook.address))
     console.log("bscTestnet contracts initialized")

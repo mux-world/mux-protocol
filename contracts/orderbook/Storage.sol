@@ -25,7 +25,8 @@ contract Storage is Initializable, SafeOwnableUpgradeable {
     uint32 public marketOrderTimeout;
     uint32 public maxLimitOrderTimeout;
     address public maintainer;
-    bytes32[44] _gap;
+    address public referralManager;
+    bytes32[43] _gap;
 
     modifier whenPositionOrderEnabled() {
         require(!isPositionOrderPaused, "POP"); // Position Order Paused

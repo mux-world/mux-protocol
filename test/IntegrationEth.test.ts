@@ -9,6 +9,7 @@ import { MlpToken, TestOrderBook, TestLiquidityPool, LiquidityManager, MockERC20
 const U = ethers.utils
 
 describe("IntegrationEth", () => {
+  const refCode = toBytes32("")
   let mlp: MlpToken
   let pool: TestLiquidityPool
   let orderBook: TestOrderBook
@@ -198,7 +199,9 @@ describe("IntegrationEth", () => {
     // open long eth, using eth
     const longAccountId = assembleSubAccountId(trader1.address, 0, 0, true)
     {
-      const tx1 = await orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("0.5"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100, { value: toWei("0.5") })
+      const tx1 = await orderBook
+        .connect(trader1)
+        .placePositionOrder2(longAccountId, toWei("0.5"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100, refCode, { value: toWei("0.5") })
       const receipt1 = await tx1.wait()
       console.log("GAS +lng order", receipt1.gasUsed.toString(), tx1.hash)
       await expect(tx1)
@@ -230,7 +233,7 @@ describe("IntegrationEth", () => {
     }
     // close long, profit in eth
     {
-      const tx1 = await orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("0"), toWei("1"), toWei("1000"), 0, PositionOrderFlags.WithdrawAllIfEmpty, 86400 * 100)
+      const tx1 = await orderBook.connect(trader1).placePositionOrder2(longAccountId, toWei("0"), toWei("1"), toWei("1000"), 0, PositionOrderFlags.WithdrawAllIfEmpty, 86400 * 100, refCode)
       const receipt1 = await tx1.wait()
       console.log("GAS -lng order", receipt1.gasUsed.toString(), tx1.hash)
       await expect(tx1)
@@ -299,7 +302,7 @@ describe("IntegrationEth", () => {
     // open long eth, using eth
     const longAccountId = assembleSubAccountId(trader1.address, 0, 0, true)
     {
-      await orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("0.5"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100, { value: toWei("0.5") })
+      await orderBook.connect(trader1).placePositionOrder2(longAccountId, toWei("0.5"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100, refCode, { value: toWei("0.5") })
       await orderBook.connect(broker).fillPositionOrder(1, toWei("2000"), toWei("2000"), toWei("0"))
       const subAccount = await pool.getSubAccount(longAccountId)
       expect(subAccount.collateral).to.equal(toWei("0.499")) // fee = 0.001
@@ -381,7 +384,7 @@ describe("IntegrationEth", () => {
       // open long
       const longAccountId = assembleSubAccountId(trader1.address, 0, 0, true)
       {
-        await orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("0.5"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100, { value: toWei("0.5") })
+        await orderBook.connect(trader1).placePositionOrder2(longAccountId, toWei("0.5"), toWei("1"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 86400 * 100, refCode, { value: toWei("0.5") })
         await orderBook.connect(broker).fillPositionOrder(1, toWei("2000"), toWei("2000"), toWei("0"))
         expect(await weth9.balanceOf(pool.address)).to.equal(toWei("0.5"))
         const subAccount = await pool.getSubAccount(longAccountId)
@@ -399,7 +402,7 @@ describe("IntegrationEth", () => {
       }
       // close long, profit in muxBtc, auto withdraw all
       {
-        await orderBook.connect(trader1).placePositionOrder(longAccountId, toWei("0"), toWei("1"), toWei("1000"), 0, PositionOrderFlags.WithdrawAllIfEmpty, 86400 * 100)
+        await orderBook.connect(trader1).placePositionOrder2(longAccountId, toWei("0"), toWei("1"), toWei("1000"), 0, PositionOrderFlags.WithdrawAllIfEmpty, 86400 * 100, refCode)
         const balance1 = await ethers.provider.getBalance(trader1.address)
         await orderBook.connect(broker).fillPositionOrder(2, toWei("2100"), toWei("2100"), toWei("2100")) // pnl = 100
         const balance2 = await ethers.provider.getBalance(trader1.address)
