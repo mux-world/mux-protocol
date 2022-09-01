@@ -167,8 +167,8 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0xFaD49693Cb3F920417c987A55a1aCE32b33EEccE",
-    "deployedAt": 17651068
+    "address": "0xd19Cc219177A42b93621153D7F050C3467d5C34D",
+    "deployedAt": 19262169
   },
   "Vault__implementation": {
     "type": "plain",

@@ -109,8 +109,8 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0x770cf655E2e574c7c135F7A9514f8b36B942501b",
-    "deployedAt": 19767583
+    "address": "0x826111CA9f8ab0a1f35FC9De2f01E96c31B95BE1",
+    "deployedAt": 20858832
   },
   "OrderBook": {
     "type": "upgradeable",
