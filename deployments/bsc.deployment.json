@@ -221,5 +221,21 @@
     "name": "SafeOwnable",
     "address": "0xb9e85B5B92A76A1c3b95C7b28bDA0f2389d35E79",
     "deployedAt": 18755590
+  },
+  "ReferralManager__implementation": {
+    "type": "plain",
+    "name": "ReferralManager__implementation",
+    "address": "0xB66755BeE3967b015BBA2232048C9D43D0b52782",
+    "deployedAt": 20889617
+  },
+  "ReferralManager": {
+    "type": "upgradeable",
+    "name": "ReferralManager",
+    "address": "0x3EfE4639eb082e22209fee29aAbaf14Ade5bF82B",
+    "dependencies": {
+      "admin": "0x73c5955dbB7a667e05da5fE7b8798c0fd4cE8E16",
+      "implementation": "0xB66755BeE3967b015BBA2232048C9D43D0b52782"
+    },
+    "deployedAt": 20889620
   }
 }

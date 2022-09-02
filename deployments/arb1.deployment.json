@@ -275,5 +275,37 @@
     "name": "SafeOwnable",
     "address": "0x3EfE4639eb082e22209fee29aAbaf14Ade5bF82B",
     "deployedAt": 18755590
+  },
+  "ReferralManager__implementation": {
+    "type": "plain",
+    "name": "ReferralManager__implementation",
+    "address": "0xb90FE34008CCECE311dF043E64D4e330741f6d21",
+    "deployedAt": 21953365
+  },
+  "ReferralManager": {
+    "type": "upgradeable",
+    "name": "ReferralManager",
+    "address": "0xa68d96F26112377abdF3d6b9fcde9D54f2604C2a",
+    "dependencies": {
+      "admin": "0x73c5955dbB7a667e05da5fE7b8798c0fd4cE8E16",
+      "implementation": "0xb90FE34008CCECE311dF043E64D4e330741f6d21"
+    },
+    "deployedAt": 21953375
+  },
+  "Disperse__implementation": {
+    "type": "plain",
+    "name": "Disperse__implementation",
+    "address": "0x9e9f9B289B711209Db5A5dFEDeB1b06B5f5d978A",
+    "deployedAt": 21953403
+  },
+  "Disperse": {
+    "type": "upgradeable",
+    "name": "Disperse",
+    "address": "0x39A6567C3E01d28c37403c8782DE78490D9204fA",
+    "dependencies": {
+      "admin": "0x73c5955dbB7a667e05da5fE7b8798c0fd4cE8E16",
+      "implementation": "0x9e9f9B289B711209Db5A5dFEDeB1b06B5f5d978A"
+    },
+    "deployedAt": 21953424
   }
 }
