@@ -52,6 +52,7 @@ contract Admin is Storage {
         uint32 newInitialMarginRate, // 1e5
         uint32 newMaintenanceMarginRate, // 1e5
         uint32 newPositionFeeRate, // 1e5
+        uint32 newLiquidationFeeRate, // 1e5
         uint32 newMinProfitRate, // 1e5
         uint32 newMinProfitTime, // 1e0
         uint96 newMaxLongPositionSize,
@@ -62,12 +63,11 @@ contract Admin is Storage {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         require(symbol != "", "SYM"); // invalid SYMbol
         Asset storage asset = _storage.assets[assetId];
-        require(asset.initialMarginRate == 0 || newInitialMarginRate <= asset.initialMarginRate, "IMR"); // Initial Margin Raised
-        require(asset.maintenanceMarginRate == 0 || newMaintenanceMarginRate <= asset.maintenanceMarginRate, "MMR"); // Maintenance Margin Raised
         asset.symbol = symbol;
         asset.initialMarginRate = newInitialMarginRate;
         asset.maintenanceMarginRate = newMaintenanceMarginRate;
         asset.positionFeeRate = newPositionFeeRate;
+        asset.liquidationFeeRate = newLiquidationFeeRate;
         asset.minProfitRate = newMinProfitRate;
         asset.minProfitTime = newMinProfitTime;
         asset.maxLongPositionSize = newMaxLongPositionSize;
@@ -80,6 +80,7 @@ contract Admin is Storage {
             newInitialMarginRate,
             newMaintenanceMarginRate,
             newPositionFeeRate,
+            newLiquidationFeeRate,
             newMinProfitRate,
             newMinProfitTime,
             newMaxLongPositionSize,

@@ -123,6 +123,7 @@ contract Events {
         uint32 newInitialMarginRate,
         uint32 newMaintenanceMarginRate,
         uint32 newPositionFeeRate,
+        uint32 newLiquidationFeeRate,
         uint32 newMinProfitRate,
         uint32 newMinProfitTime,
         uint96 newMaxLongPositionSize,

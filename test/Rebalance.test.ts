@@ -70,8 +70,8 @@ describe("Rebalance", () => {
     // 1 = ETH
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(1, toBytes32("ETH"), 18, false, weth9.address, muxWeth.address)
-    // id, symbol, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
-    await pool.setAssetParams(1, toBytes32("ETH"), rate("0.1"), rate("0.05"), rate("0.001"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
+    // id, symbol, imr, mmr, fee, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
+    await pool.setAssetParams(1, toBytes32("ETH"), rate("0.1"), rate("0.05"), rate("0.001"), rate("0.001"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
     // id, tradable, openable, shortable, useStable, enabled, strict, liq
     await pool.setAssetFlags(1, true, true, true, false, true, false, true)
     await pool.setFundingParams(1, rate("0.0003"), rate("0.0009"))
@@ -79,8 +79,8 @@ describe("Rebalance", () => {
     // 2 = USDC
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(2, toBytes32("USDC"), 6, true, usdc.address, muxUsd.address)
-    // id, symbol, imr, mmr, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
-    await pool.setAssetParams(2, toBytes32("USDC"), rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1, rate("0"))
+    // id, symbol, imr, mmr, fee, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
+    await pool.setAssetParams(2, toBytes32("USDC"), rate("0"), rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1, rate("0"))
     // id, tradable, openable, shortable, useStable, enabled, strict, liq
     await pool.setAssetFlags(2, false, false, false, false, true, true, true)
     await pool.setFundingParams(2, rate("0.0002"), rate("0.0008"))

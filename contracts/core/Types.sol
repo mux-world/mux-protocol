@@ -78,7 +78,7 @@ struct Asset {
     uint128 _reserved2;
     // slot
     uint96 collectedFee;
-    uint32 _reserved3;
+    uint32 liquidationFeeRate; // 1e5
     uint96 spotLiquidity;
     // note: 32 bits remaining
     // slot

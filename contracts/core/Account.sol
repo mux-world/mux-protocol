@@ -228,6 +228,15 @@ contract Account is Storage {
         return feeUsd.safeUint96();
     }
 
+    function _getLiquidationFeeUsd(
+        Asset storage asset,
+        uint96 amount,
+        uint96 assetPrice
+    ) internal view returns (uint96) {
+        uint256 feeUsd = ((uint256(assetPrice) * uint256(asset.liquidationFeeRate)) * uint256(amount)) / 1e5 / 1e18;
+        return feeUsd.safeUint96();
+    }
+
     // note: you can skip this function if newPositionSize > 0
     function _updateEntryFunding(
         SubAccount storage subAccount,

@@ -65,19 +65,6 @@ contract TestLiquidityPoolHop2 is LiquidityPoolHop2, TestLiquidityPoolInject {
                 liquidityDynamicFeeRate
             );
     }
-
-    // lowering IMR and MMR is not allowed in admin.sol. we need it
-    function setMMR(
-        uint8 assetId,
-        uint32 newInitialMarginRate, // 1e5
-        uint32 newMaintenanceMarginRate // 1e5
-    ) external onlyOwner {
-        require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
-        Asset storage asset = _storage.assets[assetId];
-        asset.initialMarginRate = newInitialMarginRate;
-        asset.maintenanceMarginRate = newMaintenanceMarginRate;
-        _updateSequence();
-    }
 }
 
 // only used for typechain
@@ -101,11 +88,4 @@ contract TestLiquidityPool is LiquidityPoolHop1, LiquidityPoolHop2 {
         uint32 liquidityBaseFeeRate, // 1e5
         uint32 liquidityDynamicFeeRate // 1e5
     ) external pure returns (uint32 liquidityFee) {}
-
-    // lowering IMR and MMR is not allowed in admin.sol. we need it
-    function setMMR(
-        uint8 assetId,
-        uint32 newInitialMarginRate, // 1e5
-        uint32 newMaintenanceMarginRate // 1e5
-    ) external {}
 }

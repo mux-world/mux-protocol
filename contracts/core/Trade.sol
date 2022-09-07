@@ -278,8 +278,8 @@ contract Trade is Storage, Account {
         {
             uint96 fundingFee = _getFundingFeeUsd(subAccount, asset, ctx.id.isLong, assetPrice);
             {
-                uint96 positionFee = _getPositionFeeUsd(asset, subAccount.size, assetPrice);
-                ctx.totalFeeUsd = fundingFee + positionFee;
+                uint96 liquidationFee = _getLiquidationFeeUsd(asset, subAccount.size, assetPrice);
+                ctx.totalFeeUsd = fundingFee + liquidationFee;
             }
             // should mm unsafe
             (hasProfit, pnlUsd) = _positionPnlUsd(asset, subAccount, ctx.id.isLong, subAccount.size, assetPrice);

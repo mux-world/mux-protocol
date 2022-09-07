@@ -82,8 +82,8 @@
   "LiquidityPoolHop1__implementation": {
     "type": "plain",
     "name": "LiquidityPoolHop1__implementation",
-    "address": "0x1Da99673DB1D7838EF6C403f12928e7AdBe75b63",
-    "deployedAt": 42137373
+    "address": "0x480894501D4050763d3b54e741bb82fD5F91dF89",
+    "deployedAt": 46343781
   },
   "LiquidityPool": {
     "type": "upgradeable",
@@ -98,8 +98,8 @@
   "LiquidityPoolHop2": {
     "type": "plain",
     "name": "LiquidityPoolHop2",
-    "address": "0x4779A29aA69ce50CA8F4e618Db632342cfd197A9",
-    "deployedAt": 43294400
+    "address": "0x505659F2EEa25E3A46d8EBd2cf28A883C897E785",
+    "deployedAt": 46343652
   },
   "OrderBook__implementation": {
     "type": "plain",
