@@ -117,6 +117,7 @@ describe("Disperse", async () => {
 
         await expect(disperse.disperseTraderDiscount(
             100,
+            [ethers.utils.formatBytes32String("A"), ethers.utils.formatBytes32String("B")],
             [user2.address, user3.address],
             [toWei("10"), toWei("20"), toWei("30")],
             toWei("1")
@@ -124,6 +125,7 @@ describe("Disperse", async () => {
 
         await disperse.disperseTraderDiscount(
             100,
+            [ethers.utils.formatBytes32String("A"), ethers.utils.formatBytes32String("B"), ethers.utils.formatBytes32String("C")],
             [user2.address, user3.address, user4.address],
             [toWei("10"), toWei("20"), toWei("30")],
             toWei("1")

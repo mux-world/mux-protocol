@@ -32,17 +32,18 @@ describe("BscCompatible - this test should be tested on bscTestnet", () => {
   beforeEach(async () => {
     wbnb = (await createContract("WBNB")) as WBNB
     const nativeUnwrapper = await createContract("NativeUnwrapper", [wbnb.address, { gasLimit: 1000000 }])
+    const libLiquidity = await createContract("LibLiquidity")
     const poolHop1 = await createContract("TestLiquidityPoolHop1")
-    const poolHop2 = await createContract("TestLiquidityPoolHop2")
+    const poolHop2 = await createContract("TestLiquidityPoolHop2", [], { "contracts/libraries/LibLiquidity.sol:LibLiquidity": libLiquidity })
     const poolProxy = await createContract("TransparentUpgradeableProxy", [poolHop1.address, lp1.address /* admin */, "0x", { gasLimit: 1000000 }])
     orderBook = (await createContract("TestOrderBook")) as TestOrderBook
     console.log("bscTestnet wbnb", wbnb.address, "pool", poolProxy.address, "book", orderBook.address, "unwrap", nativeUnwrapper.address)
     console.log("bscTestnet contracts deployed")
-    pool = (await createFactory("TestLiquidityPool")).attach(poolProxy.address)
+    pool = await ethers.getContractAt("TestLiquidityPool", poolProxy.address)
     const mlp = "0x0000000000000000000000000000000000000000"
     await ensureFinished(orderBook.initialize(pool.address, mlp, wbnb.address, nativeUnwrapper.address))
     await ensureFinished(orderBook.addBroker(broker.address))
-    await ensureFinished(pool.initialize(poolHop2.address, mlp, orderBook.address, broker.address /* test only */, wbnb.address, nativeUnwrapper.address, vault.address))
+    await ensureFinished(pool.initialize(poolHop2.address, mlp, orderBook.address, wbnb.address, nativeUnwrapper.address, vault.address))
     await ensureFinished(nativeUnwrapper.addWhiteList(pool.address))
     await ensureFinished(nativeUnwrapper.addWhiteList(orderBook.address))
     console.log("bscTestnet contracts initialized")

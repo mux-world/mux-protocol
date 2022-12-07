@@ -195,12 +195,6 @@
     },
     "deployedAt": 43563128
   },
-  "Reader": {
-    "type": "plain",
-    "name": "Reader",
-    "address": "0x29F4dC996a0219838AfeCF868362E4df28A70a7b",
-    "deployedAt": 43709171
-  },
   "Rebalancer": {
     "type": "plain",
     "name": "SafeOwnable",
@@ -222,5 +216,17 @@
       "implementation": "0x9D4A8d7523a36f4a2E99870f1aFf232ded7e95Ae"
     },
     "deployedAt": 45988562
+  },
+  "LibLiquidity": {
+    "type": "plain",
+    "name": "LibLiquidity",
+    "address": "0x351a4f7128a15D9a230326B7b144F3De1b441414",
+    "deployedAt": 51588756
+  },
+  "Reader": {
+    "type": "plain",
+    "name": "Reader",
+    "address": "0xfb0DCDC30BF892Ec981255e7133AEcb8ea642b76",
+    "deployedAt": 51588759
   }
 }

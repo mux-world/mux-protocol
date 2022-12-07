@@ -50,6 +50,7 @@ contract Reader {
         uint32 initialMarginRate; // 1e5
         uint32 maintenanceMarginRate; // 1e5
         uint32 positionFeeRate; // 1e5
+        uint32 liquidationFeeRate; // 1e5
         uint32 minProfitRate; // 1e5
         uint32 minProfitTime; // 1e0
         uint96 maxLongPositionSize;
@@ -64,6 +65,7 @@ contract Reader {
         uint128 longCumulativeFundingRate; // Σ_t fundingRate_t
         uint128 shortCumulativeFunding; // Σ_t fundingRate_t * indexPrice_t
         uint96 spotLiquidity;
+        uint96 credit;
         uint96 totalLongPosition;
         uint96 totalShortPosition;
         uint96 averageLongPrice;
@@ -260,6 +262,7 @@ contract Reader {
         a.initialMarginRate = asset.initialMarginRate;
         a.maintenanceMarginRate = asset.maintenanceMarginRate;
         a.positionFeeRate = asset.positionFeeRate;
+        a.liquidationFeeRate = asset.liquidationFeeRate;
         a.minProfitRate = asset.minProfitRate;
         a.minProfitTime = asset.minProfitTime;
         a.maxLongPositionSize = asset.maxLongPositionSize;
@@ -275,6 +278,7 @@ contract Reader {
         a.longCumulativeFundingRate = asset.longCumulativeFundingRate;
         a.shortCumulativeFunding = asset.shortCumulativeFunding;
         a.spotLiquidity = asset.spotLiquidity;
+        a.credit = asset.credit;
         a.totalLongPosition = asset.totalLongPosition;
         a.totalShortPosition = asset.totalShortPosition;
         a.averageLongPrice = asset.averageLongPrice;

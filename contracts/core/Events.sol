@@ -145,6 +145,22 @@ contract Events {
     event SetStrictStableDeviation(uint32 newStrictStableDeviation);
     event SetBrokerGasRebate(uint96 newBrokerGasRebate);
     event SetMaintainer(address indexed newMaintainer);
+    event SetLiquidityManager(address indexed newLiquidityManager, bool isAdd);
     event WithdrawCollectedFee(uint8 indexed assetId, uint96 collectedFee);
     event TransferLiquidity(address indexed sender, address indexed recipient, uint8 assetId, uint256 amount);
+    event BorrowAsset(
+        uint8 indexed assetId,
+        address indexed project,
+        address indexed borrower,
+        uint256 rawBorrowAmount,
+        uint256 rawFee
+    );
+    event RepayAsset(
+        uint8 indexed assetId,
+        address indexed project,
+        address indexed repayer,
+        uint256 rawRepayAmount,
+        uint256 rawFee,
+        uint256 badDebt
+    );
 }

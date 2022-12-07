@@ -31,12 +31,13 @@ describe("Trade", () => {
   })
 
   beforeEach(async () => {
-    const poolHop1 = await createContract("TestLiquidityPoolHop1", [])
-    const poolHop2 = await createContract("TestLiquidityPoolHop2", [])
-    pool = (await createFactory("TestLiquidityPool")).attach(poolHop1.address)
+    const libLiquidity = await createContract("LibLiquidity")
+    const poolHop1 = await createContract("TestLiquidityPoolHop1")
+    const poolHop2 = await createContract("TestLiquidityPoolHop2", [], { "contracts/libraries/LibLiquidity.sol:LibLiquidity": libLiquidity })
+    pool = await ethers.getContractAt("TestLiquidityPool", poolHop1.address)
     mlp = await createContract("MockERC20", ["MLP", "MLP", 18])
     await mlp.mint(pool.address, toWei(PreMinedTokenTotalSupply))
-    await pool.initialize(poolHop2.address, mlp.address, user0.address /* test only */, user0.address /* test only */, weth9, weth9, user0.address /* vault */)
+    await pool.initialize(poolHop2.address, mlp.address, user0.address /* test only */, weth9, weth9, user0.address /* vault */)
     // fundingInterval, mlpPrice, mlpPrice, liqBase, liqDyn, σ_strict, brokerGas
     await pool.setNumbers(3600 * 8, rate("0.000"), rate("0.000"), rate("0.01"), toWei("0"))
     // mlpPrice, mlpPrice

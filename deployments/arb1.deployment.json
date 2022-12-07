@@ -139,14 +139,14 @@
     "address": "0x3e0199792Ce69DC29A0a36146bFa68bd7C8D6633",
     "dependencies": {
       "admin": "0xE52d9a3CBA458832A65cfa9FC8a74bacAbdeB32A",
-      "implementation": "0xa229148590c49e9284Aa72cF0e5536f60d00b6cd"
+      "implementation": "0x245BA1e19e7a15dd903B6b9B2705d4BF308F481c"
     },
     "deployedAt": 11242780
   },
   "LiquidityPoolHop2": {
     "type": "plain",
     "name": "LiquidityPoolHop2",
-    "address": "0x68ADC36FF663FD0Ed89d51a5666E12eA06337502",
+    "address": "0x32272D27E656446D64C880Fa0d543b9c3DD9B5bC",
     "deployedAt": 22819250
   },
   "OrderBook__implementation": {
@@ -161,7 +161,7 @@
     "address": "0xa19fD5aB6C8DCffa2A295F78a5Bb4aC543AAF5e3",
     "dependencies": {
       "admin": "0xE52d9a3CBA458832A65cfa9FC8a74bacAbdeB32A",
-      "implementation": "0x917863CEd89FcF12a2AA590f692Ff48983103a50"
+      "implementation": "0xeCF082a11278a9Bb3C5881Dad3Eb930812E1df66"
     },
     "deployedAt": 11242808
   },
@@ -264,12 +264,6 @@
     },
     "deployedAt": 18754134
   },
-  "Reader": {
-    "type": "plain",
-    "name": "Reader",
-    "address": "0x6e29c4e8095B2885B8d30b17790924F33EcD7b33",
-    "deployedAt": 18755590
-  },
   "Rebalancer": {
     "type": "plain",
     "name": "SafeOwnable",
@@ -307,5 +301,27 @@
       "implementation": "0x9e9f9B289B711209Db5A5dFEDeB1b06B5f5d978A"
     },
     "deployedAt": 21953424
+  },
+  "LibLiquidity": {
+    "type": "plain",
+    "name": "LibLiquidity",
+    "address": "0x2AbAd74605Eff3D0C49FD70cD230D974Afe2D206",
+    "deployedAt": 9826501
+  },
+  "Reader": {
+    "type": "plain",
+    "name": "Reader",
+    "address": "0x437CEa956B415e97517020490205c07f4a845168",
+    "deployedAt": 42074306
+  },
+  "MuxOp": {
+    "type": "upgradeable",
+    "name": "MuxOp",
+    "address": "0x854CF75e51782dE84478B1518543920f35a13eaE",
+    "dependencies": {
+      "admin": "0xE52d9a3CBA458832A65cfa9FC8a74bacAbdeB32A",
+      "implementation": "0xcCD84810375992d7E19d1529150B1B29eA2EfF6B"
+    },
+    "deployedAt": 44242976
   }
 }

@@ -14,7 +14,6 @@ contract LiquidityPoolHop1 is Storage, Trade, Getter, Proxy {
         address nextHop,
         address mlp,
         address orderBook,
-        address liquidityManager,
         address weth,
         address nativeUnwrapper,
         address vault
@@ -24,7 +23,6 @@ contract LiquidityPoolHop1 is Storage, Trade, Getter, Proxy {
         ChainedProxy.replace(nextHop);
         _storage.mlp = mlp;
         _storage.orderBook = orderBook;
-        _storage.liquidityManager = liquidityManager;
         _storage.weth = weth;
         _storage.nativeUnwrapper = nativeUnwrapper;
         _storage.vault = vault;

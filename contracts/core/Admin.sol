@@ -21,6 +21,11 @@ contract Admin is Storage {
         emit SetMaintainer(newMaintainer);
     }
 
+    function setLiquidityManager(address newLiquidityManager, bool isAdd) external onlyOwner {
+        _storage.liquidityManager[newLiquidityManager] = isAdd;
+        emit SetLiquidityManager(newLiquidityManager, isAdd);
+    }
+
     function addAsset(
         uint8 assetId,
         bytes32 symbol,
@@ -216,6 +221,7 @@ contract Admin is Storage {
         _updateSequence();
     }
 
+    // NOTE: LiquidityManager SHOULD transfer rawAmount collateral to LiquidityPool
     function transferLiquidityIn(uint8[] memory assetIds, uint256[] memory rawAmounts) external onlyLiquidityManager {
         uint256 length = assetIds.length;
         require(length > 0, "MTY"); // argument array is eMpTY
@@ -226,5 +232,46 @@ contract Admin is Storage {
             emit TransferLiquidity(msg.sender, address(this), assetIds[i], rawAmounts[i]);
         }
         _updateSequence();
+    }
+
+    function borrowAsset(
+        address borrower,
+        uint8 assetId,
+        uint256 rawBorrowAmount, // token.decimals
+        uint256 rawFee // token.decimals
+    ) external onlyLiquidityManager returns (uint256) {
+        Asset storage collateral = _storage.assets[assetId];
+        uint96 wadBorrowed = collateral.toWad(rawBorrowAmount);
+        uint96 wadFee = collateral.toWad(rawFee);
+        uint256 rawTransferOut = rawBorrowAmount - rawFee;
+        uint96 wadTransferOut = wadBorrowed - wadFee;
+        require(collateral.spotLiquidity >= wadTransferOut, "LIQ"); // insufficient LIQuidity
+        collateral.collectedFee += wadFee;
+        collateral.spotLiquidity -= wadTransferOut;
+        collateral.credit += wadBorrowed;
+        emit CollectedFee(assetId, wadFee);
+        IERC20Upgradeable(collateral.tokenAddress).safeTransfer(borrower, rawTransferOut);
+        emit BorrowAsset(assetId, msg.sender, borrower, rawBorrowAmount, rawFee);
+        return rawTransferOut;
+    }
+
+    // NOTE: LiquidityManager SHOULD transfer rawRepayAmount + rawFee collateral to LiquidityPool
+    function repayAsset(
+        address repayer,
+        uint8 assetId,
+        uint256 rawRepayAmount, // token.decimals
+        uint256 rawFee, // token.decimals
+        uint256 rawBadDebt // debt amount that cannot be recovered
+    ) external onlyLiquidityManager {
+        Asset storage collateral = _storage.assets[assetId];
+        uint96 wadRepay = collateral.toWad(rawRepayAmount);
+        uint96 wadFee = collateral.toWad(rawFee);
+        uint96 wadBadDebt = collateral.toWad(rawBadDebt);
+        uint96 wadTransferIn = wadRepay + wadFee;
+        collateral.collectedFee += wadFee;
+        collateral.spotLiquidity += wadTransferIn;
+        collateral.credit -= wadRepay + wadBadDebt;
+        emit CollectedFee(assetId, wadFee);
+        emit RepayAsset(assetId, msg.sender, repayer, rawRepayAmount, rawFee, rawBadDebt);
     }
 }

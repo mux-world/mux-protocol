@@ -20,7 +20,7 @@ contract Storage is Initializable, SafeOwnableUpgradeable, Events {
     }
 
     modifier onlyLiquidityManager() {
-        require(_msgSender() == _storage.liquidityManager, "LQM"); // can only be called by LiQuidity Manager
+        require(_storage.liquidityManager[_msgSender()], "LQM"); // can only be called by LiQuidity Manager
         _;
     }
 

@@ -32,9 +32,10 @@ describe("Rebalance", () => {
   })
 
   beforeEach(async () => {
+    const libLiquidity = await createContract("LibLiquidity")
     const poolHop1 = await createContract("TestLiquidityPoolHop1")
-    const poolHop2 = await createContract("TestLiquidityPoolHop2")
-    pool = (await createFactory("TestLiquidityPool")).attach(poolHop1.address)
+    const poolHop2 = await createContract("TestLiquidityPoolHop2", [], { "contracts/libraries/LibLiquidity.sol:LibLiquidity": libLiquidity })
+    pool = await ethers.getContractAt("TestLiquidityPool", poolHop1.address)
     mlp = (await createContract("MlpToken")) as MlpToken
     orderBook = (await createContract("TestOrderBook")) as TestOrderBook
     liquidityManager = (await createContract("LiquidityManager")) as LiquidityManager
@@ -45,11 +46,12 @@ describe("Rebalance", () => {
     await orderBook.initialize(pool.address, mlp.address, weth9.address, nativeUnwrapper.address)
     await orderBook.addBroker(broker.address)
     await liquidityManager.initialize(vault.address, pool.address)
-    await pool.initialize(poolHop2.address, mlp.address, orderBook.address, liquidityManager.address, weth9.address, nativeUnwrapper.address, vault.address)
+    await pool.initialize(poolHop2.address, mlp.address, orderBook.address, weth9.address, nativeUnwrapper.address, vault.address)
     // fundingInterval, liqBase, liqDyn, σ_strict, brokerGas
     await pool.setNumbers(3600 * 8, rate("0.0001"), rate("0.0000"), rate("0.01"), toWei("0"))
     // mlpPrice, mlpPrice
     await pool.setEmergencyNumbers(toWei("1"), toWei("2000"))
+    await pool.setLiquidityManager(liquidityManager.address, true)
     await nativeUnwrapper.addWhiteList(pool.address)
     await nativeUnwrapper.addWhiteList(orderBook.address)
     await mlp.transfer(pool.address, toWei(PreMinedTokenTotalSupply))

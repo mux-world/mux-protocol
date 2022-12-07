@@ -7,7 +7,7 @@ struct LiquidityPoolStorage {
     // slot
     address mlp;
     // slot
-    address liquidityManager;
+    address _reserved6; // was liquidityManager
     // slot
     address weth;
     // slot
@@ -43,6 +43,8 @@ struct LiquidityPoolStorage {
     uint96 brokerGasRebate; // the number of native tokens for broker gas rebates per transaction
     // slot
     address maintainer;
+    // slot
+    mapping(address => bool) liquidityManager;
     bytes32[50] _gap;
 }
 
@@ -74,7 +76,7 @@ struct Asset {
     uint32 halfSpread; // 1e5
     // note: 24 bits remaining
     // slot
-    uint128 _reserved1;
+    uint96 credit;
     uint128 _reserved2;
     // slot
     uint96 collectedFee;
