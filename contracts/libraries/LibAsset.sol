@@ -30,20 +30,16 @@ library LibAsset {
         }
     }
 
-    function issueMuxToken(
-        Asset storage token,
-        address recipient,
-        uint256 muxTokenAmount
-    ) internal {
+    function issueMuxToken(Asset storage token, address recipient, uint256 muxTokenAmount) internal {
         IERC20Upgradeable(token.muxTokenAddress).safeTransfer(recipient, muxTokenAmount);
     }
 
     function toWad(Asset storage token, uint256 rawAmount) internal view returns (uint96) {
-        return (rawAmount * (10**(18 - token.decimals))).safeUint96();
+        return (rawAmount * (10 ** (18 - token.decimals))).safeUint96();
     }
 
     function toRaw(Asset storage token, uint96 wadAmount) internal view returns (uint256) {
-        return uint256(wadAmount) / 10**(18 - token.decimals);
+        return uint256(wadAmount) / 10 ** (18 - token.decimals);
     }
 
     // is a usdt, usdc, ...

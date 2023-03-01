@@ -24,9 +24,10 @@ interface IDexAdapter {
         uint256 deadline
     ) external returns (uint256[] memory addedAmounts, uint256 liquidityAmount);
 
-    function addLiquidityCurve(uint256[] calldata maxAmounts, uint256 minLpAmount)
-        external
-        returns (uint256[] memory addedAmounts, uint256 liquidityAmount);
+    function addLiquidityCurve(
+        uint256[] calldata maxAmounts,
+        uint256 minLpAmount
+    ) external returns (uint256[] memory addedAmounts, uint256 liquidityAmount);
 
     function removeLiquidity(
         uint256 shareAmount,

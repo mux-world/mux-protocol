@@ -219,11 +219,7 @@ contract Account is Storage {
         return cumulativeFunding.wmul(subAccount.size).safeUint96();
     }
 
-    function _getPositionFeeUsd(
-        Asset storage asset,
-        uint96 amount,
-        uint96 assetPrice
-    ) internal view returns (uint96) {
+    function _getPositionFeeUsd(Asset storage asset, uint96 amount, uint96 assetPrice) internal view returns (uint96) {
         uint256 feeUsd = ((uint256(assetPrice) * uint256(asset.positionFeeRate)) * uint256(amount)) / 1e5 / 1e18;
         return feeUsd.safeUint96();
     }
@@ -238,11 +234,7 @@ contract Account is Storage {
     }
 
     // note: you can skip this function if newPositionSize > 0
-    function _updateEntryFunding(
-        SubAccount storage subAccount,
-        Asset storage asset,
-        bool isLong
-    ) internal {
+    function _updateEntryFunding(SubAccount storage subAccount, Asset storage asset, bool isLong) internal {
         if (isLong) {
             subAccount.entryFunding = asset.longCumulativeFundingRate;
         } else {

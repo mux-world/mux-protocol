@@ -31,16 +31,12 @@ interface ILiquidityPool {
             uint96[2] memory u96s
         );
 
-    function getSubAccount(bytes32 subAccountId)
+    function getSubAccount(
+        bytes32 subAccountId
+    )
         external
         view
-        returns (
-            uint96 collateral,
-            uint96 size,
-            uint32 lastIncreasedTime,
-            uint96 entryPrice,
-            uint128 entryFunding
-        );
+        returns (uint96 collateral, uint96 size, uint32 lastIncreasedTime, uint96 entryPrice, uint128 entryFunding);
 
     /////////////////////////////////////////////////////////////////////////////////
     //                             for Trader / Broker

@@ -27,27 +27,17 @@ interface IChainlinkV3 {
 
     function version() external view returns (uint256);
 
-    function getRoundData(uint80 _roundId)
+    function getRoundData(
+        uint80 _roundId
+    )
         external
         view
-        returns (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        );
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 
     function latestRoundData()
         external
         view
-        returns (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        );
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 }
 
 interface IChainlinkV2V3 is IChainlink, IChainlinkV3 {}
@@ -135,11 +125,7 @@ library LibReferenceOracle {
         return uint256(ref).safeUint96();
     }
 
-    function _truncatePrice(
-        Asset storage asset,
-        uint96 price,
-        uint96 ref
-    ) private returns (uint96) {
+    function _truncatePrice(Asset storage asset, uint96 price, uint96 ref) private returns (uint96) {
         if (asset.referenceDeviation == 0) {
             return ref;
         }
@@ -157,11 +143,7 @@ library LibReferenceOracle {
         return price;
     }
 
-    function _addSpread(
-        Asset storage asset,
-        uint96 price,
-        SpreadType spreadType
-    ) private view returns (uint96) {
+    function _addSpread(Asset storage asset, uint96 price, SpreadType spreadType) private view returns (uint96) {
         if (asset.halfSpread == 0) {
             return price;
         }

@@ -194,11 +194,9 @@ contract Reader {
         }
     }
 
-    function getOrders(uint64[] memory orderIds)
-        public
-        view
-        returns (bytes32[3][] memory orders, bool[] memory isExist)
-    {
+    function getOrders(
+        uint64[] memory orderIds
+    ) public view returns (bytes32[3][] memory orders, bool[] memory isExist) {
         orders = new bytes32[3][](orderIds.length);
         isExist = new bool[](orderIds.length);
         for (uint256 i = 0; i < orderIds.length; i++) {
@@ -206,14 +204,13 @@ contract Reader {
         }
     }
 
-    function getSubAccountsAndOrders(bytes32[] memory subAccountIds, uint64[] memory orderIds)
+    function getSubAccountsAndOrders(
+        bytes32[] memory subAccountIds,
+        uint64[] memory orderIds
+    )
         public
         view
-        returns (
-            SubAccountState[] memory subAccounts,
-            bytes32[3][] memory orders,
-            bool[] memory isOrderExist
-        )
+        returns (SubAccountState[] memory subAccounts, bytes32[3][] memory orders, bool[] memory isOrderExist)
     {
         subAccounts = new SubAccountState[](subAccountIds.length);
         for (uint256 i = 0; i < subAccountIds.length; i++) {
@@ -235,11 +232,10 @@ contract Reader {
         }
     }
 
-    function _convertPoolStorage(uint32[8] memory u32s, uint96[2] memory u96s)
-        internal
-        pure
-        returns (PoolStorage memory p)
-    {
+    function _convertPoolStorage(
+        uint32[8] memory u32s,
+        uint96[2] memory u96s
+    ) internal pure returns (PoolStorage memory p) {
         p.shortFundingBaseRate8H = u32s[0];
         p.shortFundingLimitRate8H = u32s[1];
         p.lastFundingTime = u32s[2];
@@ -286,11 +282,9 @@ contract Reader {
         a.collectedFee = asset.collectedFee;
     }
 
-    function _convertDexStorage(DexSpotConfiguration memory dexSpotConfiguration)
-        internal
-        pure
-        returns (DexStorage memory d)
-    {
+    function _convertDexStorage(
+        DexSpotConfiguration memory dexSpotConfiguration
+    ) internal pure returns (DexStorage memory d) {
         d.dexId = dexSpotConfiguration.dexId;
         d.dexType = dexSpotConfiguration.dexType;
         d.assetIds = dexSpotConfiguration.assetIds;

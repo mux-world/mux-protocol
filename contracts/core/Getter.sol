@@ -51,16 +51,12 @@ contract Getter is Storage {
         u96s[1] = _storage.mlpPriceUpperBound;
     }
 
-    function getSubAccount(bytes32 subAccountId)
+    function getSubAccount(
+        bytes32 subAccountId
+    )
         external
         view
-        returns (
-            uint96 collateral,
-            uint96 size,
-            uint32 lastIncreasedTime,
-            uint96 entryPrice,
-            uint128 entryFunding
-        )
+        returns (uint96 collateral, uint96 size, uint32 lastIncreasedTime, uint96 entryPrice, uint128 entryFunding)
     {
         SubAccount storage subAccount = _storage.accounts[subAccountId];
         collateral = subAccount.collateral;

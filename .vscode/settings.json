@@ -1,0 +1,31 @@
+{
+  "cSpell.words": [
+    "anyswap",
+    "arrayify",
+    "AVAX",
+    "Celer",
+    "cbridge",
+    "chainid",
+    "Chainlink",
+    "delegatecall",
+    "hexlify",
+    "IERC20",
+    "Initializable",
+    "IWETH",
+    "keccak",
+    "mload",
+    "MUXLP",
+    "rebalance",
+    "rebalancer",
+    "rebalancers",
+    "rmul",
+    "shortable",
+    "Timelock",
+    "typechain",
+    "Unwrapper",
+    "wdiv",
+    "wmul"
+  ],
+  "editor.formatOnSave": true,
+  "cSpell.enableFiletypes": ["solidity"]
+}

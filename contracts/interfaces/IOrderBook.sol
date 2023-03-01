@@ -56,7 +56,7 @@ interface IOrderBook {
      * @param  deadline           a unix timestamp after which the limit/trigger order MUST NOT be filled. fill 0 for market order.
      * @param  referralCode       set referral code of the trading account.
      */
-    function placePositionOrder(
+    function placePositionOrder2(
         bytes32 subAccountId,
         uint96 collateralAmount, // erc20.decimals
         uint96 size, // 1e18

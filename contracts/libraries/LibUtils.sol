@@ -16,11 +16,10 @@ library LibUtils {
         }
     }
 
-    function norm(address[] memory tokens_, uint256[] memory amounts_)
-        internal
-        view
-        returns (uint256[] memory normAmounts_)
-    {
+    function norm(
+        address[] memory tokens_,
+        uint256[] memory amounts_
+    ) internal view returns (uint256[] memory normAmounts_) {
         require(tokens_.length == amounts_.length, "L!L");
         uint256 n = tokens_.length;
         normAmounts_ = new uint256[](n);
@@ -31,7 +30,7 @@ library LibUtils {
             } catch {
                 decimals = 18;
             }
-            normAmounts_[i] = amounts_[i] / (10**decimals);
+            normAmounts_[i] = amounts_[i] / (10 ** decimals);
         }
     }
 }

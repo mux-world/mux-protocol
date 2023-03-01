@@ -128,11 +128,7 @@ contract Admin is Storage {
         _updateSequence();
     }
 
-    function setFundingParams(
-        uint8 assetId,
-        uint32 newBaseRate8H,
-        uint32 newLimitRate8H
-    ) external onlyOwner {
+    function setFundingParams(uint8 assetId, uint32 newBaseRate8H, uint32 newLimitRate8H) external onlyOwner {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         if (_storage.assets[assetId].isStable()) {
             _storage.shortFundingBaseRate8H = newBaseRate8H;

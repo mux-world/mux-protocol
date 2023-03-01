@@ -51,7 +51,11 @@ contract OrderBook is Storage, Admin {
         bytes32 userData
     );
     event FillOrder(uint64 orderId, OrderType orderType, bytes32[3] orderData);
-    event CancelOrder(uint64 orderId, OrderType orderType, bytes32[3] orderData);
+    event CancelOrder(
+        uint64 orderId,
+        OrderType orderType,
+        bytes32[3] orderData
+    );
 
     function initialize(
         address pool,
@@ -75,11 +79,16 @@ contract OrderBook is Storage, Admin {
     /**
      * @notice Get an Order by orderId.
      */
-    function getOrder(uint64 orderId) external view returns (bytes32[3] memory, bool) {
+    function getOrder(
+        uint64 orderId
+    ) external view returns (bytes32[3] memory, bool) {
         return (_orders.get(orderId), _orders.contains(orderId));
     }
 
-    function getOrders(uint256 begin, uint256 end)
+    function getOrders(
+        uint256 begin,
+        uint256 end
+    )
         external
         view
         returns (bytes32[3][] memory orderArray, uint256 totalCount)
@@ -106,7 +115,16 @@ contract OrderBook is Storage, Admin {
         uint8 flags,
         uint32 deadline // 1e0
     ) external payable {
-        placePositionOrder2(subAccountId, collateralAmount, size, price, profitTokenId, flags, deadline, bytes32(0));
+        placePositionOrder2(
+            subAccountId,
+            collateralAmount,
+            size,
+            price,
+            profitTokenId,
+            flags,
+            deadline,
+            bytes32(0)
+        );
     }
 
     /**
@@ -138,7 +156,8 @@ contract OrderBook is Storage, Admin {
         uint32 deadline, // 1e0
         bytes32 referralCode
     ) public payable {
-        LibSubAccount.DecodedSubAccountId memory account = subAccountId.decodeSubAccountId();
+        LibSubAccount.DecodedSubAccountId memory account = subAccountId
+            .decodeSubAccountId();
         require(account.account == _msgSender(), "SND"); // SeNDer is not authorized
         require(size != 0, "S=0"); // order Size Is Zero
         uint32 expire10s;
@@ -170,13 +189,27 @@ contract OrderBook is Storage, Admin {
         _orders.add(orderId, data);
         // fetch collateral
         if (collateralAmount > 0 && ((flags & LibOrder.POSITION_OPEN) != 0)) {
-            address collateralAddress = _pool.getAssetAddress(account.collateralId);
+            address collateralAddress = _pool.getAssetAddress(
+                account.collateralId
+            );
             _transferIn(collateralAddress, address(this), collateralAmount);
         }
         if (referralCode != bytes32(0) && referralManager != address(0)) {
-            IReferralManager(referralManager).setReferrerCodeFor(account.account, referralCode);
+            IReferralManager(referralManager).setReferrerCodeFor(
+                account.account,
+                referralCode
+            );
         }
-        emit NewPositionOrder(subAccountId, orderId, collateralAmount, size, price, profitTokenId, flags, deadline);
+        emit NewPositionOrder(
+            subAccountId,
+            orderId,
+            collateralAmount,
+            size,
+            price,
+            profitTokenId,
+            flags,
+            deadline
+        );
     }
 
     /**
@@ -244,7 +277,13 @@ contract OrderBook is Storage, Admin {
         );
         _orders.add(orderId, data);
 
-        emit NewWithdrawalOrder(subAccountId, orderId, rawAmount, profitTokenId, isProfit);
+        emit NewWithdrawalOrder(
+            subAccountId,
+            orderId,
+            rawAmount,
+            profitTokenId,
+            isProfit
+        );
     }
 
     /**
@@ -277,7 +316,15 @@ contract OrderBook is Storage, Admin {
             userData
         );
         _orders.add(orderId, data);
-        emit NewRebalanceOrder(rebalancer, orderId, tokenId0, tokenId1, rawAmount0, maxRawAmount1, userData);
+        emit NewRebalanceOrder(
+            rebalancer,
+            orderId,
+            tokenId0,
+            tokenId1,
+            rawAmount0,
+            maxRawAmount1,
+            userData
+        );
     }
 
     /**
@@ -308,12 +355,19 @@ contract OrderBook is Storage, Admin {
             uint96 collateralAmount = order.collateral;
             if (collateralAmount > 0) {
                 IERC20Upgradeable collateral = IERC20Upgradeable(
-                    _pool.getAssetAddress(order.subAccountId.getSubAccountCollateralId())
+                    _pool.getAssetAddress(
+                        order.subAccountId.getSubAccountCollateralId()
+                    )
                 );
                 collateral.safeTransfer(address(_pool), collateralAmount);
                 _pool.depositCollateral(order.subAccountId, collateralAmount);
             }
-            tradingPrice = _pool.openPosition(order.subAccountId, order.size, collateralPrice, assetPrice);
+            tradingPrice = _pool.openPosition(
+                order.subAccountId,
+                order.size,
+                collateralPrice,
+                assetPrice
+            );
         } else {
             tradingPrice = _pool.closePosition(
                 order.subAccountId,
@@ -327,10 +381,17 @@ contract OrderBook is Storage, Admin {
             // auto withdraw
             uint96 collateralAmount = order.collateral;
             if (collateralAmount > 0) {
-                _pool.withdrawCollateral(order.subAccountId, collateralAmount, collateralPrice, assetPrice);
+                _pool.withdrawCollateral(
+                    order.subAccountId,
+                    collateralAmount,
+                    collateralPrice,
+                    assetPrice
+                );
             }
             if (order.isWithdrawIfEmpty()) {
-                (uint96 collateral, uint96 size, , , ) = _pool.getSubAccount(order.subAccountId);
+                (uint96 collateral, uint96 size, , , ) = _pool.getSubAccount(
+                    order.subAccountId
+                );
                 if (size == 0 && collateral > 0) {
                     _pool.withdrawAllCollateral(order.subAccountId);
                 }
@@ -340,7 +401,8 @@ contract OrderBook is Storage, Admin {
             // open,long      0,0   0,1   1,1   1,0
             // limitOrder     <=    >=    <=    >=
             // triggerOrder   >=    <=    >=    <=
-            bool isLess = (order.subAccountId.isLong() == order.isOpenPosition());
+            bool isLess = (order.subAccountId.isLong() ==
+                order.isOpenPosition());
             if (order.isTriggerOrder()) {
                 isLess = !isLess;
             }
@@ -378,10 +440,15 @@ contract OrderBook is Storage, Admin {
         require(orderType == OrderType.LiquidityOrder, "TYP"); // order TYPe mismatch
 
         LiquidityOrder memory order = orderData.decodeLiquidityOrder();
-        require(_blockTimestamp() >= order.placeOrderTime + liquidityLockPeriod, "LCK"); // mlp token is LoCKed
+        require(
+            _blockTimestamp() >= order.placeOrderTime + liquidityLockPeriod,
+            "LCK"
+        ); // mlp token is LoCKed
         uint96 rawAmount = order.rawAmount;
         if (order.isAdding) {
-            IERC20Upgradeable collateral = IERC20Upgradeable(_pool.getAssetAddress(order.assetId));
+            IERC20Upgradeable collateral = IERC20Upgradeable(
+                _pool.getAssetAddress(order.assetId)
+            );
             collateral.safeTransfer(address(_pool), rawAmount);
             _pool.addLiquidity(
                 order.account,
@@ -429,7 +496,10 @@ contract OrderBook is Storage, Admin {
         require(orderType == OrderType.WithdrawalOrder, "TYP"); // order TYPe mismatch
 
         WithdrawalOrder memory order = orderData.decodeWithdrawalOrder();
-        require(_blockTimestamp() <= order.placeOrderTime + marketOrderTimeout, "EXP"); // EXPired
+        require(
+            _blockTimestamp() <= order.placeOrderTime + marketOrderTimeout,
+            "EXP"
+        ); // EXPired
         if (order.isProfit) {
             _pool.withdrawProfit(
                 order.subAccountId,
@@ -440,7 +510,12 @@ contract OrderBook is Storage, Admin {
                 profitAssetPrice
             );
         } else {
-            _pool.withdrawCollateral(order.subAccountId, order.rawAmount, collateralPrice, assetPrice);
+            _pool.withdrawCollateral(
+                order.subAccountId,
+                order.rawAmount,
+                collateralPrice,
+                assetPrice
+            );
         }
 
         emit FillOrder(orderId, orderType, orderData);
@@ -491,26 +566,34 @@ contract OrderBook is Storage, Admin {
         if (orderType == OrderType.PositionOrder) {
             PositionOrder memory order = orderData.decodePositionOrder();
             if (brokers[_msgSender()]) {
-                require(_blockTimestamp() > _positionOrderDeadline(order), "EXP"); // not EXPired yet
+                require(
+                    _blockTimestamp() > _positionOrderDeadline(order),
+                    "EXP"
+                ); // not EXPired yet
             } else {
                 require(_msgSender() == account, "SND"); // SeNDer is not authorized
             }
             if (order.isOpenPosition() && order.collateral > 0) {
-                address collateralAddress = _pool.getAssetAddress(order.subAccountId.getSubAccountCollateralId());
+                address collateralAddress = _pool.getAssetAddress(
+                    order.subAccountId.getSubAccountCollateralId()
+                );
                 _transferOut(collateralAddress, account, order.collateral);
             }
         } else if (orderType == OrderType.LiquidityOrder) {
             require(_msgSender() == account, "SND"); // SeNDer is not authorized
             LiquidityOrder memory order = orderData.decodeLiquidityOrder();
             if (order.isAdding) {
-                address collateralAddress = _pool.getAssetAddress(order.assetId);
+                address collateralAddress = _pool.getAssetAddress(
+                    order.assetId
+                );
                 _transferOut(collateralAddress, account, order.rawAmount);
             } else {
                 _mlp.safeTransfer(account, order.rawAmount);
             }
         } else if (orderType == OrderType.WithdrawalOrder) {
             if (brokers[_msgSender()]) {
-                WithdrawalOrder memory order = orderData.decodeWithdrawalOrder();
+                WithdrawalOrder memory order = orderData
+                    .decodeWithdrawalOrder();
                 uint256 deadline = order.placeOrderTime + marketOrderTimeout;
                 require(_blockTimestamp() > deadline, "EXP"); // not EXPired yet
             } else {
@@ -528,7 +611,8 @@ contract OrderBook is Storage, Admin {
      * @notice Trader can withdraw all collateral only when position = 0.
      */
     function withdrawAllCollateral(bytes32 subAccountId) external {
-        LibSubAccount.DecodedSubAccountId memory account = subAccountId.decodeSubAccountId();
+        LibSubAccount.DecodedSubAccountId memory account = subAccountId
+            .decodeSubAccountId();
         require(account.account == _msgSender(), "SND"); // SeNDer is not authorized
         _pool.withdrawAllCollateral(subAccountId);
     }
@@ -548,7 +632,12 @@ contract OrderBook is Storage, Admin {
         uint32[] calldata unstableUtilizations, // 1e5
         uint96[] calldata unstablePrices // 1e18
     ) external onlyBroker {
-        _pool.updateFundingState(stableUtilization, unstableTokenIds, unstableUtilizations, unstablePrices);
+        _pool.updateFundingState(
+            stableUtilization,
+            unstableTokenIds,
+            unstableUtilizations,
+            unstablePrices
+        );
     }
 
     /**
@@ -557,8 +646,12 @@ contract OrderBook is Storage, Admin {
      * @param  subAccountId       sub account id. see LibSubAccount.decodeSubAccountId.
      * @param  collateralAmount   collateral amount. decimals = erc20.decimals.
      */
-    function depositCollateral(bytes32 subAccountId, uint256 collateralAmount) external payable {
-        LibSubAccount.DecodedSubAccountId memory account = subAccountId.decodeSubAccountId();
+    function depositCollateral(
+        bytes32 subAccountId,
+        uint256 collateralAmount
+    ) external payable {
+        LibSubAccount.DecodedSubAccountId memory account = subAccountId
+            .decodeSubAccountId();
         require(account.account == _msgSender(), "SND"); // SeNDer is not authorized
         require(collateralAmount != 0, "C=0"); // Collateral Is Zero
         address collateralAddress = _pool.getAssetAddress(account.collateralId);
@@ -573,7 +666,13 @@ contract OrderBook is Storage, Admin {
         uint96 assetPrice,
         uint96 profitAssetPrice // only used when !isLong
     ) external onlyBroker {
-        _pool.liquidate(subAccountId, profitAssetId, collateralPrice, assetPrice, profitAssetPrice);
+        _pool.liquidate(
+            subAccountId,
+            profitAssetId,
+            collateralPrice,
+            assetPrice,
+            profitAssetPrice
+        );
         // auto withdraw
         (uint96 collateral, , , , ) = _pool.getSubAccount(subAccountId);
         if (collateral > 0) {
@@ -590,7 +689,11 @@ contract OrderBook is Storage, Admin {
     /**
      * @dev Broker can withdraw brokerGasRebate.
      */
-    function claimBrokerGasRebate() external onlyBroker returns (uint256 rawAmount) {
+    function claimBrokerGasRebate()
+        external
+        onlyBroker
+        returns (uint256 rawAmount)
+    {
         return _pool.claimBrokerGasRebate(msg.sender);
     }
 
@@ -601,13 +704,17 @@ contract OrderBook is Storage, Admin {
     ) private {
         if (tokenAddress == address(_weth)) {
             require(msg.value > 0 && msg.value == rawAmount, "VAL"); // transaction VALue SHOULD equal to rawAmount
-            _weth.deposit{ value: rawAmount }();
+            _weth.deposit{value: rawAmount}();
             if (recipient != address(this)) {
                 _weth.transfer(recipient, rawAmount);
             }
         } else {
             require(msg.value == 0, "VAL"); // transaction VALue SHOULD be 0
-            IERC20Upgradeable(tokenAddress).safeTransferFrom(_msgSender(), recipient, rawAmount);
+            IERC20Upgradeable(tokenAddress).safeTransferFrom(
+                _msgSender(),
+                recipient,
+                rawAmount
+            );
         }
     }
 
@@ -618,7 +725,10 @@ contract OrderBook is Storage, Admin {
     ) internal {
         if (tokenAddress == address(_weth)) {
             _weth.transfer(address(_nativeUnwrapper), rawAmount);
-            INativeUnwrapper(_nativeUnwrapper).unwrap(payable(recipient), rawAmount);
+            INativeUnwrapper(_nativeUnwrapper).unwrap(
+                payable(recipient),
+                rawAmount
+            );
         } else {
             IERC20Upgradeable(tokenAddress).safeTransfer(recipient, rawAmount);
         }
@@ -628,11 +738,18 @@ contract OrderBook is Storage, Admin {
         return uint32(block.timestamp);
     }
 
-    function _positionOrderDeadline(PositionOrder memory order) internal view returns (uint32) {
+    function _positionOrderDeadline(
+        PositionOrder memory order
+    ) internal view returns (uint32) {
         if (order.isMarketOrder()) {
             return order.placeOrderTime + marketOrderTimeout;
         } else {
-            return order.placeOrderTime + LibMath.min32(uint32(order.expire10s) * 10, maxLimitOrderTimeout);
+            return
+                order.placeOrderTime +
+                LibMath.min32(
+                    uint32(order.expire10s) * 10,
+                    maxLimitOrderTimeout
+                );
         }
     }
 }

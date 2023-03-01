@@ -19,11 +19,7 @@ library LibOrder {
         mapping(uint64 => bytes32[3]) _orders;
     }
 
-    function add(
-        OrderList storage list,
-        uint64 orderId,
-        bytes32[3] memory order
-    ) internal {
+    function add(OrderList storage list, uint64 orderId, bytes32[3] memory order) internal {
         require(!contains(list, orderId), "DUP"); // already seen this orderId
         list._orderIds.push(orderId);
         // The value is stored at length-1, but we add 1 to all indexes
