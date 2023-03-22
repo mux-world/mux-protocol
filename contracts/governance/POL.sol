@@ -18,20 +18,24 @@ contract POL is Initializable, SafeOwnableUpgradeable {
 
     event TransferETH(address indexed to, uint256 amount);
     event TransferERC20Token(address indexed token, address indexed to, uint256 amount);
+    event SetMaintainer(address newMaintainer, bool enable);
 
     address public liquidityPool;
     address public orderBook;
     address public weth;
 
-    function initialize(
-        address liquidityPool_,
-        address orderBook_,
-        address weth_
-    ) external initializer {
+    mapping(address => bool) public maintainers;
+
+    function initialize(address liquidityPool_, address orderBook_, address weth_) external initializer {
         __SafeOwnable_init();
         liquidityPool = liquidityPool_;
         orderBook = orderBook_;
         weth = weth_;
+    }
+
+    function setMaintainer(address newMaintainer, bool enable) external onlyOwner {
+        maintainers[newMaintainer] = enable;
+        emit SetMaintainer(newMaintainer, enable);
     }
 
     /**
@@ -54,11 +58,7 @@ contract POL is Initializable, SafeOwnableUpgradeable {
      * @param   tokens      The address of to be sent ERC20 token.
      * @param   amounts     The amount of asset to send.
      */
-    function transferERC20(
-        address recipient,
-        address[] memory tokens,
-        uint256[] memory amounts
-    ) external onlyOwner {
+    function transferERC20(address recipient, address[] memory tokens, uint256[] memory amounts) external onlyOwner {
         require(recipient != address(0), "recipient is zero address");
         require(tokens.length == amounts.length, "length mismatch");
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -82,28 +82,26 @@ contract POL is Initializable, SafeOwnableUpgradeable {
         }
     }
 
-    function cancelOrder(uint64 orderId) external onlyOwner {
+    function cancelOrder(uint64 orderId) external {
+        require(msg.sender == owner() || maintainers[msg.sender], "must be maintainer or owner");
         IOrderBook(orderBook).cancelOrder(orderId);
     }
 
     function buyMUXLP(
         uint8 assetId,
         uint96 rawAmount // erc20.decimals
-    ) external onlyOwner {
+    ) external {
+        require(msg.sender == owner() || maintainers[msg.sender], "must be maintainer or owner");
         address tokenAddress = ILiquidityPool(liquidityPool).getAssetAddress(assetId);
         uint256 value;
         if (tokenAddress == weth) {
             IWETH(weth).withdraw(rawAmount);
             value = rawAmount;
         }
-        IOrderBook(orderBook).placeLiquidityOrder{ value: value }(
-            assetId,
-            rawAmount,
-            true /* isAdding */
-        );
+        IOrderBook(orderBook).placeLiquidityOrder{ value: value }(assetId, rawAmount, true /* isAdding */);
     }
 
     receive() external payable {}
 
-    bytes32[50] private __gap;
+    bytes32[49] private __gap;
 }

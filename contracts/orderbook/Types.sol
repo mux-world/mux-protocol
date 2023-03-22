@@ -29,6 +29,14 @@ struct PositionOrder {
     uint24 expire10s; // 10 seconds. deadline = placeOrderTime + expire * 10
 }
 
+struct PositionOrderExtra {
+    // tp/sl strategy
+    uint96 tpPrice; // take-profit price. decimals = 18. only valid when flags.POSITION_TPSL_STRATEGY.
+    uint96 slPrice; // stop-loss price. decimals = 18. only valid when flags.POSITION_TPSL_STRATEGY.
+    uint8 tpslProfitTokenId; // only valid when flags.POSITION_TPSL_STRATEGY.
+    uint32 tpslDeadline; // only valid when flags.POSITION_TPSL_STRATEGY.
+}
+
 //                                  160       152       144          96          72    64              8        0
 // +------------------------------------------------------------------+-----------+--------------------+--------+
 // |                        account 160                               | unused 24 |     orderId 64     | type 8 |

@@ -3,6 +3,7 @@ pragma solidity 0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import "../components/SafeOwnableUpgradeable.sol";
 import "../interfaces/ILiquidityPool.sol";
 import "../interfaces/IWETH9.sol";
@@ -26,7 +27,9 @@ contract Storage is Initializable, SafeOwnableUpgradeable {
     uint32 public maxLimitOrderTimeout;
     address public maintainer;
     address public referralManager;
-    bytes32[43] _gap;
+    mapping(uint64 => PositionOrderExtra) public positionOrderExtras;
+    mapping(bytes32 => EnumerableSetUpgradeable.UintSet) internal _activatedTpslOrders;
+    bytes32[41] _gap;
 
     modifier whenPositionOrderEnabled() {
         require(!isPositionOrderPaused, "POP"); // Position Order Paused

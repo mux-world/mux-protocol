@@ -267,7 +267,7 @@ async function main(deployer: Deployer) {
 
   // init
   console.log("init")
-  await ensureFinished(pool.initialize(poolHop2.address, mlpToken.address, orderBook.address, liquidityManager.address, wNative.address, nativeUnwrapper.address, vault.address))
+  await ensureFinished(pool.initialize(poolHop2.address, mlpToken.address, orderBook.address, wNative.address, nativeUnwrapper.address, vault.address))
   await ensureFinished(orderBook.initialize(pool.address, mlpToken.address, wNative.address, nativeUnwrapper.address))
   await orderBook.addBroker(accounts[1].address)
   await orderBook.addBroker(keeperAddress)
@@ -278,6 +278,7 @@ async function main(deployer: Deployer) {
   await pool.setNumbers(3600 * 8, rate("0.0025"), rate("0.005"), rate("0.01"), toWei("0"))
   // mlpPrice, mlpPrice
   await pool.setEmergencyNumbers(toWei("0.5"), toWei("1.1"))
+  await pool.setLiquidityManager(liquidityManager.address, true)
   await ensureFinished(nativeUnwrapper.addWhiteList(pool.address))
   await ensureFinished(nativeUnwrapper.addWhiteList(orderBook.address))
   await ensureFinished(vault.initialize())

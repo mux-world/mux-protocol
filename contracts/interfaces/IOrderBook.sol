@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.10;
 
+import "../orderbook/Types.sol";
+
 interface IOrderBook {
     /**
      * @notice Liquidity Order can be filled after this time in seconds.
@@ -33,6 +35,11 @@ interface IOrderBook {
     function getOrder(uint64 orderId) external view returns (bytes32[3] memory, bool);
 
     /**
+     * @notice Get more parameters (ex: tp/sl strategy parameters) of a position order by orderId.
+     */
+    function positionOrderExtras(uint64 orderId) external view returns (PositionOrderExtra memory);
+
+    /**
      * @notice Cancel an Order by orderId.
      */
     function cancelOrder(uint64 orderId) external;
@@ -49,10 +56,10 @@ interface IOrderBook {
      * @param  profitTokenId      specify the profitable asset.id when closing a position and making a profit.
      *                            take no effect when opening a position or loss.
      * @param  flags              a bitset of LibOrder.POSITION_*.
-     *                            POSITION_INCREASING               0x80 means openPosition; otherwise closePosition
-     *                            POSITION_MARKET_ORDER             0x40 means ignore limitPrice
-     *                            POSITION_WITHDRAW_ALL_IF_EMPTY    0x20 means auto withdraw all collateral if position.size == 0
-     *                            POSITION_TRIGGER_ORDER            0x10 means this is a trigger order (ex: stop-loss order). 0 means this is a limit order (ex: take-profit order)
+     *                            POSITION_OPEN                     this flag means openPosition; otherwise closePosition
+     *                            POSITION_MARKET_ORDER             this flag means ignore limitPrice
+     *                            POSITION_WITHDRAW_ALL_IF_EMPTY    this flag means auto withdraw all collateral if position.size == 0
+     *                            POSITION_TRIGGER_ORDER            this flag means this is a trigger order (ex: stop-loss order). otherwise this is a limit order (ex: take-profit order)
      * @param  deadline           a unix timestamp after which the limit/trigger order MUST NOT be filled. fill 0 for market order.
      * @param  referralCode       set referral code of the trading account.
      */

@@ -264,7 +264,7 @@ async function main(deployer: Deployer) {
   await ensureFinished(mlpToken.initialize("MUX LP", "MUXLP" + TOKEN_POSTFIX))
   await ensureFinished(muxUsd.initialize("MUX Token for USD", "muxUSD" + TOKEN_POSTFIX))
   await ensureFinished(muxWeth.initialize("MUX Token for WETH", "muxWETH" + TOKEN_POSTFIX))
-  await ensureFinished(pool.initialize(poolHop2.address, mlpToken.address, orderBook.address, liquidityManager.address, weth9.address, nativeUnwrapper.address, vault.address))
+  await ensureFinished(pool.initialize(poolHop2.address, mlpToken.address, orderBook.address, weth9.address, nativeUnwrapper.address, vault.address))
   await ensureFinished(orderBook.initialize(pool.address, mlpToken.address, weth9.address, nativeUnwrapper.address))
   await orderBook.addBroker(accounts[1].address)
   await orderBook.addBroker(keeperAddress)
@@ -275,6 +275,7 @@ async function main(deployer: Deployer) {
   await pool.setNumbers(3600 * 8, rate("0.0025"), rate("0.005"), rate("0.01"), toWei("0"))
   // mlpPrice, mlpPrice
   await pool.setEmergencyNumbers(toWei("0.5"), toWei("1.1"))
+  await pool.setLiquidityManager(liquidityManager.address, true)
   await ensureFinished(nativeUnwrapper.addWhiteList(pool.address))
   await ensureFinished(nativeUnwrapper.addWhiteList(orderBook.address))
   await ensureFinished(vault.initialize())

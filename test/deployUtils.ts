@@ -14,10 +14,12 @@ export enum OrderType {
 }
 
 export enum PositionOrderFlags {
-  OpenPosition = 0x80, // 0x80 means openPosition; otherwise closePosition
-  MarketOrder = 0x40, // 0x40 means ignore limitPrice
-  WithdrawAllIfEmpty = 0x20, // 0x20 means auto withdraw all collateral if position.size == 0
-  TriggerOrder = 0x10, // 0x10 means this is a trigger order (ex: stop-loss order). 0 means this is a limit order (ex: take-profit order)
+  OpenPosition = 0x80, // this flag means openPosition; otherwise closePosition
+  MarketOrder = 0x40, // this flag means ignore limitPrice
+  WithdrawAllIfEmpty = 0x20, // this flag means auto withdraw all collateral if position.size == 0
+  TriggerOrder = 0x10, // this flag means this is a trigger order (ex: stop-loss order). otherwise this is a limit order (ex: take-profit order)
+  TpSlStratrgy = 0x08, // for open-position-order, this flag auto place take-profit and stop-loss orders when open-position-order fills.
+  //                      for close-position-order, this flag means ignore limitPrice and profitTokenId, and use extra.tpPrice, extra.slPrice, extra.tpslProfitTokenId instead.
 }
 
 export enum ReferenceOracleType {
@@ -112,13 +114,5 @@ export function padAccount(account: string): Buffer {
 }
 
 export function assembleSubAccountId(account: string, collateral: number, asset: number, isLong: boolean): string {
-  return hexlify(
-    concat([
-      arrayify(account),
-      [arrayify(BigNumber.from(collateral))[0]],
-      [arrayify(BigNumber.from(asset))[0]],
-      arrayify(BigNumber.from(isLong ? 1 : 0)),
-      zeroPad([], 9),
-    ])
-  )
+  return hexlify(concat([arrayify(account), [arrayify(BigNumber.from(collateral))[0]], [arrayify(BigNumber.from(asset))[0]], arrayify(BigNumber.from(isLong ? 1 : 0)), zeroPad([], 9)]))
 }

@@ -37,14 +37,14 @@ abstract contract TokenBridge is Plugin {
                 // fantom
                 peer := 0x5898c3E218a8501533d771C86e2fA37743ea2aDd
             }
+            case 10 {
+                // optimism
+                peer := 0xFEc3704f4A02cB0EE6C7d52Cbf72b11E0441E9d5
+            }
         }
     }
 
-    function _setPermission(
-        uint256 chainId,
-        uint8 assetId,
-        bool isAllowed
-    ) internal {
+    function _setPermission(uint256 chainId, uint8 assetId, bool isAllowed) internal {
         _setStateAsUint256(_permissionKey(chainId, assetId), isAllowed ? 1 : 0);
         emit SetTransferPermission(chainId, assetId, isAllowed);
     }

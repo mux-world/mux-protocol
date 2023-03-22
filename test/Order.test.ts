@@ -73,6 +73,12 @@ function parseRebalanceOrder(orderData: string[]) {
 describe("Order", () => {
   const weth9 = "0x0000000000000000000000000000000000000000" // this test file will not use weth
   const refCode = toBytes32("")
+  const posExtra = {
+    tpPrice: "0",
+    slPrice: "0",
+    tpslProfitTokenId: 0,
+    tpslDeadline: 0,
+  }
   let orderBook: TestOrderBook
   let pool: Contract
   let mlp: Contract
@@ -94,7 +100,8 @@ describe("Order", () => {
     mlp = await createContract("MockERC20", ["MLP", "MLP", 18])
 
     pool = await createContract("MockLiquidityPool")
-    orderBook = (await createContract("TestOrderBook")) as TestOrderBook
+    const libOrderBook = await createContract("LibOrderBook")
+    orderBook = (await createContract("TestOrderBook", [], { "contracts/libraries/LibOrderBook.sol:LibOrderBook": libOrderBook })) as TestOrderBook
     await orderBook.initialize(pool.address, mlp.address, weth9, weth9)
     await orderBook.addBroker(broker.address)
     await orderBook.setBlockTimestamp(1000)
@@ -108,7 +115,17 @@ describe("Order", () => {
     {
       await ctk.approve(orderBook.address, toWei("1"))
       await ctk.mint(user0.address, toWei("1"))
-      await orderBook.placePositionOrder2(assembleSubAccountId(user0.address, 0, 1, true), toWei("1"), toWei("0.2"), toWei("3000"), 0, PositionOrderFlags.OpenPosition, 1000 + 86400 * 30, refCode)
+      await orderBook.placePositionOrder3(
+        assembleSubAccountId(user0.address, 0, 1, true),
+        toWei("1"),
+        toWei("0.2"),
+        toWei("3000"),
+        0,
+        PositionOrderFlags.OpenPosition,
+        1000 + 86400 * 30,
+        refCode,
+        posExtra
+      )
       expect(await orderBook.getOrderCount()).to.equal(1)
       {
         const orders = await orderBook.getOrders(0, 100)
@@ -206,7 +223,17 @@ describe("Order", () => {
     await ctk.mint(user0.address, toWei("1000"))
     // no1
     {
-      await orderBook.placePositionOrder2(assembleSubAccountId(user0.address, 0, 1, true), toWei("100"), toWei("0.1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 1000 + 86400, refCode)
+      await orderBook.placePositionOrder3(
+        assembleSubAccountId(user0.address, 0, 1, true),
+        toWei("100"),
+        toWei("0.1"),
+        toWei("1000"),
+        0,
+        PositionOrderFlags.OpenPosition,
+        1000 + 86400,
+        refCode,
+        posExtra
+      )
       expect(await ctk.balanceOf(user0.address)).to.equal(toWei("900"))
       expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("100"))
       {
@@ -228,7 +255,17 @@ describe("Order", () => {
     }
     // no2
     {
-      await orderBook.placePositionOrder2(assembleSubAccountId(user0.address, 0, 1, true), toWei("100"), toWei("0.1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 1000 + 86400, refCode)
+      await orderBook.placePositionOrder3(
+        assembleSubAccountId(user0.address, 0, 1, true),
+        toWei("100"),
+        toWei("0.1"),
+        toWei("1000"),
+        0,
+        PositionOrderFlags.OpenPosition,
+        1000 + 86400,
+        refCode,
+        posExtra
+      )
       expect(await ctk.balanceOf(user0.address)).to.equal(toWei("900"))
       expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("100"))
       {
@@ -392,8 +429,8 @@ describe("Order", () => {
     // limit order
     {
       const subAccountId = assembleSubAccountId(user0.address, 0, 1, true)
-      await expect(orderBook.placePositionOrder2(subAccountId, toWei("100"), toWei("0.1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 1000 + 167772160, refCode)).revertedWith("DTL")
-      await expect(orderBook.placePositionOrder2(subAccountId, toWei("100"), toWei("0.1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 1000 + 86400, refCode))
+      await expect(orderBook.placePositionOrder3(subAccountId, toWei("100"), toWei("0.1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 1000 + 167772160, refCode, posExtra)).revertedWith("DTL")
+      await expect(orderBook.placePositionOrder3(subAccountId, toWei("100"), toWei("0.1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 1000 + 86400, refCode, posExtra))
         .to.emit(orderBook, "NewPositionOrder")
         .withArgs(subAccountId, 0, toWei("100"), toWei("0.1"), toWei("1000"), 0, PositionOrderFlags.OpenPosition, 1000 + 86400)
       expect(await ctk.balanceOf(user0.address)).to.equal(toWei("900"))
@@ -432,9 +469,9 @@ describe("Order", () => {
     {
       const subAccountId = assembleSubAccountId(user0.address, 0, 1, true)
       await expect(
-        orderBook.placePositionOrder2(subAccountId, toWei("100"), toWei("0.1"), toWei("0"), 0, PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder, 1000 + 167772160, refCode)
+        orderBook.placePositionOrder3(subAccountId, toWei("100"), toWei("0.1"), toWei("0"), 0, PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder, 1000 + 167772160, refCode, posExtra)
       ).revertedWith("D!0")
-      await expect(orderBook.placePositionOrder2(subAccountId, toWei("100"), toWei("0.1"), toWei("0"), 0, PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder, 0, refCode))
+      await expect(orderBook.placePositionOrder3(subAccountId, toWei("100"), toWei("0.1"), toWei("0"), 0, PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder, 0, refCode, posExtra))
         .to.emit(orderBook, "NewPositionOrder")
         .withArgs(subAccountId, 2, toWei("100"), toWei("0.1"), toWei("0"), 0, PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder, 0)
       expect(await ctk.balanceOf(user0.address)).to.equal(toWei("900"))

@@ -14,7 +14,7 @@ export async function restorableEnviron(
   try {
     await job(deployer, ...args)
   } catch (err) {
-    printError("Error occurs when deploying contracts:", err)
+    printError("Error occurs:", err)
   } finally {
     // save deployed
     deployer.finalize()

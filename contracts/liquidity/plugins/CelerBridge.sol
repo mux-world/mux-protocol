@@ -43,6 +43,10 @@ contract CelerBridge is TokenBridge {
                 // fantom
                 bridge := 0x374B8a9f3eC5eB2D97ECA84Ea27aCa45aa1C57EF
             }
+            case 10 {
+                // optimism
+                bridge := 0x9D39Fc627A6d9d9F8C831c16995b209548cc3401
+            }
         }
     }
 
@@ -50,11 +54,7 @@ contract CelerBridge is TokenBridge {
         isAllowed = _getStateAsUint256(_permissionKey(chainId, assetId)) > 0;
     }
 
-    function setCelerBridgePermission(
-        uint256 chainId,
-        uint8 assetId,
-        bool isAllowed
-    ) public onlyOwner {
+    function setCelerBridgePermission(uint256 chainId, uint8 assetId, bool isAllowed) public onlyOwner {
         _setPermission(chainId, assetId, isAllowed);
     }
 

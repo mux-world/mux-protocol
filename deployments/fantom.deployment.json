@@ -104,7 +104,13 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0x91aFCBa3428315A410205EB4D7B71CAD497AEebA",
+    "address": "0x17FcBfa0ff72A541fAF002332Cfb4Ecd592458b2",
+    "deployedAt": 45913026
+  },
+  "LibOrderBook": {
+    "type": "plain",
+    "name": "LibOrderBook",
+    "address": "0x52d730C41Af5bd1dD9F8eF39619b9388DaB214C3",
     "deployedAt": 45913026
   },
   "OrderBook": {
@@ -113,7 +119,7 @@
     "address": "0x0c30b10462CdED51C3CA31e7C51019b7d25a965B",
     "dependencies": {
       "admin": "0x6E3F4772B2bBb1C93dBE7632f951590ceDE77dac",
-      "implementation": "0xd0f5EA6b864F9b0aED1C615a1E6a56b489B726c3"
+      "implementation": "0x17FcBfa0ff72A541fAF002332Cfb4Ecd592458b2"
     },
     "deployedAt": 37650245
   },
@@ -170,8 +176,8 @@
   "CelerBridge": {
     "type": "plain",
     "name": "CelerBridge",
-    "address": "0x7C13bbE21CCa9F0d31D5955112a2417De826bc2d",
-    "deployedAt": 42292276
+    "address": "0x18b3aEd3a68292C8735F0db8625fe3d8f4fe027C",
+    "deployedAt": 53472941
   },
   "ReceiveAssets": {
     "type": "plain",
@@ -223,10 +229,15 @@
     "address": "0x351a4f7128a15D9a230326B7b144F3De1b441414",
     "deployedAt": 51588756
   },
+  "PeggedMuxOp": {
+    "type": "preset",
+    "name": "PeggedMuxOp",
+    "address": "0xF16f662BC827C7e2D28F4B5F4f47cA9Cad63E424"
+  },
   "Reader": {
     "type": "plain",
     "name": "Reader",
-    "address": "0xfb0DCDC30BF892Ec981255e7133AEcb8ea642b76",
-    "deployedAt": 51588759
+    "address": "0x30acc119F8b60C9cb92b8E3c4c7f8830c82f707E",
+    "deployedAt": 57613673
   }
 }

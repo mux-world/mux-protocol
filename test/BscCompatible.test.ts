@@ -36,7 +36,8 @@ describe("BscCompatible - this test should be tested on bscTestnet", () => {
     const poolHop1 = await createContract("TestLiquidityPoolHop1")
     const poolHop2 = await createContract("TestLiquidityPoolHop2", [], { "contracts/libraries/LibLiquidity.sol:LibLiquidity": libLiquidity })
     const poolProxy = await createContract("TransparentUpgradeableProxy", [poolHop1.address, lp1.address /* admin */, "0x", { gasLimit: 1000000 }])
-    orderBook = (await createContract("TestOrderBook")) as TestOrderBook
+    const libOrderBook = await createContract("LibOrderBook")
+    orderBook = (await createContract("TestOrderBook", [], { "contracts/libraries/LibOrderBook.sol:LibOrderBook": libOrderBook })) as TestOrderBook
     console.log("bscTestnet wbnb", wbnb.address, "pool", poolProxy.address, "book", orderBook.address, "unwrap", nativeUnwrapper.address)
     console.log("bscTestnet contracts deployed")
     pool = await ethers.getContractAt("TestLiquidityPool", poolProxy.address)

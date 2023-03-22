@@ -232,6 +232,13 @@ contract Reader {
         }
     }
 
+    function getPositionOrdersExtra(uint64[] memory orderIds) public view returns (PositionOrderExtra[] memory extras) {
+        extras = new PositionOrderExtra[](orderIds.length);
+        for (uint256 i = 0; i < orderIds.length; i++) {
+            extras[i] = orderBook.positionOrderExtras(orderIds[i]);
+        }
+    }
+
     function _convertPoolStorage(
         uint32[8] memory u32s,
         uint96[2] memory u96s

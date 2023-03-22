@@ -112,7 +112,7 @@
     "address": "0x5898c3E218a8501533d771C86e2fA37743ea2aDd",
     "dependencies": {
       "admin": "0x855E99F768FaD76DD0d3EB7c446C0b759C96D520",
-      "implementation": "0xFaD49693Cb3F920417c987A55a1aCE32b33EEccE"
+      "implementation": "0x533b9ecff336F449B526C03BFE6188c5e3B9FBfD"
     }
   },
   "LiquidityManager__implementation": {
@@ -167,7 +167,13 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0xd19Cc219177A42b93621153D7F050C3467d5C34D",
+    "address": "0x533b9ecff336F449B526C03BFE6188c5e3B9FBfD",
+    "deployedAt": 19262169
+  },
+  "LibOrderBook": {
+    "type": "plain",
+    "name": "LibOrderBook",
+    "address": "0x86fC1C12CB871c61B6DBb9c2383B372db8317e5E",
     "deployedAt": 19262169
   },
   "Vault__implementation": {
@@ -207,8 +213,8 @@
   "CelerBridge": {
     "type": "plain",
     "name": "CelerBridge",
-    "address": "0xd84e49013cFe5Af1eF992A66dA9993796b4002f6",
-    "deployedAt": 17051922
+    "address": "0x5A96f91Df86219507c38D0Fc52CD7825d97BA414",
+    "deployedAt": 24707560
   },
   "WithdrawAsset": {
     "type": "plain",
@@ -260,10 +266,15 @@
     "address": "0x8Ab4a32cEecFC801eE7D480d4f818b3F8E7108C1",
     "deployedAt": 22980779
   },
+  "PeggedMuxOp": {
+    "type": "preset",
+    "name": "PeggedMuxOp",
+    "address": "0xE80e0B928F8f3024dfeFa56E7608bC3bAF389881"
+  },
   "Reader": {
     "type": "plain",
     "name": "Reader",
-    "address": "0xB33e3dDcE77b7679fA92AF77863Ae439C44c8519",
-    "deployedAt": 22981514
+    "address": "0xCE443B8c1C3E3edb3b9F3B2B482FaaC09A95B01d",
+    "deployedAt": 27455588
   }
 }

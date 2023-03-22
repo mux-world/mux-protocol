@@ -35,7 +35,8 @@ describe("POL", () => {
     const poolHop2 = await createContract("TestLiquidityPoolHop2", [], { "contracts/libraries/LibLiquidity.sol:LibLiquidity": libLiquidity })
     pool = await ethers.getContractAt("TestLiquidityPool", poolHop1.address)
     mlp = (await createContract("MlpToken")) as MlpToken
-    orderBook = (await createContract("TestOrderBook")) as TestOrderBook
+    const libOrderBook = await createContract("LibOrderBook")
+    orderBook = (await createContract("TestOrderBook", [], { "contracts/libraries/LibOrderBook.sol:LibOrderBook": libOrderBook })) as TestOrderBook
     liquidityManager = (await createContract("LiquidityManager")) as LiquidityManager
     weth9 = (await createContract("WETH9")) as WETH9
     nativeUnwrapper = await createContract("NativeUnwrapper", [weth9.address])
@@ -78,7 +79,7 @@ describe("POL", () => {
     await weth9.transfer(pol.address, toWei("1"))
     // buy
     {
-      await expect(pol.buyMUXLP(0, toWei("1"))).to.revertedWith("Ownable: caller is not the owner")
+      await expect(pol.buyMUXLP(0, toWei("1"))).to.revertedWith("must be maintainer or owner")
       await expect(pol.connect(op).buyMUXLP(0, toWei("1")))
         .to.emit(orderBook, "NewLiquidityOrder")
         .withArgs(pol.address, 0, 0, toWei("1"), true)

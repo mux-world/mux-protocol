@@ -46,6 +46,11 @@ contract ReceiveAssets is Plugin {
                 wrapper := 0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83
                 assetId := 7
             }
+            case 10 {
+                // optimism
+                wrapper := 0x4200000000000000000000000000000000000006
+                assetId := 3
+            }
         }
     }
 
