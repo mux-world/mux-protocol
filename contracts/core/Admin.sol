@@ -62,8 +62,7 @@ contract Admin is Storage {
         uint32 newMinProfitTime, // 1e0
         uint96 newMaxLongPositionSize,
         uint96 newMaxShortPositionSize,
-        uint32 newSpotWeight,
-        uint32 newHalfSpread
+        uint32 newSpotWeight
     ) external onlyOwner {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         require(symbol != "", "SYM"); // invalid SYMbol
@@ -78,7 +77,6 @@ contract Admin is Storage {
         asset.maxLongPositionSize = newMaxLongPositionSize;
         asset.maxShortPositionSize = newMaxShortPositionSize;
         asset.spotWeight = newSpotWeight;
-        asset.halfSpread = newHalfSpread;
         emit SetAssetParams(
             assetId,
             symbol,
@@ -90,8 +88,7 @@ contract Admin is Storage {
             newMinProfitTime,
             newMaxLongPositionSize,
             newMaxShortPositionSize,
-            newSpotWeight,
-            newHalfSpread
+            newSpotWeight
         );
         _updateSequence();
     }
@@ -104,7 +101,8 @@ contract Admin is Storage {
         bool useStableTokenForProfit,
         bool isEnabled,
         bool isStrictStable,
-        bool canAddRemoveLiquidity
+        bool canAddRemoveLiquidity,
+        uint32 newHalfSpread
     ) external onlyMaintainer {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         Asset storage asset = _storage.assets[assetId];
@@ -123,8 +121,9 @@ contract Admin is Storage {
         newFlags =
             (newFlags & (~ASSET_CAN_ADD_REMOVE_LIQUIDITY)) |
             (canAddRemoveLiquidity ? ASSET_CAN_ADD_REMOVE_LIQUIDITY : 0);
-        emit SetAssetFlags(assetId, asset.flags, newFlags);
         asset.flags = newFlags;
+        asset.halfSpread = newHalfSpread;
+        emit SetAssetFlags(assetId, newFlags, newHalfSpread);
         _updateSequence();
     }
 

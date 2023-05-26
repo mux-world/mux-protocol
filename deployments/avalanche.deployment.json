@@ -103,7 +103,7 @@
   "LiquidityPoolHop2": {
     "type": "plain",
     "name": "LiquidityPoolHop2",
-    "address": "0x4092c1e114531459c07c1a94208942Cc5A497B81",
+    "address": "0x68533BaF16252d1E6b8Af6d04655d5AFD7a30870",
     "deployedAt": 19532329
   },
   "OrderBook": {
@@ -263,7 +263,7 @@
   "LibLiquidity": {
     "type": "plain",
     "name": "LibLiquidity",
-    "address": "0x8Ab4a32cEecFC801eE7D480d4f818b3F8E7108C1",
+    "address": "0x687d05435489aaa3f437799e55ba3ab33122a7be",
     "deployedAt": 22980779
   },
   "PeggedMuxOp": {

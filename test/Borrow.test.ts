@@ -57,19 +57,19 @@ describe("Borrow", () => {
     // 0 = USDC
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(0, toBytes32("USDC"), 6, true, usdc.address, muxUsd.address)
-    // id, symbol, imr, mmr, fee, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
-    await pool.setAssetParams(0, toBytes32("USDC"), rate("0"), rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1, rate("0"))
-    // id, tradable, openable, shortable, useStable, enabled, strict, liq
-    await pool.setAssetFlags(0, false, false, false, false, true, true, true)
+    // id, symbol, imr, mmr, fee, fee, minBps, minTime, maxLong, maxShort, spotWeight
+    await pool.setAssetParams(0, toBytes32("USDC"), rate("0"), rate("0"), rate("0"), rate("0"), rate("0"), 0, toWei("0"), toWei("0"), 1)
+    // id, tradable, openable, shortable, useStable, enabled, strict, liq, halfSpread
+    await pool.setAssetFlags(0, false, false, false, false, true, true, true, rate("0"))
     await pool.setFundingParams(0, rate("0.0002"), rate("0.0008"))
 
     // 1 = BNB
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(1, toBytes32("BNB"), 18, false, wbnb.address, muxBnb.address)
-    // id, symbol, imr, mmr, fee, fee, minBps, minTime, maxLong, maxShort, spotWeight, halfSpread
-    await pool.setAssetParams(1, toBytes32("BNB"), rate("0.1"), rate("0.05"), rate("0.001"), rate("0.002"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2, rate("0"))
-    // id, tradable, openable, shortable, useStable, enabled, strict, liq
-    await pool.setAssetFlags(1, true, true, true, false, true, false, true)
+    // id, symbol, imr, mmr, fee, fee, minBps, minTime, maxLong, maxShort, spotWeight
+    await pool.setAssetParams(1, toBytes32("BNB"), rate("0.1"), rate("0.05"), rate("0.001"), rate("0.002"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2)
+    // id, tradable, openable, shortable, useStable, enabled, strict, liq, halfSpread
+    await pool.setAssetFlags(1, true, true, true, false, true, false, true, rate("0"))
     await pool.setFundingParams(1, rate("0.0003"), rate("0.0009"))
 
     await pool.setBlockTimestamp(86400 * 1)

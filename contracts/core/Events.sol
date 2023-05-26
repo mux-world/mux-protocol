@@ -128,10 +128,9 @@ contract Events {
         uint32 newMinProfitTime,
         uint96 newMaxLongPositionSize,
         uint96 newMaxShortPositionSize,
-        uint32 newSpotWeight,
-        uint32 newHalfSpread
+        uint32 newSpotWeight
     );
-    event SetAssetFlags(uint8 indexed assetId, uint56 oldFlags, uint56 newFlags);
+    event SetAssetFlags(uint8 indexed assetId, uint56 newFlags, uint32 newHalfSpread);
     event SetReferenceOracle(
         uint8 indexed assetId,
         uint8 referenceOracleType,
