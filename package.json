@@ -25,13 +25,13 @@
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.5.4",
     "hardhat": "^2.8.4",
+    "solidity-coverage": "^0.7.20",
     "ts-node": "^10.5.0",
     "typechain": "^7.0.0",
     "typescript": "^4.6.2"
   },
   "dependencies": {
     "@openzeppelin/contracts": "4.5.0",
-    "@openzeppelin/contracts-upgradeable": "4.5.0",
-    "solidity-coverage": "^0.7.20"
+    "@openzeppelin/contracts-upgradeable": "4.5.0"
   }
 }
