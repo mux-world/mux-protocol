@@ -34,7 +34,7 @@ contract Liquidity is Storage, Account {
         uint96 mlpPrice,
         uint96 currentAssetValue,
         uint96 targetAssetValue
-    ) external onlyOrderBook {
+    ) external onlyOrderBook returns (uint96 mlpAmount) {
         require(trader != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(tokenId), "LST"); // the asset is not LiSTed
         require(rawAmount != 0, "A=0"); // Amount Is Zero
@@ -63,7 +63,7 @@ contract Liquidity is Storage, Account {
         emit CollectedFee(tokenId, feeCollateral);
         wadAmount -= feeCollateral;
         // mlp
-        uint96 mlpAmount = ((uint256(wadAmount) * uint256(tokenPrice)) / uint256(mlpPrice)).safeUint96();
+        mlpAmount = ((uint256(wadAmount) * uint256(tokenPrice)) / uint256(mlpPrice)).safeUint96();
         IERC20Upgradeable(_storage.mlp).transfer(trader, mlpAmount);
         emit AddLiquidity(trader, tokenId, tokenPrice, mlpPrice, mlpAmount, feeCollateral);
         _updateSequence();
@@ -89,7 +89,7 @@ contract Liquidity is Storage, Account {
         uint96 mlpPrice,
         uint96 currentAssetValue,
         uint96 targetAssetValue
-    ) external onlyOrderBook {
+    ) external onlyOrderBook returns (uint256 rawAmount) {
         require(trader != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(tokenId), "LST"); // the asset is not LiSTed
         require(mlpPrice != 0, "P=0"); // Price Is Zero
@@ -122,7 +122,7 @@ contract Liquidity is Storage, Account {
         // send token
         require(wadAmount <= token.spotLiquidity, "LIQ"); // insufficient LIQuidity
         token.spotLiquidity -= wadAmount; // already deduct fee
-        uint256 rawAmount = token.toRaw(wadAmount);
+        rawAmount = token.toRaw(wadAmount);
         token.transferOut(trader, rawAmount, _storage.weth, _storage.nativeUnwrapper);
         emit RemoveLiquidity(trader, tokenId, tokenPrice, mlpPrice, mlpAmount, feeCollateral);
         _updateSequence();

@@ -146,13 +146,13 @@
   "LiquidityPoolHop2": {
     "type": "plain",
     "name": "LiquidityPoolHop2",
-    "address": "0xaCaB8821B9459A972daF598D129e76C71FA7536E",
+    "address": "0xBa7d2bc8d6d19964A487060b4E47825C0436d6B2",
     "deployedAt": 22819250
   },
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0x1BD879CdC0fd7E7192E78c07157D0c29abbD7feE"
+    "address": "0xF744F3B881EA5eae77Bd61A60788dc44374Fc709"
   },
   "OrderBook": {
     "type": "upgradeable",
@@ -304,13 +304,13 @@
   "LibLiquidity": {
     "type": "plain",
     "name": "LibLiquidity",
-    "address": "0xa29356fd18733d136c096bc552470392f2b8544f",
+    "address": "0xDBf711edf1f26642c90E467e8a06A560Fe9F5C45",
     "deployedAt": 9826501
   },
   "LibOrderBook": {
     "type": "plain",
     "name": "LibOrderBook",
-    "address": "0xa62b252d15B1f1305C6E85BA5FCFAeFEfF539C06"
+    "address": "0x0B94Fb9B2Bb768141DE055a64481d5f902e94080"
   },
   "MuxOp": {
     "type": "upgradeable",

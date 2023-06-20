@@ -11,33 +11,62 @@ import "../interfaces/INativeUnwrapper.sol";
 import "../libraries/LibOrder.sol";
 
 contract Storage is Initializable, SafeOwnableUpgradeable {
-    bool private _reserved1;
-    mapping(address => bool) public brokers;
-    ILiquidityPool internal _pool;
-    uint64 public nextOrderId;
-    LibOrder.OrderList internal _orders;
-    IERC20Upgradeable internal _mlp;
-    IWETH internal _weth;
-    uint32 public liquidityLockPeriod; // 1e0
-    INativeUnwrapper public _nativeUnwrapper;
-    mapping(address => bool) public rebalancers;
-    bool public isPositionOrderPaused;
-    bool public isLiquidityOrderPaused;
-    uint32 public marketOrderTimeout;
-    uint32 public maxLimitOrderTimeout;
-    address public maintainer;
-    address public referralManager;
-    mapping(uint64 => PositionOrderExtra) public positionOrderExtras;
-    mapping(bytes32 => EnumerableSetUpgradeable.UintSet) internal _activatedTpslOrders;
-    bytes32[41] _gap;
+    bool private _reserved1; // this variable shares the same slot as SafeOwnableUpgradeable._pendingOwner
+    OrderBookStorage internal _storage;
+    bytes32[38] _gap;
 
     modifier whenPositionOrderEnabled() {
-        require(!isPositionOrderPaused, "POP"); // Position Order Paused
+        require(!_storage.isPositionOrderPaused, "POP"); // Position Order Paused
         _;
     }
 
     modifier whenLiquidityOrderEnabled() {
-        require(!isLiquidityOrderPaused, "LOP"); // Liquidity Order Paused
+        require(!_storage.isLiquidityOrderPaused, "LOP"); // Liquidity Order Paused
         _;
+    }
+
+    function brokers(address broker) external view returns (bool) {
+        return _storage.brokers[broker];
+    }
+
+    function nextOrderId() external view returns (uint64) {
+        return _storage.nextOrderId;
+    }
+
+    // 1e0
+    function liquidityLockPeriod() external view returns (uint32) {
+        return _storage.liquidityLockPeriod;
+    }
+
+    function rebalancers(address rebalancer) external view returns (bool) {
+        return _storage.rebalancers[rebalancer];
+    }
+
+    function isPositionOrderPaused() external view returns (bool) {
+        return _storage.isPositionOrderPaused;
+    }
+
+    function isLiquidityOrderPaused() external view returns (bool) {
+        return _storage.isLiquidityOrderPaused;
+    }
+
+    function marketOrderTimeout() external view returns (uint32) {
+        return _storage.marketOrderTimeout;
+    }
+
+    function maxLimitOrderTimeout() external view returns (uint32) {
+        return _storage.maxLimitOrderTimeout;
+    }
+
+    function maintainer() external view returns (address) {
+        return _storage.maintainer;
+    }
+
+    function referralManager() external view returns (address) {
+        return _storage.referralManager;
+    }
+
+    function positionOrderExtras(uint64 orderId) external view returns (PositionOrderExtra memory) {
+        return _storage.positionOrderExtras[orderId];
     }
 }

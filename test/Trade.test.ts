@@ -557,7 +557,7 @@ describe("Trade", () => {
     expect(await asset2.balanceOf(user0.address)).to.equal(toWei("98")) // fee = 2, ((200 - 100) * 1 - fee)
   })
 
-  it("close long. pnl < min profit", async () => {
+  it("close long. time < minProfitTime, pnl < minProfitRate", async () => {
     const subAccountId = assembleSubAccountId(user0.address, 0, 1, true)
     const current = toWei("29700")
     const target = toWei("29700")
@@ -583,7 +583,7 @@ describe("Trade", () => {
       expect(assetInfo.collectedFee).to.equal(toWei("1"))
     }
 
-    // 100 => 100.5
+    // 100 => 100.5, time < minProfitTime, pnl < minProfitRate
     await pool.closePosition(subAccountId, toWei("0.1"), 1, toWei("1"), toWei("100.5"), toWei("0"))
     {
       const subAccount = await pool.getSubAccount(subAccountId)

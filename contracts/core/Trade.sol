@@ -446,12 +446,7 @@ contract Trade is Storage, Account {
         _updateBrokerTransactions();
     }
 
-    function _increaseTotalSize(
-        Asset storage asset,
-        bool isLong,
-        uint96 amount,
-        uint96 price
-    ) internal {
+    function _increaseTotalSize(Asset storage asset, bool isLong, uint96 amount, uint96 price) internal {
         if (isLong) {
             uint96 newPosition = asset.totalLongPosition + amount;
             asset.averageLongPrice = ((uint256(asset.averageLongPrice) *
@@ -469,12 +464,7 @@ contract Trade is Storage, Account {
         }
     }
 
-    function _decreaseTotalSize(
-        Asset storage asset,
-        bool isLong,
-        uint96 amount,
-        uint96 oldEntryPrice
-    ) internal {
+    function _decreaseTotalSize(Asset storage asset, bool isLong, uint96 amount, uint96 oldEntryPrice) internal {
         if (isLong) {
             uint96 newPosition = asset.totalLongPosition - amount;
             if (newPosition == 0) {

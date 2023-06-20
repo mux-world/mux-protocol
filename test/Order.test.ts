@@ -1,7 +1,7 @@
 import { ethers } from "hardhat"
 import "@nomiclabs/hardhat-waffle"
 import { expect } from "chai"
-import { toWei, createContract, OrderType, assembleSubAccountId, PositionOrderFlags, hashString, toBytes32 } from "./deployUtils"
+import { toWei, createContract, OrderType, assembleSubAccountId, PositionOrderFlags, hashString, toBytes32, rate } from "./deployUtils"
 import { Contract } from "ethers"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { BigNumber } from "@ethersproject/bignumber"
@@ -284,6 +284,64 @@ describe("Order", () => {
       expect(await ctk.balanceOf(user0.address)).to.equal(toWei("900"))
       expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("0"))
       expect(await ctk.balanceOf(pool.address)).to.equal(toWei("100"))
+    }
+  })
+
+  it("close long position - must profit", async () => {
+    const subAccountId = assembleSubAccountId(user0.address, 0, 1, true)
+    // open
+    await pool.openPosition(
+      subAccountId,
+      toWei('0.1'), // amount
+      toWei('0.1'), // collateralPrice
+      toWei('1000'), // assetPrice
+    );
+    // place close - fail
+    {
+      await expect(orderBook.placePositionOrder3(
+        subAccountId,
+        toWei("0"),
+        toWei("0.1"),
+        toWei("0"),
+        1,
+        PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.ShouldReachMinProfit,
+        1000 + 86400,
+        refCode,
+        posExtra
+      )).to.revertedWith("MPT")
+    }
+    // place close - success
+    {
+      await pool.setAssetAddress(1, atk.address)
+      await pool.setAssetParams(1, 60, rate('0.10'))
+      await orderBook.placePositionOrder3(
+        subAccountId,
+        toWei("0"),
+        toWei("0.1"),
+        toWei("0"),
+        1,
+        PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.ShouldReachMinProfit,
+        1000 + 86400,
+        refCode,
+        posExtra
+      )
+      {
+        const orders = await orderBook.getOrders(0, 100)
+        expect(orders.totalCount).to.equal(1)
+        expect(orders.orderArray.length).to.equal(1)
+      }
+    }
+    // place close - profit/time not reached
+    {
+      await expect(orderBook.connect(broker).fillPositionOrder(0, toWei("2000"), toWei("1001"), toWei("1")))
+        .to.revertedWith("PFT")
+      const orders = await orderBook.getOrders(0, 100)
+      expect(orders.totalCount).to.equal(1)
+      expect(orders.orderArray.length).to.equal(1)
+    }
+    // place close - profit reached
+    {
+      await expect(orderBook.connect(broker).fillPositionOrder(0, toWei("2000"), toWei("1010"), toWei("1")))
     }
   })
 

@@ -1,12 +1,42 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.10;
 
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+import "../interfaces/ILiquidityPool.sol";
+import "../interfaces/IWETH9.sol";
+import "../interfaces/INativeUnwrapper.sol";
+import "../libraries/LibOrder.sol";
+
 enum OrderType {
     None, // 0
     PositionOrder, // 1
     LiquidityOrder, // 2
     WithdrawalOrder, // 3
     RebalanceOrder // 4
+}
+
+struct OrderBookStorage {
+    mapping(address => bool) brokers;
+    ILiquidityPool pool;
+    uint64 nextOrderId;
+    LibOrder.OrderList orders;
+    IERC20Upgradeable mlp;
+    IWETH weth;
+    uint32 liquidityLockPeriod; // 1e0
+    INativeUnwrapper nativeUnwrapper;
+    mapping(address => bool) rebalancers;
+    bool isPositionOrderPaused;
+    bool isLiquidityOrderPaused;
+    uint32 marketOrderTimeout;
+    uint32 maxLimitOrderTimeout;
+    address maintainer;
+    address referralManager;
+    mapping(uint64 => PositionOrderExtra) positionOrderExtras; // more strategy params for a position order
+    mapping(bytes32 => EnumerableSetUpgradeable.UintSet) activatedTpslOrders;
+    mapping(address => bool) aggregators; // aggregator can placeOrder for a user
+    uint256 callbackGasLimit;
+    mapping(address => bool) callbackWhitelist;
 }
 
 //                                  160        152       144         120        96   72   64               8        0

@@ -21,6 +21,10 @@ library LibSubAccount {
         return uint8(uint256(subAccountId) >> 88);
     }
 
+    function getSubAccountAssetId(bytes32 subAccountId) internal pure returns (uint8) {
+        return uint8(uint256(subAccountId) >> 80);
+    }
+
     function isLong(bytes32 subAccountId) internal pure returns (bool) {
         return uint8((uint256(subAccountId) >> 72)) > 0;
     }

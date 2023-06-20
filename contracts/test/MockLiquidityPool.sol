@@ -6,17 +6,29 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/ILiquidityPool.sol";
 
 contract MockLiquidityPool is ILiquidityPool {
-    mapping(uint8 => address) public mockAssets;
+    mapping(uint8 => address) public mockAssetAddress;
+    mapping(uint8 => uint32) public mockMinProfitTime;
+    mapping(uint8 => uint32) public mockMinProfitRate;
+    mapping(bytes32 => SubAccount) public mockSubAccounts;
 
     function setAssetAddress(uint8 assetId, address tokenAddress) external {
-        mockAssets[assetId] = tokenAddress;
+        mockAssetAddress[assetId] = tokenAddress;
+    }
+
+    function setAssetParams(uint8 assetId, uint32 newMinProfitTime, uint32 newMinProfitRate) external {
+        mockMinProfitTime[assetId] = newMinProfitTime;
+        mockMinProfitRate[assetId] = newMinProfitRate;
     }
 
     function getAssetAddress(uint8 assetId) external view returns (address) {
-        return mockAssets[assetId];
+        return mockAssetAddress[assetId];
     }
 
-    function getAssetInfo(uint8 assetId) external view returns (Asset memory) {}
+    function getAssetInfo(uint8 assetId) external view returns (Asset memory asset) {
+        asset.tokenAddress = mockAssetAddress[assetId];
+        asset.minProfitTime = mockMinProfitTime[assetId];
+        asset.minProfitRate = mockMinProfitRate[assetId];
+    }
 
     function getAllAssetInfo() external view returns (Asset[] memory) {}
 
@@ -39,17 +51,20 @@ contract MockLiquidityPool is ILiquidityPool {
         )
     {}
 
-    function getSubAccount(bytes32 subAccountId)
+    function getSubAccount(
+        bytes32 subAccountId
+    )
         external
         view
-        returns (
-            uint96 collateral,
-            uint96 size,
-            uint32 lastIncreasedTime,
-            uint96 entryPrice,
-            uint128 entryFunding
-        )
-    {}
+        returns (uint96 collateral, uint96 size, uint32 lastIncreasedTime, uint96 entryPrice, uint128 entryFunding)
+    {
+        SubAccount storage subAccount = mockSubAccounts[subAccountId];
+        collateral = subAccount.collateral;
+        size = subAccount.size;
+        lastIncreasedTime = subAccount.lastIncreasedTime;
+        entryPrice = subAccount.entryPrice;
+        entryFunding = subAccount.entryFunding;
+    }
 
     function withdrawAllCollateral(bytes32 subAccountId) external {}
 
@@ -82,7 +97,7 @@ contract MockLiquidityPool is ILiquidityPool {
         uint96 mlpPrice,
         uint96 currentAssetValue,
         uint96 targetAssetValue
-    ) external {}
+    ) external returns (uint96) {}
 
     function removeLiquidity(
         address trader,
@@ -92,14 +107,21 @@ contract MockLiquidityPool is ILiquidityPool {
         uint96 mlpPrice,
         uint96 currentAssetValue,
         uint96 targetAssetValue
-    ) external {}
+    ) external returns (uint256) {}
 
     function openPosition(
-        bytes32,
-        uint96,
-        uint96,
+        bytes32 subAccountId,
+        uint96 amount,
+        uint96 /* collateralPrice */,
         uint96 assetPrice
-    ) external pure returns (uint96) {
+    ) external returns (uint96) {
+        mockSubAccounts[subAccountId] = SubAccount({
+            collateral: amount,
+            size: amount,
+            lastIncreasedTime: uint32(block.timestamp),
+            entryPrice: assetPrice,
+            entryFunding: 0
+        });
         return assetPrice;
     }
 
@@ -110,13 +132,13 @@ contract MockLiquidityPool is ILiquidityPool {
         uint96,
         uint96 assetPrice,
         uint96 // only used when !isLong
-    ) external pure returns (uint96) {
+    ) external pure returns (uint96 tradingPrice) {
         return assetPrice;
     }
 
     function transferLiquidityOut(uint8[] memory assetIds, uint256[] memory amounts) external {
         for (uint256 i = 0; i < assetIds.length; i++) {
-            IERC20(mockAssets[assetIds[i]]).transfer(msg.sender, amounts[i]);
+            IERC20(mockAssetAddress[assetIds[i]]).transfer(msg.sender, amounts[i]);
         }
     }
 

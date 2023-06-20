@@ -86,7 +86,7 @@ interface ILiquidityPool {
         uint96 mlpPrice,
         uint96 currentAssetValue,
         uint96 targetAssetValue
-    ) external;
+    ) external returns (uint96 mlpAmount);
 
     /**
      * @dev   Remove liquidity.
@@ -107,7 +107,7 @@ interface ILiquidityPool {
         uint96 mlpPrice,
         uint96 currentAssetValue,
         uint96 targetAssetValue
-    ) external;
+    ) external returns (uint256 rawAmount);
 
     /**
      * @notice Open a position.
@@ -142,7 +142,7 @@ interface ILiquidityPool {
         uint96 collateralPrice,
         uint96 assetPrice,
         uint96 profitAssetPrice // only used when !isLong
-    ) external returns (uint96);
+    ) external returns (uint96 tradingPrice);
 
     /**
      * @notice Broker can update funding each [fundingInterval] seconds by specifying utilizations.
