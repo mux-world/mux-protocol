@@ -109,31 +109,6 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
         }
     }
 
-    // A deprecated interface that will be removed in the next release.
-    function placePositionOrder2(
-        bytes32 subAccountId,
-        uint96 collateralAmount, // erc20.decimals
-        uint96 size, // 1e18
-        uint96 price, // 1e18
-        uint8 profitTokenId,
-        uint8 flags,
-        uint32 deadline, // 1e0
-        bytes32 referralCode
-    ) public payable nonReentrant {
-        PositionOrderExtra memory extra;
-        placePositionOrder3(
-            subAccountId,
-            collateralAmount,
-            size,
-            price,
-            profitTokenId,
-            flags,
-            deadline,
-            referralCode,
-            extra
-        );
-    }
-
     /**
      * @notice Open/close position. called by Trader.
      *
