@@ -141,6 +141,7 @@ library LibOrder {
 
     // check Types.LiquidityOrder for schema
     function decodeLiquidityOrder(bytes32[3] memory data) internal pure returns (LiquidityOrder memory order) {
+        order.id = uint64(bytes8(data[0] << 184));
         order.account = address(bytes20(data[0]));
         order.rawAmount = uint96(bytes12(data[1]));
         order.assetId = uint8(bytes1(data[1] << 96));
