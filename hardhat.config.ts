@@ -7,7 +7,6 @@ import "@nomiclabs/hardhat-etherscan"
 //import "hardhat-gas-reporter"
 import { retrieveLinkReferences } from "./scripts/deployer/linkReferenceParser"
 
-const pk = process.env["PK"]
 const etherscanApiKey = process.env["ETHERSCAN_API_KEY"]
 
 task("deploy", "Deploy a single contract")
@@ -57,17 +56,44 @@ module.exports = {
       url: `https://arb1.arbitrum.io/rpc`,
       gasPrice: 2e9,
       blockGasLimit: "80000000",
-      accounts: [pk],
+      accounts: [],
     },
     arbrinkeby: {
       url: `https://rinkeby.arbitrum.io/rpc`,
       // gasPrice: 5e9,
       blockGasLimit: "80000000",
-      accounts: [pk],
+      accounts: [],
     }
   },
   solidity: {
     compilers: [
+      {
+        version: "0.4.18",
+        settings: {
+          optimizer: {
+            enabled: false, // see https://bscscan.com/address/0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c
+            runs: 200,
+          },
+        },
+      },
+      {
+        version: "0.5.16",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+      {
+        version: "0.6.6",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
       {
         version: "0.8.10",
         settings: {
