@@ -96,7 +96,7 @@
     "address": "0x0bA2e492e8427fAd51692EE8958eBf936bEE1d84",
     "dependencies": {
       "admin": "0x855E99F768FaD76DD0d3EB7c446C0b759C96D520",
-      "implementation": "0x35923D08A9862a984E9f051d6DB5FC8fFA2C6D30"
+      "implementation": "0x3d44Efa23A531fae02d8DaF9eE8dAAac61d66475"
     },
     "deployedAt": 14304145
   },
@@ -112,7 +112,7 @@
     "address": "0x5898c3E218a8501533d771C86e2fA37743ea2aDd",
     "dependencies": {
       "admin": "0x855E99F768FaD76DD0d3EB7c446C0b759C96D520",
-      "implementation": "0x533b9ecff336F449B526C03BFE6188c5e3B9FBfD"
+      "implementation": "0xB8C93eE4FD8546B13a3fC23473d7a4B6b9Ab44a8"
     }
   },
   "LiquidityManager__implementation": {
@@ -167,13 +167,7 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0x533b9ecff336F449B526C03BFE6188c5e3B9FBfD",
-    "deployedAt": 19262169
-  },
-  "LibOrderBook": {
-    "type": "plain",
-    "name": "LibOrderBook",
-    "address": "0x86fC1C12CB871c61B6DBb9c2383B372db8317e5E",
+    "address": "0xB8C93eE4FD8546B13a3fC23473d7a4B6b9Ab44a8",
     "deployedAt": 19262169
   },
   "Vault__implementation": {
@@ -276,5 +270,10 @@
     "name": "Reader",
     "address": "0xCE443B8c1C3E3edb3b9F3B2B482FaaC09A95B01d",
     "deployedAt": 27455588
+  },
+  "LibOrderBook": {
+    "type": "plain",
+    "name": "LibOrderBook",
+    "address": "0x2beedd01980987a828251780dacfe1db8bbd7e6c"
   }
 }

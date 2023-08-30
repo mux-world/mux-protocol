@@ -104,13 +104,7 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0x17FcBfa0ff72A541fAF002332Cfb4Ecd592458b2",
-    "deployedAt": 45913026
-  },
-  "LibOrderBook": {
-    "type": "plain",
-    "name": "LibOrderBook",
-    "address": "0x52d730C41Af5bd1dD9F8eF39619b9388DaB214C3",
+    "address": "0x450D81f80D0f29Ba8F12Ea6d291Cc3A52cBF9718",
     "deployedAt": 45913026
   },
   "OrderBook": {
@@ -119,7 +113,7 @@
     "address": "0x0c30b10462CdED51C3CA31e7C51019b7d25a965B",
     "dependencies": {
       "admin": "0x6E3F4772B2bBb1C93dBE7632f951590ceDE77dac",
-      "implementation": "0x17FcBfa0ff72A541fAF002332Cfb4Ecd592458b2"
+      "implementation": "0x450D81f80D0f29Ba8F12Ea6d291Cc3A52cBF9718"
     },
     "deployedAt": 37650245
   },
@@ -239,5 +233,10 @@
     "name": "Reader",
     "address": "0x30acc119F8b60C9cb92b8E3c4c7f8830c82f707E",
     "deployedAt": 57613673
+  },
+  "LibOrderBook": {
+    "type": "plain",
+    "name": "LibOrderBook",
+    "address": "0x9897a73a606606394fa2324d16f3926f5963a9c3"
   }
 }

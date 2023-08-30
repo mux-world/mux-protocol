@@ -4,6 +4,8 @@ pragma solidity 0.8.10;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
+import "../interfaces/IVotesUpgradeable.sol";
+
 import "./Storage.sol";
 import "../libraries/LibAsset.sol";
 import "../libraries/LibMath.sol";
@@ -15,6 +17,8 @@ contract Admin is Storage {
     using LibMath for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    address constant ARBITRUM_TOKEN = 0x912CE59144191C1204E64559FE8253a0e49E6548;
+
     function setMaintainer(address newMaintainer) external onlyOwner {
         require(_storage.maintainer != newMaintainer, "CHG"); // not CHanGed
         _storage.maintainer = newMaintainer;
@@ -24,6 +28,10 @@ contract Admin is Storage {
     function setLiquidityManager(address newLiquidityManager, bool isAdd) external onlyOwner {
         _storage.liquidityManager[newLiquidityManager] = isAdd;
         emit SetLiquidityManager(newLiquidityManager, isAdd);
+    }
+
+    function delegateVoting(address to) external onlyMaintainer {
+        IVotesUpgradeable(ARBITRUM_TOKEN).delegate(to);
     }
 
     function addAsset(
@@ -60,8 +68,6 @@ contract Admin is Storage {
         uint32 newLiquidationFeeRate, // 1e5
         uint32 newMinProfitRate, // 1e5
         uint32 newMinProfitTime, // 1e0
-        uint96 newMaxLongPositionSize,
-        uint96 newMaxShortPositionSize,
         uint32 newSpotWeight
     ) external onlyOwner {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
@@ -74,8 +80,6 @@ contract Admin is Storage {
         asset.liquidationFeeRate = newLiquidationFeeRate;
         asset.minProfitRate = newMinProfitRate;
         asset.minProfitTime = newMinProfitTime;
-        asset.maxLongPositionSize = newMaxLongPositionSize;
-        asset.maxShortPositionSize = newMaxShortPositionSize;
         asset.spotWeight = newSpotWeight;
         emit SetAssetParams(
             assetId,
@@ -86,8 +90,6 @@ contract Admin is Storage {
             newLiquidationFeeRate,
             newMinProfitRate,
             newMinProfitTime,
-            newMaxLongPositionSize,
-            newMaxShortPositionSize,
             newSpotWeight
         );
         _updateSequence();
@@ -102,7 +104,9 @@ contract Admin is Storage {
         bool isEnabled,
         bool isStrictStable,
         bool canAddRemoveLiquidity,
-        uint32 newHalfSpread
+        uint32 newHalfSpread,
+        uint96 newMaxLongPositionSize,
+        uint96 newMaxShortPositionSize
     ) external onlyMaintainer {
         require(_hasAsset(assetId), "LST"); // the asset is not LiSTed
         Asset storage asset = _storage.assets[assetId];
@@ -123,7 +127,9 @@ contract Admin is Storage {
             (canAddRemoveLiquidity ? ASSET_CAN_ADD_REMOVE_LIQUIDITY : 0);
         asset.flags = newFlags;
         asset.halfSpread = newHalfSpread;
-        emit SetAssetFlags(assetId, newFlags, newHalfSpread);
+        asset.maxLongPositionSize = newMaxLongPositionSize;
+        asset.maxShortPositionSize = newMaxShortPositionSize;
+        emit SetAssetFlags(assetId, newFlags, newHalfSpread, newMaxLongPositionSize, newMaxShortPositionSize);
         _updateSequence();
     }
 

@@ -73,10 +73,10 @@ describe("IntegrationEth", () => {
     // 0 = ETH
     // id, symbol, decimals, stable, token, mux
     await pool.addAsset(0, toBytes32("ETH"), 18, false, weth9.address, muxWeth.address)
-    // id, symbol, imr, mmr, fee, fee, minBps, minTime, maxLong, maxShort, spotWeight
-    await pool.setAssetParams(0, toBytes32("ETH"), rate("0.1"), rate("0.05"), rate("0.001"), rate("0.001"), rate("0.01"), 10, toWei("10000000"), toWei("10000000"), 2)
-    // id, tradable, openable, shortable, useStable, enabled, strict, liq, halfSpread
-    await pool.setAssetFlags(0, true, true, true, false, true, false, true, rate("0"))
+    // id, symbol, imr, mmr, fee, fee, minBps, minTime, spotWeight
+    await pool.setAssetParams(0, toBytes32("ETH"), rate("0.1"), rate("0.05"), rate("0.001"), rate("0.001"), rate("0.01"), 10, 2)
+    // id, tradable, openable, shortable, useStable, enabled, strict, liq, halfSpread, maxLong, maxShort
+    await pool.setAssetFlags(0, true, true, true, false, true, false, true, rate("0"), toWei("10000000"), toWei("10000000"))
     await pool.setFundingParams(0, rate("0.0003"), rate("0.0009"))
 
     await pool.setBlockTimestamp(86400 * 1)

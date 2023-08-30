@@ -53,7 +53,7 @@ describe("BscCompatible - this test should be tested on bscTestnet", () => {
     // id, symbol, decimals, stable, token, mux
     await ensureFinished(pool.addAsset(0, toBytes32("BNB"), 18, false, wbnb.address, wbnb.address))
     // id, tradable, openable, shortable, useStable, enabled, strict, liq
-    await ensureFinished(pool.setAssetFlags(0, true, true, true, false, true, false, true, rate("0")))
+    await ensureFinished(pool.setAssetFlags(0, true, true, true, false, true, false, true, rate("0"), toWei("10000000"), toWei("10000000")))
     console.log("bscTestnet added assets")
   })
 

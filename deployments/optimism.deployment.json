@@ -126,13 +126,7 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0xa08794B19D231A0d8f8F3e09a9B7B9d11322b491",
-    "deployedAt": 56067596
-  },
-  "LibOrderBook": {
-    "type": "plain",
-    "name": "LibOrderBook",
-    "address": "0x7F58f374916A612858ebA1B37d7300E94785d6a0",
+    "address": "0xB362b8cc8c00c04447F1004f3DA7F22d87987Cd2",
     "deployedAt": 56067596
   },
   "OrderBook": {
@@ -141,7 +135,7 @@
     "address": "0x6Fde9892Fd5302ac3c68688085BD5b031A63BC9D",
     "dependencies": {
       "admin": "0x109962e788AAD540BE3e35A7C14460707B07f037",
-      "implementation": "0xa08794B19D231A0d8f8F3e09a9B7B9d11322b491"
+      "implementation": "0xB362b8cc8c00c04447F1004f3DA7F22d87987Cd2"
     },
     "deployedAt": 56067634
   },
@@ -211,10 +205,21 @@
     "address": "0x3A5fC9abAaB71D0331850e9b4220eCd205E5c4a5",
     "deployedAt": 62924415
   },
+  "Rebalancer": {
+    "type": "plain",
+    "name": "SafeOwnable",
+    "address": "0x49bB201A032F75465bBab5A5E24DF928c138aC26",
+    "deployedAt": 18755590
+  },
   "Reader": {
     "type": "plain",
     "name": "Reader",
     "address": "0xdF88Fe94EF674D8c1ab1743AD88717E7AE893a44",
     "deployedAt": 80979321
+  },
+  "LibOrderBook": {
+    "type": "plain",
+    "name": "LibOrderBook",
+    "address": "0x0Eb8645e28D547e258932FDfc65e5136CC5Bd3a3"
   }
 }

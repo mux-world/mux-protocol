@@ -126,11 +126,15 @@ contract Events {
         uint32 newLiquidationFeeRate,
         uint32 newMinProfitRate,
         uint32 newMinProfitTime,
-        uint96 newMaxLongPositionSize,
-        uint96 newMaxShortPositionSize,
         uint32 newSpotWeight
     );
-    event SetAssetFlags(uint8 indexed assetId, uint56 newFlags, uint32 newHalfSpread);
+    event SetAssetFlags(
+        uint8 indexed assetId,
+        uint56 newFlags,
+        uint32 newHalfSpread,
+        uint96 newMaxLongPositionSize,
+        uint96 newMaxShortPositionSize
+    );
     event SetReferenceOracle(
         uint8 indexed assetId,
         uint8 referenceOracleType,

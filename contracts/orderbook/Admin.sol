@@ -31,13 +31,13 @@ contract Admin is Storage {
         _;
     }
 
-    function addBroker(address newBroker) external onlyOwner {
+    function addBroker(address newBroker) external onlyMaintainer {
         require(!_storage.brokers[newBroker], "CHG"); // not CHanGed
         _storage.brokers[newBroker] = true;
         emit AddBroker(newBroker);
     }
 
-    function removeBroker(address broker) external onlyOwner {
+    function removeBroker(address broker) external onlyMaintainer {
         _removeBroker(broker);
     }
 
