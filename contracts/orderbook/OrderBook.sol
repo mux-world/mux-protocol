@@ -357,26 +357,30 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
         }
         OrderType orderType = LibOrder.getOrderType(orderData);
         require(orderType == OrderType.LiquidityOrder, "TYP"); // order TYPe mismatch
-        uint256 mlpAmount = LibOrderBook.fillLiquidityOrder(
-            _storage,
-            _blockTimestamp(),
-            assetPrice,
-            mlpPrice,
-            currentAssetValue,
-            targetAssetValue,
-            orderData
-        );
+        uint256 mlpAmount;
+        if (order.rawAmount != 0) {
+            mlpAmount = LibOrderBook.fillLiquidityOrder(
+                _storage,
+                _blockTimestamp(),
+                assetPrice,
+                mlpPrice,
+                currentAssetValue,
+                targetAssetValue,
+                orderData
+            );
+        } else {
+            require(_storage.callbackWhitelist[order.account], "NCB");
+            mlpAmount = 0;
+        }
         if (_storage.callbackWhitelist[order.account]) {
-            try
-                ILiquidityCallback(order.account).afterFillLiquidityOrder{ gas: _callbackGasLimit() }(
-                    order,
-                    mlpAmount,
-                    assetPrice,
-                    mlpPrice,
-                    currentAssetValue,
-                    targetAssetValue
-                )
-            {} catch {}
+            ILiquidityCallback(order.account).afterFillLiquidityOrder{ gas: _callbackGasLimit() }(
+                order,
+                mlpAmount,
+                assetPrice,
+                mlpPrice,
+                currentAssetValue,
+                targetAssetValue
+            );
         }
         emit FillOrder(orderId, orderType, orderData);
     }

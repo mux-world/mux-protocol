@@ -94,12 +94,16 @@ library LibOrderBook {
         uint96 rawAmount, // erc20.decimals
         bool isAdding
     ) external {
-        require(rawAmount != 0, "A=0"); // Amount Is Zero
-        if (isAdding) {
-            address collateralAddress = _storage.pool.getAssetAddress(assetId);
-            _transferIn(_storage, account, collateralAddress, address(this), rawAmount);
+        // require(rawAmount != 0, "A=0"); // Amount Is Zero
+        if (rawAmount != 0) {
+            if (isAdding) {
+                address collateralAddress = _storage.pool.getAssetAddress(assetId);
+                _transferIn(_storage, account, collateralAddress, address(this), rawAmount);
+            } else {
+                _storage.mlp.safeTransferFrom(account, address(this), rawAmount);
+            }
         } else {
-            _storage.mlp.safeTransferFrom(account, address(this), rawAmount);
+            require(_storage.callbackWhitelist[account], "NCB");
         }
         uint64 orderId = _storage.nextOrderId++;
         bytes32[3] memory data = LibOrder.encodeLiquidityOrder(
