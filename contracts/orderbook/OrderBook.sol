@@ -172,7 +172,8 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
      *
      *         Can be filled after liquidityLockPeriod seconds.
      * @param  assetId   asset.id that added/removed to.
-     * @param  rawAmount asset token amount. decimals = erc20.decimals.
+     * @param  rawAmount asset token amount. decimals = erc20.decimals. note: when adding liquidity, rawAmount is
+     *                   the amount of asset token; when removing liquidity, rawAmount is the amount of mlp token.
      * @param  isAdding  true for add liquidity, false for remove liquidity.
      */
     function placeLiquidityOrder(
