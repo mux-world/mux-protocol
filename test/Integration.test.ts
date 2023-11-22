@@ -179,7 +179,7 @@ describe("Integration", () => {
       await pool.setBlockTimestamp(86400 * 2 + 0)
       await orderBook.setBlockTimestamp(86400 * 2 + 0)
       await expect(pool.connect(lp1).addLiquidity(lp1.address, 0, toUnit("1000000", 6), toWei("1"), toWei("1"), current, target)).to.revertedWith("BOK")
-      await expect(orderBook.connect(lp1).placeLiquidityOrder(0, toUnit("0", 6), true)).to.revertedWith("A=0")
+      await expect(orderBook.connect(lp1).placeLiquidityOrder(0, toUnit("0", 6), true)).to.revertedWith("NCB")
       const tx1 = await orderBook.connect(lp1).placeLiquidityOrder(0, toUnit("1000000", 6), true)
       const receipt1 = await tx1.wait()
       console.log("GAS +liq order", receipt1.gasUsed.toString(), tx1.hash)
@@ -222,7 +222,7 @@ describe("Integration", () => {
     await mlp.connect(lp1).approve(orderBook.address, toWei("1"))
     {
       await expect(pool.connect(lp1).removeLiquidity(lp1.address, toWei("1"), 0, toWei("1"), toWei("1"), current, target)).to.revertedWith("BOK")
-      await expect(orderBook.connect(lp1).placeLiquidityOrder(0, toWei("0"), false)).to.revertedWith("A=0")
+      await expect(orderBook.connect(lp1).placeLiquidityOrder(0, toWei("0"), false)).to.revertedWith("NCB")
       const tx1 = await orderBook.connect(lp1).placeLiquidityOrder(0, toWei("1"), false)
       const receipt1 = await tx1.wait()
       console.log("GAS -liq order", receipt1.gasUsed.toString(), tx1.hash)

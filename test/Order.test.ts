@@ -4,7 +4,7 @@ import { expect } from "chai"
 import { toWei, createContract, OrderType, assembleSubAccountId, PositionOrderFlags, hashString, toBytes32, rate } from "./deployUtils"
 import { Contract } from "ethers"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { BigNumber } from "@ethersproject/bignumber"
+import { BigNumber } from "ethers"
 import { TestOrderBook } from "../typechain"
 const U = ethers.utils
 
@@ -292,8 +292,8 @@ describe("Order", () => {
     // open
     await pool.openPosition(
       subAccountId,
-      toWei('0.1'), // amount
-      toWei('0.1'), // collateralPrice
+      toWei('1'), // amount
+      toWei('2000'), // collateralPrice
       toWei('1000'), // assetPrice
     );
     // place close - fail
@@ -316,9 +316,9 @@ describe("Order", () => {
       await pool.setAssetParams(1, 60, rate('0.10'))
       await orderBook.placePositionOrder3(
         subAccountId,
-        toWei("0"),
-        toWei("0.1"),
-        toWei("0"),
+        toWei("0"), // collateral amount
+        toWei("0.1"), // size
+        toWei("0"), // price
         1,
         PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.ShouldReachMinProfit,
         1000 + 86400,
@@ -341,7 +341,7 @@ describe("Order", () => {
     }
     // place close - profit reached
     {
-      await expect(orderBook.connect(broker).fillPositionOrder(0, toWei("2000"), toWei("1010"), toWei("1")))
+      await expect(orderBook.connect(broker).fillPositionOrder(0, toWei("2000"), toWei("1100"), toWei("1")))
     }
   })
 

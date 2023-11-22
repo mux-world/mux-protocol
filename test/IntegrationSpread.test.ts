@@ -175,7 +175,7 @@ describe("IntegrationSpread", () => {
       await pool.setBlockTimestamp(86400 * 2 + 0)
       await orderBook.setBlockTimestamp(86400 * 2 + 0)
       await expect(pool.connect(lp1).addLiquidity(lp1.address, 0, toUnit("1000000", 6), toWei("1"), toWei("1"), current, target)).to.revertedWith("BOK")
-      await expect(orderBook.connect(lp1).placeLiquidityOrder(0, toUnit("0", 6), true)).to.revertedWith("A=0")
+      await expect(orderBook.connect(lp1).placeLiquidityOrder(0, toUnit("0", 6), true)).to.revertedWith("NCB")
       const tx1 = await orderBook.connect(lp1).placeLiquidityOrder(0, toUnit("1000000", 6), true)
       await expect(tx1).to.emit(orderBook, "NewLiquidityOrder").withArgs(lp1.address, 0, 0, toUnit("1000000", 6), true)
       expect(await usdc.balanceOf(lp1.address)).to.equal(toUnit("0", 6))
@@ -214,7 +214,7 @@ describe("IntegrationSpread", () => {
     await mlp.connect(lp1).approve(orderBook.address, toWei("1"))
     {
       await expect(pool.connect(lp1).removeLiquidity(lp1.address, toWei("1"), 0, toWei("1"), toWei("1"), current, target)).to.revertedWith("BOK")
-      await expect(orderBook.connect(lp1).placeLiquidityOrder(0, toWei("0"), false)).to.revertedWith("A=0")
+      await expect(orderBook.connect(lp1).placeLiquidityOrder(0, toWei("0"), false)).to.revertedWith("NCB")
       const tx1 = await orderBook.connect(lp1).placeLiquidityOrder(0, toWei("1"), false)
       await expect(tx1).to.emit(orderBook, "NewLiquidityOrder").withArgs(lp1.address, 1, 0, toWei("1"), false)
       expect(await mlp.balanceOf(lp1.address)).to.equal(toWei("998.9"))
