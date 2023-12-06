@@ -101,8 +101,8 @@ struct Asset {
     uint32 longFundingBaseRate8H; // 1e5
     uint32 longFundingLimitRate8H; // 1e5
     // slot
-    uint128 longCumulativeFundingRate; // Σ_t fundingRate_t
-    uint128 shortCumulativeFunding; // Σ_t fundingRate_t * indexPrice_t
+    uint128 longCumulativeFundingRate; // Σ_t fundingRate_t. in tokens. 1e18
+    uint128 shortCumulativeFunding; // Σ_t fundingRate_t * indexPrice_t. in usd. 1e18
 }
 
 uint32 constant FUNDING_PERIOD = 3600 * 8;
