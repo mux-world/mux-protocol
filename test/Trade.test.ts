@@ -648,7 +648,23 @@ describe("Trade", () => {
     // 100 => 105
     await expect(pool.liquidate(subAccountId, 1, toWei("1"), toWei("100"), toWei("100"))).to.revertedWith("STB")
     await expect(pool.liquidate(subAccountId, 0, toWei("1"), toWei("100"), toWei("1"))).to.revertedWith("MMS")
-    await pool.liquidate(subAccountId, 0, toWei("1"), toWei("105"), toWei("1")) // fee = 1.05, pnl = -5
+    // fee = 1.05, pnl = -5
+    await expect(pool.liquidate(subAccountId, 0, toWei("1"), toWei("105"), toWei("1")))
+      .to.emit(pool, "Liquidate")
+      .withArgs(user0.address, 1, [
+        subAccountId,
+        0, // collateralId
+        0, // profitAssetId
+        false, // isLong
+        toWei("1"), // amount
+        toWei("105"), // assetPrice
+        toWei("1"), // collateralPrice
+        toWei("1"), // profitAssetPrice
+        toWei('1.05'), // feeUsd
+        false, // hasProfit
+        toWei('5'), // pnlUsd. (1380 - 2000) * 1
+        toWei("3.95"), // remainCollateral. 10 + pnl - fee
+      ])
     var subAccount = await pool.getSubAccount(subAccountId)
     expect(subAccount.collateral).to.equal(toWei("3.95")) // 10 - 5 - 1.05
     expect(subAccount.size).to.equal(toWei("0"))
@@ -694,8 +710,24 @@ describe("Trade", () => {
     }
 
     // 100 => 109
-    await pool.liquidate(subAccountId, 0, toWei("1"), toWei("109"), toWei("1"))
-    var subAccount = await pool.getSubAccount(subAccountId) // fee = 1 (original 1.09), pnl = -9
+    // fee = 1 (original 1.09), pnl = -9
+    await expect(pool.liquidate(subAccountId, 0, toWei("1"), toWei("109"), toWei("1")))
+      .to.emit(pool, "Liquidate")
+      .withArgs(user0.address, 1, [
+        subAccountId,
+        0, // collateralId
+        0, // profitAssetId
+        false, // isLong
+        toWei("1"), // amount
+        toWei("109"), // assetPrice
+        toWei("1"), // collateralPrice
+        toWei("1"), // profitAssetPrice
+        toWei('1'), // feeUsd. truncated
+        false, // hasProfit
+        toWei('9'), // pnlUsd
+        toWei("0"), // remainCollateral. truncated
+      ])
+    var subAccount = await pool.getSubAccount(subAccountId)
     expect(subAccount.collateral).to.equal(toWei("0"))
     expect(subAccount.size).to.equal(toWei("0"))
     expect(subAccount.entryPrice).to.equal(toWei("0"))
@@ -741,7 +773,22 @@ describe("Trade", () => {
 
     // 100 => 111
     await expect(pool.closePosition(subAccountId, toWei("1"), 0, toWei("1"), toWei("111"), toWei("1"))).to.revertedWith("M=0")
-    await pool.liquidate(subAccountId, 0, toWei("1"), toWei("111"), toWei("1"))
+    await expect(pool.liquidate(subAccountId, 0, toWei("1"), toWei("111"), toWei("1")))
+      .to.emit(pool, "Liquidate")
+      .withArgs(user0.address, 1, [
+        subAccountId,
+        0, // collateralId
+        0, // profitAssetId
+        false, // isLong
+        toWei("1"), // amount
+        toWei("111"), // assetPrice
+        toWei("1"), // collateralPrice
+        toWei("1"), // profitAssetPrice
+        toWei('0'), // feeUsd. truncated
+        false, // hasProfit
+        toWei('10'), // pnlUsd. truncated
+        toWei("0"), // remainCollateral. truncated
+      ])
     var subAccount = await pool.getSubAccount(subAccountId) // fee = 0 (original 1.11), pnl = -10 (original -11)
     expect(subAccount.collateral).to.equal(toWei("0"))
     expect(subAccount.size).to.equal(toWei("0"))

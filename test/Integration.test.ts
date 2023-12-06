@@ -560,7 +560,22 @@ describe("Integration", () => {
     }
     // liquidate short
     {
-      await orderBook.connect(broker).liquidate(shortAccountId, 0, toWei("1"), toWei("2860"), toWei("1"))
+      await expect(orderBook.connect(broker).liquidate(shortAccountId, 0, toWei("1"), toWei("2860"), toWei("1")))
+        .to.emit(pool, "Liquidate")
+        .withArgs(trader1.address, 1, [
+          shortAccountId,
+          0, // collateralId
+          0, // profitAssetId
+          false, // isLong
+          toWei("1"), // amount
+          toWei("2860"), // assetPrice
+          toWei("1"), // collateralPrice
+          toWei("1"), // profitAssetPrice
+          toWei('7.52'), // feeUsd. funding fee = (3.6 - 1.8) * 1, pos fee = 5.72
+          false, // hasProfit
+          toWei('860'), // pnlUsd. (2000 - 2860) * 1
+          toWei("130.48"), // remainCollateral. 998 + pnl - fee
+        ])
       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("99130.48", 6)) // funding fee = (3.6 - 1.8) * 1, pos fee = 5.72, pnl = -860, collateral = 998 + pnl - fee. erc20 = 99000 + collateral
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("0", 6))
       expect(await usdc.balanceOf(pool.address)).to.equal(toUnit("869.52", 6)) // previousCollectedFee - pnl + fee
@@ -580,7 +595,23 @@ describe("Integration", () => {
     }
     // liquidate long
     {
-      await orderBook.connect(broker).liquidate(longAccountId, 1, toWei("1380"), toWei("1380"), toWei("1380")) // pnl = -620 / 1380
+      // pnl = -620 / 1380
+      await expect(orderBook.connect(broker).liquidate(longAccountId, 1, toWei("1380"), toWei("1380"), toWei("1380")))
+        .to.emit(pool, "Liquidate")
+        .withArgs(trader1.address, 1, [
+          longAccountId,
+          1, // collateralId
+          1, // profitAssetId
+          true, // isLong
+          toWei("1"), // amount
+          toWei("1380"), // assetPrice
+          toWei("1380"), // collateralPrice
+          toWei("1380"), // profitAssetPrice
+          toWei('4.002'), // feeUsd. funding fee = 0.0009, pos fee = 0.002
+          false, // hasProfit
+          toWei('620'), // pnlUsd. (1380 - 2000) * 1
+          toWei("0.046824637681159421"), // remainCollateral. 0.499 + pnl - fee
+        ])
       expect(await wbtc.balanceOf(trader1.address)).to.equal(toWei("99.546824637681159421")) // funding fee = 0.0009, pos fee = 0.002, collateral = 0.499 + pnl - fee. erc20 = 99.5 + collateral
       expect(await wbtc.balanceOf(orderBook.address)).to.equal(toWei("0"))
       expect(await wbtc.balanceOf(pool.address)).to.equal(toWei("0.453175362318840579")) // previousCollectedFee - pnl + fee

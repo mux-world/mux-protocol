@@ -308,7 +308,7 @@ contract Trade is Storage, Account {
                 profitAssetPrice
             );
         } else {
-            _realizeLoss(subAccount, collateral, collateralPrice, pnlUsd, false);
+            pnlUsd = _realizeLoss(subAccount, collateral, collateralPrice, pnlUsd, false);
         }
         subAccount.size = 0;
         subAccount.entryPrice = 0;
@@ -536,15 +536,21 @@ contract Trade is Storage, Account {
         uint96 collateralPrice,
         uint96 pnlUsd,
         bool isThrowBankrupt
-    ) internal {
+    ) internal returns (uint96 truncatedPnlUsd) {
         if (pnlUsd == 0) {
-            return;
+            return 0;
         }
+        truncatedPnlUsd = pnlUsd;
         uint96 pnlCollateral = uint256(pnlUsd).wdiv(collateralPrice).safeUint96();
         if (isThrowBankrupt) {
+            // trade
             require(subAccount.collateral >= pnlCollateral, "M=0"); // Margin balance Is Zero. the account is bankrupt
         } else {
-            pnlCollateral = LibMath.min(pnlCollateral, subAccount.collateral);
+            // liquidate
+            if (subAccount.collateral < pnlCollateral) {
+                pnlCollateral = subAccount.collateral;
+                truncatedPnlUsd = uint256(pnlCollateral).wmul(collateralPrice).safeUint96();
+            }
         }
         subAccount.collateral -= pnlCollateral;
         collateral.spotLiquidity += pnlCollateral;
