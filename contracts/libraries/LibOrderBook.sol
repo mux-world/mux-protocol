@@ -19,6 +19,8 @@ library LibOrderBook {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
     using LibMath for uint256;
 
+    uint256 public constant MAX_TP_SL_ORDERS = 32;
+
     // do not forget to update OrderBook if this line updates
     event CancelOrder(uint64 orderId, OrderType orderType, bytes32[3] orderData);
     // do not forget to update OrderBook if this line updates
@@ -492,6 +494,7 @@ library LibOrderBook {
                 })
             );
             _storage.activatedTpslOrders[order.subAccountId].add(uint256(orderId));
+            require(_storage.activatedTpslOrders[order.subAccountId].length() <= MAX_TP_SL_ORDERS, "TMO"); // Too Many TP/SL Orders
         }
         if (extra.slPrice > 0) {
             uint64 orderId = _placePositionOrder(
@@ -511,6 +514,7 @@ library LibOrderBook {
                 })
             );
             _storage.activatedTpslOrders[order.subAccountId].add(uint256(orderId));
+            require(_storage.activatedTpslOrders[order.subAccountId].length() <= MAX_TP_SL_ORDERS, "TMO"); // Too Many TP/SL Orders
         }
     }
 
@@ -545,6 +549,7 @@ library LibOrderBook {
                 })
             );
             _storage.activatedTpslOrders[subAccountId].add(uint256(orderId));
+            require(_storage.activatedTpslOrders[subAccountId].length() <= MAX_TP_SL_ORDERS, "TMO"); // Too Many TP/SL Orders
         }
         if (extra.slPrice > 0) {
             uint64 orderId = _placePositionOrder(
@@ -564,6 +569,7 @@ library LibOrderBook {
                 })
             );
             _storage.activatedTpslOrders[subAccountId].add(uint256(orderId));
+            require(_storage.activatedTpslOrders[subAccountId].length() <= MAX_TP_SL_ORDERS, "TMO"); // Too Many TP/SL Orders
         }
     }
 

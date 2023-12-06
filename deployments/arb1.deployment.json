@@ -130,7 +130,7 @@
   "LiquidityPoolHop1__implementation": {
     "type": "plain",
     "name": "LiquidityPoolHop1__implementation",
-    "address": "0x245ba1e19e7a15dd903b6b9b2705d4bf308f481c",
+    "address": "0xEF43aDeFfd1595920f0a3c2587956932650bBe7a",
     "deployedAt": 22819617
   },
   "LiquidityPool": {
@@ -139,7 +139,7 @@
     "address": "0x3e0199792Ce69DC29A0a36146bFa68bd7C8D6633",
     "dependencies": {
       "admin": "0xE52d9a3CBA458832A65cfa9FC8a74bacAbdeB32A",
-      "implementation": "0x245BA1e19e7a15dd903B6b9B2705d4BF308F481c"
+      "implementation": "0xEF43aDeFfd1595920f0a3c2587956932650bBe7a"
     },
     "deployedAt": 11242780
   },
@@ -152,7 +152,7 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0x5094a833d132e29c3fCe4eE165f9779d6495Cb9e",
+    "address": "0xe7713A121a67408bC377a961F16cB0D46609db1D",
     "deployedAt": 106326052
   },
   "OrderBook": {
@@ -161,7 +161,7 @@
     "address": "0xa19fD5aB6C8DCffa2A295F78a5Bb4aC543AAF5e3",
     "dependencies": {
       "admin": "0xE52d9a3CBA458832A65cfa9FC8a74bacAbdeB32A",
-      "implementation": "0x5094a833d132e29c3fCe4eE165f9779d6495Cb9e"
+      "implementation": "0xe7713A121a67408bC377a961F16cB0D46609db1D"
     },
     "deployedAt": 11242808
   },
@@ -353,6 +353,6 @@
   "LibOrderBook": {
     "type": "plain",
     "name": "LibOrderBook",
-    "address": "0x38a273dc9b773f1bd5b660d8755c321430fd9347"
+    "address": "0xc17C108528b7c92BcD05Cd231E204a038AeF2A0D"
   }
 }
