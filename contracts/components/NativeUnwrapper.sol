@@ -14,9 +14,12 @@ import "../components/SafeOwnable.sol";
 contract NativeUnwrapper is SafeOwnable {
     IWETH public immutable weth;
     mapping(address => bool) public whitelist; // contract in this whitelist can send ETH to any Trader
+    uint256 public savedGasLimit; // note: 0 means use default
+    mapping(address => bool) public maintainers;
 
     event Granted(address indexed core);
     event Revoked(address indexed core);
+    event SetMaintainer(address newMaintainer, bool enable);
 
     constructor(address weth_) SafeOwnable() {
         weth = IWETH(weth_);
@@ -38,7 +41,40 @@ contract NativeUnwrapper is SafeOwnable {
 
     function unwrap(address payable to, uint256 rawAmount) external {
         require(whitelist[msg.sender], "SND"); // SeNDer is not authorized
+        require(to != address(0), "TO0"); // TO is 0
+        if (rawAmount == 0) {
+            return;
+        }
+
+        // wrap
         weth.withdraw(rawAmount);
-        Address.sendValue(to, rawAmount);
+
+        // send
+        uint256 gasLimit = getWithdrawGasLimit();
+        (bool success, ) = to.call{ value: rawAmount, gas: gasLimit }("");
+        if (success) {
+            return;
+        }
+
+        // wrap and send WETH
+        weth.deposit{ value: rawAmount }();
+        weth.transfer(to, rawAmount);
+    }
+
+    function getWithdrawGasLimit() public view returns (uint256 gasLimit) {
+        gasLimit = savedGasLimit;
+        if (gasLimit == 0) {
+            return 50_000;
+        }
+    }
+
+    function setMaintainer(address newMaintainer, bool enable) external onlyOwner {
+        maintainers[newMaintainer] = enable;
+        emit SetMaintainer(newMaintainer, enable);
+    }
+
+    function setGasLimit(uint256 newGasLimit) external {
+        require(msg.sender == owner() || maintainers[msg.sender], "must be maintainer or owner");
+        savedGasLimit = newGasLimit;
     }
 }

@@ -341,7 +341,7 @@ describe("Order", () => {
     }
     // place close - profit reached
     {
-      await expect(orderBook.connect(broker).fillPositionOrder(0, toWei("2000"), toWei("1100"), toWei("1")))
+      await orderBook.connect(broker).fillPositionOrder(0, toWei("2000"), toWei("1100"), toWei("1"))
     }
   })
 
