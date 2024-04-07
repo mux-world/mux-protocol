@@ -98,7 +98,7 @@
   "LiquidityPoolHop2": {
     "type": "plain",
     "name": "LiquidityPoolHop2",
-    "address": "0x990BAB3F9b895125C2fc7FAAc4e425a5064D9212",
+    "address": "0xE6F4e843E15Ca0a96DB77FAA31EC5e5E297Cd8C3",
     "deployedAt": 46343652
   },
   "OrderBook__implementation": {

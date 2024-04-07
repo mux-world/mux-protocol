@@ -30,8 +30,10 @@ contract Admin is Storage {
         emit SetLiquidityManager(newLiquidityManager, isAdd);
     }
 
-    function delegateVoting(address to) external onlyMaintainer {
-        IVotesUpgradeable(ARBITRUM_TOKEN).delegate(to);
+    // not important. remove me if needed
+    function setNativeUnwrapper(address oldNativeUnwrapper, address newNativeUnwrapper) external onlyOwner {
+        require(_storage.nativeUnwrapper == oldNativeUnwrapper, "OLD");
+        _storage.nativeUnwrapper = newNativeUnwrapper;
     }
 
     function addAsset(

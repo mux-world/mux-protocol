@@ -118,6 +118,15 @@ contract Admin is Storage {
         _storage.callbackWhitelist[caller] = enable;
     }
 
+    // not important. remove me if needed
+    function setNativeUnwrapper(
+        INativeUnwrapper oldNativeUnwrapper,
+        INativeUnwrapper newNativeUnwrapper
+    ) external onlyOwner {
+        require(_storage.nativeUnwrapper == oldNativeUnwrapper, "OLD");
+        _storage.nativeUnwrapper = newNativeUnwrapper;
+    }
+
     function _removeBroker(address broker) internal {
         require(_storage.brokers[broker], "CHG"); // not CHanGed
         _storage.brokers[broker] = false;

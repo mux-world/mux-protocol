@@ -103,7 +103,7 @@
   "LiquidityPoolHop2": {
     "type": "plain",
     "name": "LiquidityPoolHop2",
-    "address": "0x68533BaF16252d1E6b8Af6d04655d5AFD7a30870",
+    "address": "0xd4b442Dcca6d807cf9e038faab66Ed2C9F10c935",
     "deployedAt": 19532329
   },
   "OrderBook": {
@@ -112,7 +112,7 @@
     "address": "0x5898c3E218a8501533d771C86e2fA37743ea2aDd",
     "dependencies": {
       "admin": "0x855E99F768FaD76DD0d3EB7c446C0b759C96D520",
-      "implementation": "0x792E2cbfBD4C1043AAF8EC54BBc5189Cb8B0987C"
+      "implementation": "0x48Be7A0F822d68f7a26D49D2c7CB7f3e072f0B84"
     }
   },
   "LiquidityManager__implementation": {
@@ -161,13 +161,13 @@
   "NativeUnwrapper": {
     "type": "plain",
     "name": "NativeUnwrapper",
-    "address": "0xc294bFc63be5C3663A9eDE426f41d317701a17A7",
+    "address": "0x350C9CCEb837e45119e97fb4b95F3B0A28F79C79",
     "deployedAt": 14633082
   },
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0x792E2cbfBD4C1043AAF8EC54BBc5189Cb8B0987C",
+    "address": "0x48Be7A0F822d68f7a26D49D2c7CB7f3e072f0B84",
     "deployedAt": 19262169
   },
   "Vault__implementation": {
