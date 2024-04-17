@@ -37,6 +37,7 @@ struct OrderBookStorage {
     mapping(address => bool) aggregators; // aggregator can placeOrder for a user
     uint256 callbackGasLimit;
     mapping(address => bool) callbackWhitelist;
+    uint32 cancelCoolDown;
 }
 
 //                                  160        152       144         120        96   72   64               8        0

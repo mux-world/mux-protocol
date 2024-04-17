@@ -9,7 +9,7 @@ contract Admin is Storage {
     event AddRebalancer(address indexed newRebalancer);
     event RemoveRebalancer(address indexed rebalancer);
     event SetLiquidityLockPeriod(uint32 oldLockPeriod, uint32 newLockPeriod);
-    event SetOrderTimeout(uint32 marketOrderTimeout, uint32 maxLimitOrderTimeout);
+    event SetOrderTimeout(uint32 marketOrderTimeout, uint32 maxLimitOrderTimeout, uint32 cancelCoolDown);
     event PausePositionOrder(bool isPaused);
     event PauseLiquidityOrder(bool isPaused);
     event SetMaintainer(address indexed newMaintainer);
@@ -66,19 +66,25 @@ contract Admin is Storage {
         _storage.liquidityLockPeriod = newLiquidityLockPeriod;
     }
 
-    function setOrderTimeout(uint32 marketOrderTimeout_, uint32 maxLimitOrderTimeout_) external onlyOwner {
+    function setOrderTimeout(
+        uint32 marketOrderTimeout_,
+        uint32 maxLimitOrderTimeout_,
+        uint32 cancelCoolDown_
+    ) external onlyOwner {
         require(marketOrderTimeout_ != 0, "T=0"); // Timeout Is Zero
         require(marketOrderTimeout_ / 10 <= type(uint24).max, "T>M"); // Timeout is Larger than Max
         require(maxLimitOrderTimeout_ != 0, "T=0"); // Timeout Is Zero
         require(maxLimitOrderTimeout_ / 10 <= type(uint24).max, "T>M"); // Timeout is Larger than Max
         require(
             _storage.marketOrderTimeout != marketOrderTimeout_ ||
-                _storage.maxLimitOrderTimeout != maxLimitOrderTimeout_,
+                _storage.maxLimitOrderTimeout != maxLimitOrderTimeout_ ||
+                _storage.cancelCoolDown != cancelCoolDown_,
             "CHG"
         ); // setting is not CHanGed
         _storage.marketOrderTimeout = marketOrderTimeout_;
         _storage.maxLimitOrderTimeout = maxLimitOrderTimeout_;
-        emit SetOrderTimeout(marketOrderTimeout_, maxLimitOrderTimeout_);
+        _storage.cancelCoolDown = cancelCoolDown_;
+        emit SetOrderTimeout(marketOrderTimeout_, maxLimitOrderTimeout_, cancelCoolDown_);
     }
 
     function pause(bool isPositionOrderPaused_, bool isLiquidityOrderPaused_) external onlyMaintainer {

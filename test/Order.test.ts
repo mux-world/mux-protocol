@@ -105,7 +105,7 @@ describe("Order", () => {
     await orderBook.initialize(pool.address, mlp.address, weth9, weth9)
     await orderBook.addBroker(broker.address)
     await orderBook.setBlockTimestamp(1000)
-    await orderBook.setOrderTimeout(300, 86400 * 365)
+    await orderBook.setOrderTimeout(300, 86400 * 365, 5) // marketOrder, limitOrder, cancel
 
     await pool.setAssetAddress(0, ctk.address)
     await pool.setAssetAddress(1, atk.address)
@@ -242,6 +242,8 @@ describe("Order", () => {
         expect(orders.orderArray.length).to.equal(1)
       }
 
+      await expect(orderBook.cancelOrder(0)).to.revertedWith("CLD")
+      await orderBook.setBlockTimestamp(1000 + 5)
       await orderBook.cancelOrder(0)
       expect(await ctk.balanceOf(user0.address)).to.equal(toWei("1000"))
       expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("0"))
@@ -359,6 +361,8 @@ describe("Order", () => {
         expect(orders.orderArray.length).to.equal(1)
       }
 
+      await expect(orderBook.cancelOrder(0)).to.revertedWith("CLD")
+      await orderBook.setBlockTimestamp(1000 + 5)
       await orderBook.cancelOrder(0)
       expect(await ctk.balanceOf(user0.address)).to.equal(toWei("1000"))
       expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("0"))
@@ -422,6 +426,8 @@ describe("Order", () => {
         expect(orders.orderArray.length).to.equal(1)
       }
 
+      await expect(orderBook.cancelOrder(1)).to.revertedWith("CLD")
+      await orderBook.setBlockTimestamp(1000 + 5)
       await orderBook.cancelOrder(1)
       expect(await mlp.balanceOf(user0.address)).to.equal(toWei("2"))
       {
@@ -494,9 +500,10 @@ describe("Order", () => {
       expect(await ctk.balanceOf(user0.address)).to.equal(toWei("900"))
       expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("100"))
 
+      await expect(orderBook.cancelOrder(0)).to.revertedWith("CLD")
       await orderBook.setBlockTimestamp(1000 + 86400)
       await expect(orderBook.connect(broker).cancelOrder(0)).revertedWith("EXP")
-      await orderBook.setBlockTimestamp(1000 + 86410)
+      await orderBook.setBlockTimestamp(1000 + 86400 + 10)
       await orderBook.connect(broker).cancelOrder(0)
       expect(await ctk.balanceOf(user0.address)).to.equal(toWei("1000"))
       expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("0"))

@@ -54,7 +54,7 @@ describe("IntegrationEth", () => {
     await orderBook.initialize(pool.address, mlp.address, weth9.address, nativeUnwrapper.address)
     await orderBook.addBroker(broker.address)
     await orderBook.setLiquidityLockPeriod(5 * 60)
-    await orderBook.setOrderTimeout(300, 86400 * 365)
+    await orderBook.setOrderTimeout(300, 86400 * 365, 5) // marketOrder, limitOrder, cancel
     await liquidityManager.initialize(vault.address, pool.address)
     await pool.initialize(poolHop2.address, mlp.address, orderBook.address, weth9.address, nativeUnwrapper.address, vault.address)
     // fundingInterval, liqBase, liqDyn, σ_strict, brokerGas
@@ -124,6 +124,9 @@ describe("IntegrationEth", () => {
       const balance2 = await ethers.provider.getBalance(lp1.address)
       expect(balance1.sub(balance2).gte(toWei("100"))).to.true
       expect(balance1.sub(balance2).lt(toWei("100.01"))).to.true
+      await expect(orderBook.connect(lp1).cancelOrder(0)).to.revertedWith("CLD")
+      await pool.setBlockTimestamp(86400 * 2 + 5)
+      await orderBook.setBlockTimestamp(86400 * 2 + 5)
       await orderBook.connect(lp1).cancelOrder(0)
       const balance3 = await ethers.provider.getBalance(lp1.address)
       expect(balance1.sub(balance3).lt(toWei("0.01"))).to.true

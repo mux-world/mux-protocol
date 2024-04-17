@@ -463,6 +463,7 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
         require(_storage.orders.contains(orderId), "OID"); // can not find this OrderID
         bytes32[3] memory orderData = _storage.orders.get(orderId);
         _storage.orders.remove(orderId);
+
         address account = orderData.getOrderOwner();
         OrderType orderType = LibOrder.getOrderType(orderData);
         if (orderType == OrderType.PositionOrder) {
@@ -472,6 +473,7 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
             } else {
                 require(_msgSender() == account, "SND"); // SeNDer is not authorized
             }
+            require(_blockTimestamp() >= order.placeOrderTime + _storage.cancelCoolDown, "CLD"); // CooLDown
             if (order.isOpenPosition() && order.collateral > 0) {
                 address collateralAddress = _storage.pool.getAssetAddress(
                     order.subAccountId.getSubAccountCollateralId()
@@ -484,15 +486,17 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
         } else if (orderType == OrderType.LiquidityOrder) {
             require(_msgSender() == account, "SND"); // SeNDer is not authorized
             LiquidityOrder memory order = orderData.decodeLiquidityOrder();
+            require(_blockTimestamp() >= order.placeOrderTime + _storage.cancelCoolDown, "CLD"); // CooLDown
             _cancelLiquidityOrder(order);
         } else if (orderType == OrderType.WithdrawalOrder) {
+            WithdrawalOrder memory order = orderData.decodeWithdrawalOrder();
             if (_storage.brokers[_msgSender()]) {
-                WithdrawalOrder memory order = orderData.decodeWithdrawalOrder();
                 uint256 deadline = order.placeOrderTime + _storage.marketOrderTimeout;
                 require(_blockTimestamp() > deadline, "EXP"); // not EXPired yet
             } else {
                 require(_msgSender() == account, "SND"); // SeNDer is not authorized
             }
+            require(_blockTimestamp() >= order.placeOrderTime + _storage.cancelCoolDown, "CLD"); // CooLDown
         } else if (orderType == OrderType.RebalanceOrder) {
             require(_msgSender() == account, "SND"); // SeNDer is not authorized
         } else {

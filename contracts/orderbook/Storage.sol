@@ -13,7 +13,7 @@ import "../libraries/LibOrder.sol";
 contract Storage is Initializable, SafeOwnableUpgradeable {
     bool private _reserved1; // this variable shares the same slot as SafeOwnableUpgradeable._pendingOwner
     OrderBookStorage internal _storage;
-    bytes32[38] _gap;
+    bytes32[37] _gap;
 
     modifier whenPositionOrderEnabled() {
         require(!_storage.isPositionOrderPaused, "POP"); // Position Order Paused
@@ -68,5 +68,9 @@ contract Storage is Initializable, SafeOwnableUpgradeable {
 
     function positionOrderExtras(uint64 orderId) external view returns (PositionOrderExtra memory) {
         return _storage.positionOrderExtras[orderId];
+    }
+
+    function cancelCoolDown() external view returns (uint32) {
+        return _storage.cancelCoolDown;
     }
 }

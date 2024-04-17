@@ -45,7 +45,7 @@ describe("POL", () => {
     await orderBook.initialize(pool.address, mlp.address, weth9.address, nativeUnwrapper.address)
     await orderBook.addBroker(broker.address)
     await orderBook.setLiquidityLockPeriod(5 * 60)
-    await orderBook.setOrderTimeout(300, 86400 * 365)
+    await orderBook.setOrderTimeout(300, 86400 * 365, 5) // marketOrder, limitOrder, cancel
     await liquidityManager.initialize(vault.address, pool.address)
     await pool.initialize(poolHop2.address, mlp.address, orderBook.address, weth9.address, nativeUnwrapper.address, vault.address)
     // fundingInterval, liqBase, liqDyn, σ_strict, brokerGas
