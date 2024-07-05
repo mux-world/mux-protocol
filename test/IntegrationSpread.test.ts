@@ -620,36 +620,5 @@ describe("IntegrationSpread", () => {
       expect(assetInfo.spotLiquidity).to.equal(toWei("100")) // fee = 0.01
       expect(assetInfo.collectedFee).to.equal(toWei("0.01"))
     }
-    // withdraw profit
-    {
-      await expect(orderBook.connect(trader1).placeWithdrawalOrder(longAccountId, toWei("0"), 0, true)).to.revertedWith("A=0")
-      await expect(orderBook.connect(trader1).placeWithdrawalOrder(longAccountId, toWei("0.01"), 0, true))
-        .to.emit(orderBook, "NewWithdrawalOrder")
-        .withArgs(longAccountId, 3, toWei("0.01"), 0, true)
-      expect(await wbtc.balanceOf(trader1.address)).to.equal(toWei("100"))
-      expect(await wbtc.balanceOf(orderBook.address)).to.equal(toWei("0"))
-      expect(await wbtc.balanceOf(pool.address)).to.equal(toWei("100"))
-    }
-    {
-      await orderBook.connect(broker).fillWithdrawalOrder(3, toWei("1"), toWei("2102.102102102102102102"), toWei("0")) // price = 2100, original pnl = (2100 - 2000) * 1 = 100
-      expect(await wbtc.balanceOf(trader1.address)).to.equal(toWei("100.01")) // funding fee = 0.0009 * 1
-      expect(await wbtc.balanceOf(orderBook.address)).to.equal(toWei("0"))
-      expect(await wbtc.balanceOf(pool.address)).to.equal(toWei("99.99"))
-      const subAccount = await pool.getSubAccount(longAccountId)
-      expect(subAccount.collateral).to.equal(toWei("995.11"))
-      expect(subAccount.size).to.equal(toWei("1"))
-      expect(subAccount.entryPrice).to.equal(toWei("2022.89")) // withdraw + fee = 0.01 * 2100 + 0.0009 * 2100 = 22.89. new pnl = (2100 - 2022.89) * 1 = 77.11
-      expect(subAccount.entryFunding).to.equal(toWei("0.0027"))
-      const assetInfo = await pool.getAssetInfo(1)
-      expect(assetInfo.totalShortPosition).to.equal(toWei("0"))
-      expect(assetInfo.averageShortPrice).to.equal(toWei("0"))
-      expect(assetInfo.totalLongPosition).to.equal(toWei("1"))
-      expect(assetInfo.averageLongPrice).to.equal(toWei("2022.89"))
-      expect(assetInfo.spotLiquidity).to.equal(toWei("99.99"))
-      expect(assetInfo.collectedFee).to.equal(toWei("0.0109"))
-      const collateralInfo = await pool.getAssetInfo(0)
-      expect(collateralInfo.spotLiquidity).to.equal(toWei("3.89"))
-      expect(collateralInfo.collectedFee).to.equal(toWei("3.89"))
-    }
   })
 })

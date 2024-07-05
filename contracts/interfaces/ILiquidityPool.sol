@@ -58,15 +58,6 @@ interface ILiquidityPool {
         uint96 assetPrice
     ) external;
 
-    function withdrawProfit(
-        bytes32 subAccountId,
-        uint256 rawAmount,
-        uint8 profitAssetId, // only used when !isLong
-        uint96 collateralPrice,
-        uint96 assetPrice,
-        uint96 profitAssetPrice // only used when !isLong
-    ) external;
-
     /**
      * @dev   Add liquidity.
      *

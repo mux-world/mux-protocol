@@ -50,19 +50,6 @@ contract Events {
         uint96 remainCollateral;
     }
     event Liquidate(address indexed trader, uint8 indexed assetId, LiquidateArgs args);
-    struct WithdrawProfitArgs {
-        bytes32 subAccountId;
-        uint8 collateralId;
-        uint8 profitAssetId;
-        bool isLong;
-        uint256 withdrawRawAmount;
-        uint96 assetPrice;
-        uint96 collateralPrice;
-        uint96 profitAssetPrice;
-        uint96 entryPrice;
-        uint96 feeUsd;
-    }
-    event WithdrawProfit(address indexed trader, uint8 indexed assetId, WithdrawProfitArgs args);
     event CollectedFee(uint8 tokenId, uint96 fee);
     event ClaimBrokerGasRebate(address indexed receiver, uint32 transactions, uint256 rawAmount);
 

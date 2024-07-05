@@ -331,27 +331,6 @@ describe("IntegrationEth", () => {
       expect(assetInfo.spotLiquidity).to.equal(toWei("100.001"))
       expect(assetInfo.collectedFee).to.equal(toWei("0.011"))
     }
-    // withdraw profit
-    {
-      await orderBook.connect(trader1).placeWithdrawalOrder(longAccountId, toWei("0.01"), 0, true)
-      const balance1 = await ethers.provider.getBalance(trader1.address)
-      await orderBook.connect(broker).fillWithdrawalOrder(2, toWei("2100"), toWei("2100"), toWei("2100")) // original pnl = (2100 - 2000) * 1 = 100
-      const balance2 = await ethers.provider.getBalance(trader1.address) // fee = 0
-      expect(balance2.sub(balance1).lte(toWei("0.01"))).to.true
-      expect(balance2.sub(balance1).gt(toWei("0.009"))).to.true
-      const subAccount = await pool.getSubAccount(longAccountId)
-      expect(subAccount.collateral).to.equal(toWei("0.499"))
-      expect(subAccount.size).to.equal(toWei("1"))
-      expect(subAccount.entryPrice).to.equal(toWei("2021")) // withdraw + fee = (0.01 + 0 fee) * 2100 = 21. new pnl = (2100 - 2021) * 1 = 79
-      expect(subAccount.entryFunding).to.equal(toWei("0.0009"))
-      const assetInfo = await pool.getAssetInfo(0)
-      expect(assetInfo.totalShortPosition).to.equal(toWei("0"))
-      expect(assetInfo.averageShortPrice).to.equal(toWei("0"))
-      expect(assetInfo.totalLongPosition).to.equal(toWei("1"))
-      expect(assetInfo.averageLongPrice).to.equal(toWei("2021"))
-      expect(assetInfo.spotLiquidity).to.equal(toWei("99.991")) // -= 0.01 withdraw
-      expect(assetInfo.collectedFee).to.equal(toWei("0.011"))
-    }
   })
 
   function makeCallContext1(methodId: string, paramTypes: any, params: any, dexId: number = 0) {

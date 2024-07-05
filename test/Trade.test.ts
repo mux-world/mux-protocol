@@ -92,9 +92,7 @@ describe("Trade", () => {
 
   it("invalid admin parameters", async () => {
     await expect(pool.setNumbers(3600 * 8, rate("1"), rate("0.000"), rate("0.01"), toWei("0"))).to.revertedWith("F>1")
-    await expect(
-      pool.setAssetParams(100, toBytes32("SYM"), rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), rate("0.01"), 10, 2)
-    ).to.revertedWith("LST")
+    await expect(pool.setAssetParams(100, toBytes32("SYM"), rate("0.1"), rate("0.05"), rate("0.01"), rate("0.01"), rate("0.01"), 10, 2)).to.revertedWith("LST")
     await expect(pool.setAssetFlags(100, true, true, true, true, true, false, true, rate("0"), toWei("10000000"), toWei("10000000"))).to.revertedWith("LST")
     await expect(pool.setFundingParams(100, rate("0.0002"), rate("0.0008"))).to.revertedWith("LST")
 
@@ -660,9 +658,9 @@ describe("Trade", () => {
         toWei("105"), // assetPrice
         toWei("1"), // collateralPrice
         toWei("1"), // profitAssetPrice
-        toWei('1.05'), // feeUsd
+        toWei("1.05"), // feeUsd
         false, // hasProfit
-        toWei('5'), // pnlUsd. (1380 - 2000) * 1
+        toWei("5"), // pnlUsd. (1380 - 2000) * 1
         toWei("3.95"), // remainCollateral. 10 + pnl - fee
       ])
     var subAccount = await pool.getSubAccount(subAccountId)
@@ -722,9 +720,9 @@ describe("Trade", () => {
         toWei("109"), // assetPrice
         toWei("1"), // collateralPrice
         toWei("1"), // profitAssetPrice
-        toWei('1'), // feeUsd. truncated
+        toWei("1"), // feeUsd. truncated
         false, // hasProfit
-        toWei('9'), // pnlUsd
+        toWei("9"), // pnlUsd
         toWei("0"), // remainCollateral. truncated
       ])
     var subAccount = await pool.getSubAccount(subAccountId)
@@ -784,9 +782,9 @@ describe("Trade", () => {
         toWei("111"), // assetPrice
         toWei("1"), // collateralPrice
         toWei("1"), // profitAssetPrice
-        toWei('0'), // feeUsd. truncated
+        toWei("0"), // feeUsd. truncated
         false, // hasProfit
-        toWei('10'), // pnlUsd. truncated
+        toWei("10"), // pnlUsd. truncated
         toWei("0"), // remainCollateral. truncated
       ])
     var subAccount = await pool.getSubAccount(subAccountId) // fee = 0 (original 1.11), pnl = -10 (original -11)
@@ -919,97 +917,6 @@ describe("Trade", () => {
       // redeem muxUsd
       await pool.redeemMuxToken(user0.address, 0, toWei("98"))
       expect(await asset0.balanceOf(user0.address)).to.equal(toWei("98"))
-    })
-  })
-
-  describe("withdrawProfit", async () => {
-    it("open long, withdrawProfit. profit = asset", async () => {
-      const subAccountId = assembleSubAccountId(user0.address, 0, 1, true)
-      const current = toWei("29700")
-      const target = toWei("29700")
-
-      // lp = user1
-      await asset0.mint(pool.address, toWei("1000"))
-      await asset1.mint(pool.address, toWei("1000"))
-      await pool.addLiquidity(user1.address, 0, toWei("1000"), toWei("1"), toWei("1"), current, target)
-      await pool.addLiquidity(user1.address, 1, toWei("1000"), toWei("100"), toWei("1"), current, target)
-
-      // trader = user0
-      await asset0.mint(pool.address, toWei("16"))
-      await pool.depositCollateral(subAccountId, toWei("16"))
-
-      // fee = 100 * 1% = 1
-      await pool.openPosition(subAccountId, toWei("1"), toWei("1"), toWei("100"))
-      var subAccount = await pool.getSubAccount(subAccountId)
-      expect(subAccount.collateral).to.equal(toWei("15"))
-      expect(subAccount.size).to.equal(toWei("1"))
-      expect(subAccount.entryPrice).to.equal(toWei("100"))
-      expect(subAccount.entryFunding).to.equal(toWei("0"))
-      {
-        let asset = await pool.getAssetInfo(1)
-        expect(asset.averageLongPrice).to.equal(toWei("100"))
-        expect(asset.totalLongPosition).to.equal(toWei("1"))
-      }
-
-      // 100 => 200, fee = 0, pnl = (125 - 100) * 1 / 125 = 0.2
-      await expect(pool.withdrawProfit(subAccountId, toWei("0.21"), 1, toWei("1"), toWei("125"), toWei("125"))).to.revertedWith("U<W")
-      await expect(pool.withdrawProfit(subAccountId, toWei("0.1"), 1, toWei("1"), toWei("99"), toWei("99"))).to.revertedWith("U<0")
-      await pool.withdrawProfit(subAccountId, toWei("0.2"), 1, toWei("1"), toWei("125"), toWei("125"))
-      var subAccount = await pool.getSubAccount(subAccountId)
-      expect(subAccount.collateral).to.equal(toWei("15"))
-      expect(subAccount.size).to.equal(toWei("1"))
-      expect(subAccount.entryPrice).to.equal(toWei("125"))
-      expect(subAccount.entryFunding).to.equal(toWei("0"))
-      expect(await asset1.balanceOf(user0.address)).to.equal(toWei("0.2"))
-      {
-        let asset = await pool.getAssetInfo(1)
-        expect(asset.averageLongPrice).to.equal(toWei("125"))
-        expect(asset.totalLongPosition).to.equal(toWei("1"))
-      }
-    })
-
-    it("open short, withdrawProfit. profit = another stable", async () => {
-      const subAccountId = assembleSubAccountId(user0.address, 0, 1, false)
-      const current = toWei("29700")
-      const target = toWei("29700")
-
-      // lp = user1
-      await asset2.mint(pool.address, toWei("1000"))
-      await pool.addLiquidity(user1.address, 2, toWei("1000"), toWei("1"), toWei("1"), current, target)
-
-      // trader = user0
-      await asset0.mint(pool.address, toWei("11"))
-      await pool.depositCollateral(subAccountId, toWei("11"))
-
-      // collateral = 11
-      await pool.openPosition(subAccountId, toWei("1"), toWei("1"), toWei("100"))
-      var subAccount = await pool.getSubAccount(subAccountId)
-      expect(subAccount.collateral).to.equal(toWei("10"))
-      expect(subAccount.size).to.equal(toWei("1"))
-      expect(subAccount.entryPrice).to.equal(toWei("100"))
-      expect(subAccount.entryFunding).to.equal(toWei("0"))
-      {
-        let asset = await pool.getAssetInfo(1)
-        expect(asset.averageShortPrice).to.equal(toWei("100"))
-        expect(asset.totalShortPosition).to.equal(toWei("1"))
-      }
-
-      // 100 => 50, fee = 0, pnl = (100 - 50) * 1 = 50
-      await expect(pool.withdrawProfit(subAccountId, toWei("50"), 1, toWei("1"), toWei("50"), toWei("50"))).to.revertedWith("STB")
-      await expect(pool.withdrawProfit(subAccountId, toWei("51"), 2, toWei("1"), toWei("50"), toWei("50"))).to.revertedWith("U<W")
-      await expect(pool.withdrawProfit(subAccountId, toWei("1"), 2, toWei("1"), toWei("101"), toWei("101"))).to.revertedWith("U<0")
-      await pool.withdrawProfit(subAccountId, toWei("50"), 2, toWei("1"), toWei("50"), toWei("1"))
-      var subAccount = await pool.getSubAccount(subAccountId)
-      expect(subAccount.collateral).to.equal(toWei("10"))
-      expect(subAccount.size).to.equal(toWei("1"))
-      expect(subAccount.entryPrice).to.equal(toWei("50"))
-      expect(subAccount.entryFunding).to.equal(toWei("0"))
-      expect(await asset2.balanceOf(user0.address)).to.equal(toWei("50"))
-      {
-        let asset = await pool.getAssetInfo(1)
-        expect(asset.averageShortPrice).to.equal(toWei("50"))
-        expect(asset.totalShortPosition).to.equal(toWei("1"))
-      }
     })
   })
 

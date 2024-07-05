@@ -96,7 +96,7 @@ interface IOrderBook {
      * @param  subAccountId       sub account id. see LibSubAccount.decodeSubAccountId.
      * @param  rawAmount          collateral or profit asset amount. decimals = erc20.decimals.
      * @param  profitTokenId      specify the profitable asset.id.
-     * @param  isProfit           true for withdraw profit. false for withdraw collateral.
+     * @param  isProfit           reserved.
      */
     function placeWithdrawalOrder(
         bytes32 subAccountId,

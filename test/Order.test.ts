@@ -175,7 +175,7 @@ describe("Order", () => {
       expect(order.placeOrderTime).to.equal(1000)
     }
     {
-      await orderBook.placeWithdrawalOrder(assembleSubAccountId(user0.address, 0, 1, true), toWei("500"), 1, true)
+      await orderBook.placeWithdrawalOrder(assembleSubAccountId(user0.address, 0, 1, true), toWei("500"), 1, false)
       expect(await orderBook.getOrderCount()).to.equal(3)
       {
         const orders = await orderBook.getOrders(0, 100)
@@ -191,7 +191,7 @@ describe("Order", () => {
       expect(order.subAccountId).to.equal(assembleSubAccountId(user0.address, 0, 1, true))
       expect(order.rawAmount).to.equal(toWei("500"))
       expect(order.profitTokenId).to.equal(1)
-      expect(order.isProfit).to.equal(true)
+      expect(order.isProfit).to.equal(false)
       expect(order.placeOrderTime).to.equal(1000)
     }
     {
@@ -294,28 +294,30 @@ describe("Order", () => {
     // open
     await pool.openPosition(
       subAccountId,
-      toWei('1'), // amount
-      toWei('2000'), // collateralPrice
-      toWei('1000'), // assetPrice
-    );
+      toWei("1"), // amount
+      toWei("2000"), // collateralPrice
+      toWei("1000") // assetPrice
+    )
     // place close - fail
     {
-      await expect(orderBook.placePositionOrder3(
-        subAccountId,
-        toWei("0"),
-        toWei("0.1"),
-        toWei("0"),
-        1,
-        PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.ShouldReachMinProfit,
-        1000 + 86400,
-        refCode,
-        posExtra
-      )).to.revertedWith("MPT")
+      await expect(
+        orderBook.placePositionOrder3(
+          subAccountId,
+          toWei("0"),
+          toWei("0.1"),
+          toWei("0"),
+          1,
+          PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.ShouldReachMinProfit,
+          1000 + 86400,
+          refCode,
+          posExtra
+        )
+      ).to.revertedWith("MPT")
     }
     // place close - success
     {
       await pool.setAssetAddress(1, atk.address)
-      await pool.setAssetParams(1, 60, rate('0.10'))
+      await pool.setAssetParams(1, 60, rate("0.10"))
       await orderBook.placePositionOrder3(
         subAccountId,
         toWei("0"), // collateral amount
@@ -335,8 +337,7 @@ describe("Order", () => {
     }
     // place close - profit/time not reached
     {
-      await expect(orderBook.connect(broker).fillPositionOrder(0, toWei("2000"), toWei("1001"), toWei("1")))
-        .to.revertedWith("PFT")
+      await expect(orderBook.connect(broker).fillPositionOrder(0, toWei("2000"), toWei("1001"), toWei("1"))).to.revertedWith("PFT")
       const orders = await orderBook.getOrders(0, 100)
       expect(orders.totalCount).to.equal(1)
       expect(orders.orderArray.length).to.equal(1)
@@ -517,7 +518,7 @@ describe("Order", () => {
     }
     // withdraw order
     {
-      await orderBook.placeWithdrawalOrder(assembleSubAccountId(user0.address, 0, 1, true), toWei("500"), 1, true)
+      await orderBook.placeWithdrawalOrder(assembleSubAccountId(user0.address, 0, 1, true), toWei("500"), 1, false)
       await orderBook.setBlockTimestamp(1000 + 86410 + 300)
       await expect(orderBook.connect(broker).cancelOrder(1)).revertedWith("EXP")
       await orderBook.setBlockTimestamp(1000 + 86410 + 310)

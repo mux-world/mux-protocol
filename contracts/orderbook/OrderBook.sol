@@ -192,7 +192,7 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
      * @param  subAccountId       sub account id. see LibSubAccount.decodeSubAccountId.
      * @param  rawAmount          collateral or profit asset amount. decimals = erc20.decimals.
      * @param  profitTokenId      specify the profitable asset.id.
-     * @param  isProfit           true for withdraw profit. false for withdraw collateral.
+     * @param  isProfit           reserved.
      */
     function placeWithdrawalOrder(
         bytes32 subAccountId,
@@ -203,6 +203,7 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
         address trader = subAccountId.getSubAccountOwner();
         require(trader == _msgSender(), "SND"); // SeNDer is not authorized
         require(rawAmount != 0, "A=0"); // Amount Is Zero
+        require(!isProfit, "PFT"); // profit order is not allowed
 
         uint64 orderId = _storage.nextOrderId++;
         bytes32[3] memory data = LibOrder.encodeWithdrawalOrder(
@@ -357,9 +358,9 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
         }
         OrderType orderType = LibOrder.getOrderType(orderData);
         require(orderType == OrderType.LiquidityOrder, "TYP"); // order TYPe mismatch
-        uint256 mlpAmount;
+        uint256 outAmount;
         if (order.rawAmount != 0) {
-            mlpAmount = LibOrderBook.fillLiquidityOrder(
+            outAmount = LibOrderBook.fillLiquidityOrder(
                 _storage,
                 _blockTimestamp(),
                 assetPrice,
@@ -370,12 +371,12 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
             );
         } else {
             require(_storage.callbackWhitelist[order.account], "NCB");
-            mlpAmount = 0;
+            outAmount = 0;
         }
         if (_storage.callbackWhitelist[order.account]) {
             ILiquidityCallback(order.account).afterFillLiquidityOrder{ gas: _callbackGasLimit() }(
                 order,
-                mlpAmount,
+                outAmount,
                 assetPrice,
                 mlpPrice,
                 currentAssetValue,
@@ -407,18 +408,8 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
 
         WithdrawalOrder memory order = orderData.decodeWithdrawalOrder();
         require(_blockTimestamp() <= order.placeOrderTime + _storage.marketOrderTimeout, "EXP"); // EXPired
-        if (order.isProfit) {
-            _storage.pool.withdrawProfit(
-                order.subAccountId,
-                order.rawAmount,
-                order.profitTokenId,
-                collateralPrice,
-                assetPrice,
-                profitAssetPrice
-            );
-        } else {
-            _storage.pool.withdrawCollateral(order.subAccountId, order.rawAmount, collateralPrice, assetPrice);
-        }
+        require(!order.isProfit, "PFT"); // profit order is not allowed
+        _storage.pool.withdrawCollateral(order.subAccountId, order.rawAmount, collateralPrice, assetPrice);
 
         emit FillOrder(orderId, orderType, orderData);
     }
