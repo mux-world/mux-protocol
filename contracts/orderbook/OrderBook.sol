@@ -537,6 +537,13 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
     }
 
     /**
+     * @notice Broker can claim funding fee if a position is not closed.
+     */
+    function collectFundingFee(bytes32 subAccountId, uint96 collateralPrice, uint96 assetPrice) external onlyBroker {
+        _storage.pool.openPosition(subAccountId, 0 /* size */, collateralPrice, assetPrice);
+    }
+
+    /**
      * @notice Deposit collateral into a subAccount.
      *
      * @param  subAccountId       sub account id. see LibSubAccount.decodeSubAccountId.

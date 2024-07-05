@@ -17,7 +17,7 @@ contract Trade is Storage, Account {
      * @notice Open a position.
      *
      * @param  subAccountId     check LibSubAccount.decodeSubAccountId for detail.
-     * @param  amount           position size. decimals = 18.
+     * @param  amount           position size. decimals = 18. amount = 0 means collect fee only.
      * @param  collateralPrice  price of subAccount.collateral. decimals = 18.
      * @param  assetPrice       price of subAccount.asset. decimals = 18.
      */
@@ -31,7 +31,7 @@ contract Trade is Storage, Account {
         require(decoded.account != address(0), "T=0"); // Trader address is zero
         require(_hasAsset(decoded.collateralId), "LST"); // the asset is not LiSTed
         require(_hasAsset(decoded.assetId), "LST"); // the asset is not LiSTed
-        require(amount != 0, "A=0"); // Amount Is Zero
+        // require(amount != 0, "A=0"); // Amount Is Zero
 
         Asset storage asset = _storage.assets[decoded.assetId];
         Asset storage collateral = _storage.assets[decoded.collateralId];
@@ -63,7 +63,7 @@ contract Trade is Storage, Account {
         }
 
         // position
-        {
+        if (amount > 0) {
             (, uint96 pnlUsd) = _positionPnlUsd(asset, subAccount, decoded.isLong, subAccount.size, assetPrice);
             uint96 newSize = subAccount.size + amount;
             if (pnlUsd == 0) {
@@ -75,8 +75,8 @@ contract Trade is Storage, Account {
                     uint256(amount)) / newSize).safeUint96();
             }
             subAccount.size = newSize;
+            subAccount.lastIncreasedTime = _blockTimestamp();
         }
-        subAccount.lastIncreasedTime = _blockTimestamp();
         {
             OpenPositionArgs memory args = OpenPositionArgs({
                 subAccountId: subAccountId,
