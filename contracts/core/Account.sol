@@ -137,6 +137,7 @@ contract Account is Storage {
             _blockTimestamp() < subAccount.lastIncreasedTime + asset.minProfitTime &&
             priceDelta < uint256(subAccount.entryPrice).rmul(asset.minProfitRate).safeUint96()
         ) {
+            // 2024 update: we will never use minProfitTime and minProfitRate anymore, this condition will never be true
             hasProfit = false;
             return (false, 0);
         }
