@@ -30,12 +30,6 @@ contract Admin is Storage {
         emit SetLiquidityManager(newLiquidityManager, isAdd);
     }
 
-    // not important. remove me if needed
-    function setNativeUnwrapper(address oldNativeUnwrapper, address newNativeUnwrapper) external onlyOwner {
-        require(_storage.nativeUnwrapper == oldNativeUnwrapper, "OLD");
-        _storage.nativeUnwrapper = newNativeUnwrapper;
-    }
-
     function addAsset(
         uint8 assetId,
         bytes32 symbol,

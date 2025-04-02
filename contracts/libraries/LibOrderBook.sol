@@ -206,6 +206,13 @@ library LibOrderBook {
         PositionOrderExtra memory extra
     ) external {
         require(size != 0, "S=0"); // order Size Is Zero
+        {
+            uint8 assetId = subAccountId.getSubAccountAssetId();
+            uint96 lotSize = _storage.lotSizes[assetId];
+            if (lotSize > 0) {
+                require(size % lotSize == 0, "LOT"); // LOT size mismatch
+            }
+        }
         if ((flags & LibOrder.POSITION_MARKET_ORDER) != 0) {
             require(price == 0, "P!0"); // market order does not need a limit Price
             require(deadline == 0, "D!0"); // market order does not need a deadline

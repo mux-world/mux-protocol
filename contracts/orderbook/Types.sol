@@ -38,6 +38,7 @@ struct OrderBookStorage {
     uint256 callbackGasLimit;
     mapping(address => bool) callbackWhitelist;
     uint32 cancelCoolDown;
+    mapping(uint8 => uint96) lotSizes; // assetId => lotSize
 }
 
 //                                  160        152       144         120        96   72   64               8        0

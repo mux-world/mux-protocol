@@ -152,18 +152,17 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0x5cA365618e4ad4B674359799900A85119Dc74835",
-    "deployedAt": 199540168
+    "address": "0xaB66dfEf3722Db73930A59147d900544D7B2AE90",
+    "deployedAt": 322011512
   },
   "OrderBook": {
     "type": "upgradeable",
     "name": "OrderBook",
     "address": "0xa19fD5aB6C8DCffa2A295F78a5Bb4aC543AAF5e3",
     "dependencies": {
-      "admin": "0xE52d9a3CBA458832A65cfa9FC8a74bacAbdeB32A",
-      "implementation": "0x5cA365618e4ad4B674359799900A85119Dc74835"
+      "implementation": "0x15B1E798d2B2029f3CD47A0B6f3Ab716aC496De6"
     },
-    "deployedAt": 11242808
+    "deployedAt": 314901836
   },
   "LiquidityManager__implementation": {
     "type": "plain",
@@ -353,6 +352,7 @@
   "LibOrderBook": {
     "type": "plain",
     "name": "LibOrderBook",
-    "address": "0xc17C108528b7c92BcD05Cd231E204a038AeF2A0D"
+    "address": "0x09A0dbD7667236106322f6254b605d51e36D4b6B",
+    "deployedAt": 322011503
   }
 }

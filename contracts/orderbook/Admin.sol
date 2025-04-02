@@ -15,6 +15,7 @@ contract Admin is Storage {
     event SetMaintainer(address indexed newMaintainer);
     event SetReferralManager(address newReferralManager);
     event SetAggregator(address indexed aggregatorAddress, bool isEnable);
+    event SetLotSize(uint8 assetId, uint96 lotSize);
 
     modifier onlyBroker() {
         require(_storage.brokers[_msgSender()], "BKR"); // only BroKeR
@@ -39,6 +40,11 @@ contract Admin is Storage {
 
     function removeBroker(address broker) external onlyMaintainer {
         _removeBroker(broker);
+    }
+
+    function setLotSize(uint8 assetId, uint96 lotSize) external onlyMaintainer {
+        _storage.lotSizes[assetId] = lotSize; // 0 means no limit
+        emit SetLotSize(assetId, lotSize);
     }
 
     function renounceBroker() external {
@@ -122,15 +128,6 @@ contract Admin is Storage {
 
     function setCallbackWhitelist(address caller, bool enable) external onlyOwner {
         _storage.callbackWhitelist[caller] = enable;
-    }
-
-    // not important. remove me if needed
-    function setNativeUnwrapper(
-        INativeUnwrapper oldNativeUnwrapper,
-        INativeUnwrapper newNativeUnwrapper
-    ) external onlyOwner {
-        require(_storage.nativeUnwrapper == oldNativeUnwrapper, "OLD");
-        _storage.nativeUnwrapper = newNativeUnwrapper;
     }
 
     function _removeBroker(address broker) internal {

@@ -200,8 +200,14 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
         uint8 profitTokenId,
         bool isProfit
     ) external nonReentrant {
-        address trader = subAccountId.getSubAccountOwner();
-        require(trader == _msgSender(), "SND"); // SeNDer is not authorized
+        address accountOwner = subAccountId.getSubAccountOwner();
+        address msgSender = _msgSender();
+        if (_storage.aggregators[msgSender]) {
+            // we trust aggregator
+        } else {
+            // otherwise only account owner can place order
+            require(accountOwner == msgSender, "SND"); // SeNDer is not authorized
+        }
         require(rawAmount != 0, "A=0"); // Amount Is Zero
         require(!isProfit, "PFT"); // profit order is not allowed
 
@@ -392,7 +398,7 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
      * @param orderId           order id.
      * @param collateralPrice   collateral price. decimals = 18.
      * @param assetPrice        asset price. decimals = 18.
-     * @param profitAssetPrice  profit asset price. decimals = 18.
+     * @param profitAssetPrice  not used anymore
      */
     function fillWithdrawalOrder(
         uint64 orderId,
@@ -462,7 +468,15 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
             if (_storage.brokers[_msgSender()]) {
                 require(_blockTimestamp() > _positionOrderDeadline(order), "EXP"); // not EXPired yet
             } else {
-                require(_msgSender() == account, "SND"); // SeNDer is not authorized
+                // require(_msgSender() == account, "SND"); // SeNDer is not authorized
+                address accountOwner = orderData[0].getSubAccountOwner();
+                address msgSender = _msgSender();
+                if (_storage.aggregators[msgSender]) {
+                    // we trust aggregator
+                } else {
+                    // otherwise only account owner can place order
+                    require(accountOwner == msgSender, "SND"); // SeNDer is not authorized
+                }
             }
             require(_blockTimestamp() >= order.placeOrderTime + _storage.cancelCoolDown, "CLD"); // CooLDown
             if (order.isOpenPosition() && order.collateral > 0) {
@@ -485,7 +499,15 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
                 uint256 deadline = order.placeOrderTime + _storage.marketOrderTimeout;
                 require(_blockTimestamp() > deadline, "EXP"); // not EXPired yet
             } else {
-                require(_msgSender() == account, "SND"); // SeNDer is not authorized
+                // require(_msgSender() == account, "SND"); // SeNDer is not authorized
+                address accountOwner = orderData[0].getSubAccountOwner();
+                address msgSender = _msgSender();
+                if (_storage.aggregators[msgSender]) {
+                    // we trust aggregator
+                } else {
+                    // otherwise only account owner can place order
+                    require(accountOwner == msgSender, "SND"); // SeNDer is not authorized
+                }
             }
             require(_blockTimestamp() >= order.placeOrderTime + _storage.cancelCoolDown, "CLD"); // CooLDown
         } else if (orderType == OrderType.RebalanceOrder) {
@@ -551,10 +573,17 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
      */
     function depositCollateral(bytes32 subAccountId, uint256 collateralAmount) external payable {
         LibSubAccount.DecodedSubAccountId memory account = subAccountId.decodeSubAccountId();
-        require(account.account == _msgSender(), "SND"); // SeNDer is not authorized
+        address msgSender = _msgSender();
+        address accountOwner = subAccountId.getSubAccountOwner();
+        if (_storage.aggregators[msgSender]) {
+            // we trust aggregator
+        } else {
+            // otherwise only account owner can place order
+            require(accountOwner == msgSender, "SND"); // SeNDer is not authorized
+        }
         require(collateralAmount != 0, "C=0"); // Collateral Is Zero
         address collateralAddress = _storage.pool.getAssetAddress(account.collateralId);
-        LibOrderBook._transferIn(_storage, _msgSender(), collateralAddress, address(_storage.pool), collateralAmount);
+        LibOrderBook._transferIn(_storage, accountOwner, collateralAddress, address(_storage.pool), collateralAmount);
         _storage.pool.depositCollateral(subAccountId, collateralAmount);
     }
 
