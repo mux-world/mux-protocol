@@ -71,6 +71,11 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
         uint32 deadline, // 1e0. 0 if market order. > 0 if limit order
         PositionOrderExtra extra
     );
+    event ReportLiquidityOrderPrice(
+        uint64 indexed orderId,
+        uint96[] prices // 1e18
+    );
+    event ReportBrokerGasRebatePrice(uint96 nativeTokenPrice); // 1e18
 
     function initialize(address pool, address mlp, address weth, address nativeUnwrapper) external initializer {
         __SafeOwnable_init();
@@ -320,16 +325,7 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
         emit FillOrder(orderId, orderType, orderData);
     }
 
-    /**
-     * @dev   Add/remove liquidity. called by Broker.
-     *
-     *        Check _getLiquidityFeeRate in Liquidity.sol on how to calculate liquidity fee.
-     * @param orderId           order id.
-     * @param assetPrice        token price that added/removed to. decimals = 18.
-     * @param mlpPrice          mlp price. decimals = 18.
-     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset). decimals = 18.
-     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains. decimals = 18.
-     */
+    // deprecated
     function fillLiquidityOrder(
         uint64 orderId,
         uint96 assetPrice,
@@ -341,6 +337,51 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
         bytes32[3] memory orderData = _storage.orders.get(orderId);
         _storage.orders.remove(orderId);
         LiquidityOrder memory order = LibOrder.decodeLiquidityOrder(orderData);
+        _fillLiquidityOrder(orderData, order, orderId, assetPrice, mlpPrice, currentAssetValue, targetAssetValue);
+    }
+
+    /**
+     * @dev   Add/remove liquidity. called by Broker.
+     *
+     *        Check _getLiquidityFeeRate in Liquidity.sol on how to calculate liquidity fee.
+     * @param orderId           order id.
+     * @param mlpPrice          mlp price. decimals = 18.
+     * @param currentAssetValue liquidity USD value of a single asset in all chains (even if tokenId is a stable asset). decimals = 18.
+     * @param targetAssetValue  weight / Σ weight * total liquidity USD value in all chains. decimals = 18.
+     * @param indexPrices       all token prices. decimals = 18.
+     *
+     */
+    function fillLiquidityOrder2(
+        uint64 orderId,
+        uint96 mlpPrice,
+        uint96 currentAssetValue,
+        uint96 targetAssetValue,
+        uint96[] memory indexPrices
+    ) external onlyBroker whenLiquidityOrderEnabled nonReentrant {
+        emit ReportLiquidityOrderPrice(orderId, indexPrices);
+
+        require(_storage.orders.contains(orderId), "OID"); // can not find this OrderID
+        bytes32[3] memory orderData = _storage.orders.get(orderId);
+        _storage.orders.remove(orderId);
+        LiquidityOrder memory order = LibOrder.decodeLiquidityOrder(orderData);
+
+        for (uint256 i = 0; i < indexPrices.length; i++) {
+            require(indexPrices[i] != 0, "P=0"); // Price Is Zero
+        }
+        uint96 assetPrice = indexPrices[order.assetId];
+        _fillLiquidityOrder(orderData, order, orderId, assetPrice, mlpPrice, currentAssetValue, targetAssetValue);
+    }
+
+    function _fillLiquidityOrder(
+        bytes32[3] memory orderData,
+        LiquidityOrder memory order,
+        uint64 orderId,
+        uint96 assetPrice,
+        uint96 mlpPrice,
+        uint96 currentAssetValue,
+        uint96 targetAssetValue
+    ) internal {
+        require(LibOrder.getOrderType(orderData) == OrderType.LiquidityOrder, "TYP"); // order TYPe mismatch
         if (_storage.callbackWhitelist[order.account]) {
             bool isValid;
             try
@@ -358,7 +399,7 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
             }
             if (!isValid) {
                 _cancelLiquidityOrder(order);
-                emit CancelOrder(orderId, LibOrder.getOrderType(orderData), orderData);
+                emit CancelOrder(orderId, OrderType.LiquidityOrder, orderData);
                 return;
             }
         }
@@ -389,7 +430,7 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
                 targetAssetValue
             );
         }
-        emit FillOrder(orderId, orderType, orderData);
+        emit FillOrder(orderId, OrderType.LiquidityOrder, orderData);
     }
 
     /**
@@ -609,10 +650,16 @@ contract OrderBook is Storage, Admin, ReentrancyGuardUpgradeable {
         LibOrderBook.redeemMuxToken(_storage, trader, tokenId, muxTokenAmount);
     }
 
+    // deprecated
+    function claimBrokerGasRebate() external onlyBroker returns (uint256 rawAmount) {
+        return _storage.pool.claimBrokerGasRebate(msg.sender);
+    }
+
     /**
      * @dev Broker can withdraw brokerGasRebate.
      */
-    function claimBrokerGasRebate() external onlyBroker returns (uint256 rawAmount) {
+    function claimBrokerGasRebate2(uint96 nativeTokenPrice) external onlyBroker returns (uint256 rawAmount) {
+        emit ReportBrokerGasRebatePrice(nativeTokenPrice);
         return _storage.pool.claimBrokerGasRebate(msg.sender);
     }
 
